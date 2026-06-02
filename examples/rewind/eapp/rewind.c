@@ -42,7 +42,7 @@ int main() {
             __builtin_trap();
         }
 
-        if (counter == 11) {
+        if (counter == 6) {
             eapp_print("Simulated crash");
             //asm volatile("unimp"); // returns illegal RISC-V instruction
             __builtin_trap();

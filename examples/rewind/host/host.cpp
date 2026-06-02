@@ -32,6 +32,10 @@ static void save_counter_dispatch(void* buffer)
   }
 
   saved_counter = *(int*)arg_ptr;
+  char to_prt[50];
+  sprintf(to_prt, "counter = %d", saved_counter);
+  host_print(to_prt);
+  
   edge_call->return_data.call_status = CALL_STATUS_OK;
 }
 
@@ -103,8 +107,6 @@ main(int argc, char** argv) {
     backup.init(argv[1], argv[2], argv[3], params);
 
     backup.registerOcallDispatch(incoming_call_dispatch);
-    register_call(OCALL_SAVE_COUNTER, save_counter_dispatch);
-    register_call(OCALL_LOAD_COUNTER, load_counter_dispatch);
 
     edge_call_init_internals(
         (uintptr_t)backup.getSharedBuffer(),
