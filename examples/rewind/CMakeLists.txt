@@ -9,12 +9,21 @@ set(eyrie_plugins "io_syscall linux_syscall env_setup")
 # eapp
 
 add_executable(${eapp_bin} ${eapp_src})
-target_link_libraries(${eapp_bin} "-static")
+target_link_libraries(${eapp_bin} "-nostdlib -static" ${KEYSTONE_LIB_EAPP} ${KEYSTONE_LIB_EDGE})
+target_include_directories(${eapp_bin}
+  PUBLIC ${KEYSTONE_SDK_DIR}/include/app
+  PUBLIC ${KEYSTONE_SDK_DIR}/include/edge)
 
 # host
 
 add_executable(${host_bin} ${host_src})
 target_link_libraries(${host_bin} ${KEYSTONE_LIB_HOST} ${KEYSTONE_LIB_EDGE})
+set_target_properties(${host_bin}
+  PROPERTIES CXX_STANDARD 17 CXX_STANDARD_REQUIRED YES CXX_EXTENSIONS NO)
+target_include_directories(${host_bin}
+  PUBLIC ${KEYSTONE_SDK_DIR}/include/common
+  PUBLIC ${KEYSTONE_SDK_DIR}/include/host
+  PUBLIC ${KEYSTONE_SDK_DIR}/include/edge)
 
 # add target for Eyrie runtime (see keystone.cmake)
 

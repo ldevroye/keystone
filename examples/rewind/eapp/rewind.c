@@ -4,28 +4,14 @@
 
 #include "app/syscall.h"
 #include "app/sealing.h"
+#include "app/eapp_utils.h"
+#include "edge/edge_common.h"
 
 enum {
     OCALL_PRINT_BUFFER = 1,
     OCALL_SAVE_COUNTER = 9,
     OCALL_LOAD_COUNTER = 8,
 };
-
-/* Provide a local ocall implementation for eapp linking when the
- * common syscall implementation is not linked into the app binary. */
-int ocall(unsigned long call_id, void* data, size_t data_len, void* return_buffer, size_t return_len) {
-    return SYSCALL_5(RUNTIME_SYSCALL_OCALL, call_id, data, data_len, return_buffer, return_len);
-}
-
-/* Local wrapper for get_sealing_key to avoid depending on external syscall
- * implementation being linked into the eapp binary. */
-int get_sealing_key(
-    struct sealing_key* sealing_key_struct, size_t sealing_key_struct_size,
-    void* key_ident, size_t key_ident_size) {
-  return SYSCALL_4(RUNTIME_SYSCALL_GET_SEALING_KEY,
-      sealing_key_struct, sealing_key_struct_size,
-      key_ident, key_ident_size);
-}
 
 unsigned long ocall_print_buffer(char* data, size_t data_len)
 {
@@ -41,6 +27,29 @@ void eapp_print(char* str)
     ocall_print_buffer("[EAPP] ", 7);
     ocall_print_buffer(str, strlen(str));
     ocall_print_buffer("\n", 1);
+}
+
+static int format_counter(char *buf, int counter)
+{
+    const char *prefix = "counter = ";
+    const int pfx_len = 10; /* length of "counter = " */
+    memcpy(buf, prefix, pfx_len);
+    int pos = pfx_len;
+
+    unsigned int u;
+    if (counter == 0) {
+        buf[pos++] = '0';
+    } else {
+        int neg = 0;
+        if (counter < 0) { neg = 1; u = (unsigned)(-counter); } else { u = (unsigned)counter; }
+        char rev[16];
+        int ri = 0;
+        while (u) { rev[ri++] = '0' + (u % 10); u /= 10; }
+        if (neg) buf[pos++] = '-';
+        for (int j = ri - 1; j >= 0; --j) buf[pos++] = rev[j];
+    }
+    buf[pos] = '\0';
+    return pos;
 }
 
 
@@ -63,17 +72,17 @@ int main() {
             }
             memcpy(&counter, plain, sizeof(counter));
         } else {
-            eapp_print("failed to derive sealing key");
+            eapp_print("Failed to derive sealing key");
         }
     } else {
-        eapp_print("no saved checkpoint, starting from 0");
+        eapp_print("No saved checkpoint");
     }
     
     eapp_print("Rewind enclave start");
 
     for (; counter < 10; counter++) {
-        char to_prt[50];
-        sprintf(to_prt, "counter = %d", counter);
+        char to_prt[32];
+        format_counter(to_prt, counter);
         eapp_print(to_prt);
 
         next_counter = counter + 1;
@@ -98,5 +107,6 @@ int main() {
             //return 16; // Keystone::Error::EnclaveInterrupted
         }
     }
-    return 0;
+
+    EAPP_RETURN(0);
 } 
