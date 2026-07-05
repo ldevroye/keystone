@@ -7,15 +7,13 @@
 #include "app/eapp_utils.h"
 #include "edge/edge_common.h"
 
+// Bound the live stack window we keep in the checkpoint blob.
+#define REWIND_STACK_SNAPSHOT_SIZE (8 * 1024)
+
 enum {
     OCALL_PRINT_BUFFER = 1,
     OCALL_SAVE_COUNTER = 9,
     OCALL_LOAD_COUNTER = 8,
-};
-
-enum {
-    // Bound the live stack window we keep in the checkpoint blob.
-    REWIND_STACK_SNAPSHOT_SIZE = 8 * 1024,
 };
 
 struct rewind_checkpoint {
@@ -23,6 +21,13 @@ struct rewind_checkpoint {
     uintptr_t stack_fp;
     size_t stack_len;
     uint8_t stack_data[REWIND_STACK_SNAPSHOT_SIZE];
+};
+
+// Keep state together for the stack snapshot
+struct saved_state {
+    int a;
+    int b;
+    int counter;
 };
 
 static struct rewind_checkpoint checkpoint_storage;
@@ -44,11 +49,15 @@ void eapp_print(char* str)
     ocall_print_buffer("\n", 1);
 }
 
-static int format_counter(char *buf, int counter)
-{
-    const char *prefix = "counter = ";
-    const int pfx_len = 10; // length of "counter = " 
-    memcpy(buf, prefix, pfx_len);
+static int format_value(char *buf,const int counter, const char* val)
+{   
+    const char* equal = " = ";
+    const int val_len = strlen(val);
+    const int equal_len = strlen(equal);
+    const int pfx_len = val_len + equal_len;
+
+    memcpy(buf, val, val_len);
+    memcpy(buf + val_len, equal, equal_len);
     int pos = pfx_len;
 
     unsigned int u;
@@ -72,7 +81,7 @@ static int format_counter(char *buf, int counter)
         while (u) { rev[ri++] = '0' + (u % 10); u /= 10; }
         if (neg) buf[pos++] = '-';
 
-        /* Copy the reversed digits back into the output in forward order. */
+        // Copy the reversed digits back into the output in forward order.
         for (int j = ri - 1; j >= 0; --j) buf[pos++] = rev[j];
     }
     buf[pos] = '\0';
@@ -86,7 +95,7 @@ static uintptr_t read_stack_pointer(void)
     /* mv - register move instruction.
      * %0 - output placeholder for the C variable sp.
      * sp - the RISC-V Stack-Pointer register.
-     *  "=r" is a constraint for GCC (compiler) so that the output is placed in a general 
+     * "=r" is a constraint for GCC (compiler) so that the output is placed in a general 
      * purpose register and store that register's value into sp.
      */
     __asm__ volatile("mv %0, sp" : "=r"(sp));
@@ -214,13 +223,14 @@ static int save_checkpoint(uintptr_t stack_anchor, size_t anchor_len)
 
 
 int main() {
-    volatile int counter = 0;
+    volatile struct saved_state state = {0, 1, 0};
     struct rewind_checkpoint checkpoint;
 
     // Try to load sealed checkpoint from host and then unseal it.
     if (load_checkpoint(&checkpoint) == 0) {
         // Making sure one is done after the other
-        // if is there solely for logging purpose
+
+        // IF statement is there solely for logging purpose
         if (restore_checkpoint(&checkpoint) == 0) {
             eapp_print("loading stack snapshot"); 
         }
@@ -228,19 +238,25 @@ int main() {
     
     eapp_print("Rewind enclave start");
 
-    for (; counter < 10; ) {
-        char to_prt[32];
-        format_counter(to_prt, counter);
-        eapp_print(to_prt);
+    for (; state.counter < 10; ) {
+        char formated_counter[32], formated_fib[32];
+        format_value(formated_counter, state.counter, "counter");
+        format_value(formated_fib, state.b, "output");
+        
+        eapp_print(formated_counter);
+        eapp_print(formated_fib);
 
-        counter++;
+        int next = state.a + state.b;
+        state.a = state.b;
+        state.b = next;
+        state.counter++;
 
-        if (save_checkpoint((uintptr_t)&counter, sizeof(counter)) != 0) {
+        if (save_checkpoint((uintptr_t)&state, sizeof(state)) != 0) {
             eapp_print("failed to save stack checkpoint");
             __builtin_trap();
         }
 
-        if (counter == 7) {
+        if (state.counter == 7) {
             eapp_print("Simulated crash");
             //asm volatile("unimp"); // returns illegal RISC-V instruction
             __builtin_trap();
