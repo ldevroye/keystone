@@ -2,6 +2,8 @@
 
 set timeout 120
 
+spawn pkill -f qemu-system-riscv64
+
 spawn make run
 
 expect "buildroot login:"
@@ -20,4 +22,9 @@ expect "#"
 
 send "/usr/share/keystone/examples/rewind.ke \r"
 
-interact
+expect "#"
+
+send "poweroff\r"
+
+expect "Power down"
+

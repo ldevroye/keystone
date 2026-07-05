@@ -10,6 +10,7 @@ set(eyrie_plugins "io_syscall linux_syscall env_setup")
 
 add_executable(${eapp_bin} ${eapp_src})
 target_link_libraries(${eapp_bin} "-nostdlib -static" ${KEYSTONE_LIB_EAPP} ${KEYSTONE_LIB_EDGE})
+target_compile_options(${eapp_bin} PRIVATE -fno-omit-frame-pointer)
 target_include_directories(${eapp_bin}
   PUBLIC ${KEYSTONE_SDK_DIR}/include/app
   PUBLIC ${KEYSTONE_SDK_DIR}/include/edge)
