@@ -51,8 +51,8 @@ static void load_counter_dispatch(void* buffer)
     return;
   }
 
-  /* Copy opaque saved blob into the shared return buffer.
-   * The enclave cannot dereference host heap pointers. */
+  /* Copy opaque saved blob into the shared return buffer
+   * The enclave cannot dereference host heap pointers */
   void* return_buffer = (void*)edge_call_data_ptr();
   memcpy(return_buffer, saved_blob.data(), saved_blob.size());
   edge_call_setup_ret(edge_call, return_buffer, saved_blob.size());
@@ -75,45 +75,60 @@ static void print_buffer_dispatch(void* buffer)
   edge_call->return_data.call_status = CALL_STATUS_OK;
 }
 
-int
-main(int argc, char** argv) {
-    Enclave enclave;
-    Params params;
-
-    params.setFreeMemSize(256 * 1024);
-    params.setUntrustedSize(256 * 1024);
-
-    enclave.init(argv[1], argv[2], argv[3], params);
-
-    enclave.registerOcallDispatch(incoming_call_dispatch);
-    register_call(OCALL_PRINT_BUFFER, print_buffer_dispatch);
-    register_call(OCALL_SAVE_COUNTER, save_counter_dispatch);
-    register_call(OCALL_LOAD_COUNTER, load_counter_dispatch);
-    edge_call_init_internals(
-        (uintptr_t)enclave.getSharedBuffer(), enclave.getSharedBufferSize());
-
-    host_print("running main");
-    Keystone::Error ret = enclave.run();
-
-
-    if (ret != Keystone::Error::Success) {
-        host_print("returned succesfully");
-    } else {
-        host_print("enclave exited, restarting");
+  static Keystone::Error configure_enclave(Enclave& enclave, Params& params, char** argv)
+  {
+    Keystone::Error init_ret = enclave.init(argv[1], argv[2], argv[3], params);
+    if (init_ret != Keystone::Error::Success) {
+      host_print("Error loading the enclave");
+      return init_ret;
     }
 
-    Enclave backup;
+  enclave.registerOcallDispatch(incoming_call_dispatch);
+  register_call(OCALL_PRINT_BUFFER, print_buffer_dispatch);
+  register_call(OCALL_SAVE_COUNTER, save_counter_dispatch);
+  register_call(OCALL_LOAD_COUNTER, load_counter_dispatch);
+  edge_call_init_internals(
+    (uintptr_t)enclave.getSharedBuffer(), enclave.getSharedBufferSize());
 
-    backup.init(argv[1], argv[2], argv[3], params);
+  return Keystone::Error::Success;
+  }
 
-    backup.registerOcallDispatch(incoming_call_dispatch);
-    register_call(OCALL_PRINT_BUFFER, print_buffer_dispatch);
+int
+main(int argc, char** argv) 
+{
+  Params params;
+  params.setFreeMemSize(256 * 1024);
+  params.setUntrustedSize(256 * 1024);
 
-    edge_call_init_internals(
-        (uintptr_t)backup.getSharedBuffer(),
-        backup.getSharedBufferSize());
+  uintptr_t ret;
+  const auto success = Keystone::Error::Success;
 
-    ret = backup.run();
+  auto counter = 0;
+  const auto max_run = 10;
+  while ((ret != 0 || counter==0) && // counter = 0 => initial enclave => result is null
+         counter < max_run) 
+  {
+    counter++;
+    Enclave enclave;
 
-  return static_cast<int>(ret);
+    host_print("configuring enclave");
+    if (configure_enclave(enclave, params, argv) != success) {
+      return 1;
+    }
+
+    host_print("starting enclave");
+    enclave.run(&ret);
+
+    if (ret != 0) {
+      host_print("enclave returned non-success, retrying");
+    }
+  }
+
+  if (counter==max_run){
+    host_print("too many runs, exiting");
+  } else {
+    host_print("run completed");
+  }
+  
+  return ret;
 }

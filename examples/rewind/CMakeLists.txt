@@ -1,5 +1,8 @@
 set(eapp_bin rewind)
-set(eapp_src eapp/rewind.c)
+set(eapp_src
+  eapp/rewind.c
+  eapp/rewind_checkpoint.c
+  eapp/rewind_crypto.c)
 set(host_bin rewind-runner)
 set(host_src host/host.cpp)
 set(package_name "rewind.ke")
