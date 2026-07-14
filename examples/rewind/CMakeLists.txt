@@ -1,8 +1,9 @@
 set(eapp_bin rewind)
 set(eapp_src
   eapp/rewind.c
-  eapp/rewind_checkpoint.c
-  eapp/rewind_crypto.c)
+  eapp/checkpoint.c
+  eapp/crypto.c
+  ${KEYSTONE_EYRIE_RUNTIME}/crypto/aes.c) # already implemented crypto scheme
 set(host_bin rewind-runner)
 set(host_src host/host.cpp)
 set(package_name "rewind.ke")
@@ -13,10 +14,19 @@ set(eyrie_plugins "io_syscall linux_syscall env_setup")
 
 add_executable(${eapp_bin} ${eapp_src})
 target_link_libraries(${eapp_bin} "-nostdlib -static" ${KEYSTONE_LIB_EAPP} ${KEYSTONE_LIB_EDGE})
+
+# PRIVATE is for end use of the option, meaning only these will have the tag
+# compiler option that keeps stack frames easier to inspect for
 target_compile_options(${eapp_bin} PRIVATE -fno-omit-frame-pointer)
+
+# build-time switch that enables page-crypto code path in the generated Eyrie runtime
+target_compile_options(${eapp_bin} PRIVATE -DUSE_PAGE_CRYPTO)
+
+# PUBLIC is for project dependency level, meaning the whole project will have these included
 target_include_directories(${eapp_bin}
   PUBLIC ${KEYSTONE_SDK_DIR}/include/app
-  PUBLIC ${KEYSTONE_SDK_DIR}/include/edge)
+  PUBLIC ${KEYSTONE_SDK_DIR}/include/edge
+  PUBLIC ${KEYSTONE_EYRIE_RUNTIME}/include)
 
 # host
 
