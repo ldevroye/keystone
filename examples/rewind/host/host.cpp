@@ -9,7 +9,11 @@
 
 using namespace Keystone;
 
-enum {
+// number of try before stopping the rewind
+#define MAX_RUNS 10
+
+enum 
+{
   OCALL_PRINT_BUFFER = 1,
   OCALL_LOAD_CHECKPOINT_BLOB = 8,
   OCALL_SAVE_CHECKPOINT_BLOB = 9,
@@ -30,7 +34,8 @@ static void save_checkpoint_blob_dispatch(void* buffer)
 
   // copy the sealed blob out of the enclave shared buffer into host memory
   if (edge_call_args_ptr(edge_call, &arg_ptr, &arg_size) != 0 ||
-      arg_size == 0) {
+      arg_size == 0) 
+  {
     edge_call->return_data.call_status = CALL_STATUS_ERROR;
     return;
   }
@@ -47,7 +52,9 @@ static void save_checkpoint_blob_dispatch(void* buffer)
 static void load_checkpoint_blob_dispatch(void* buffer)
 {
   struct edge_call* edge_call = (struct edge_call*)buffer;
-  if (saved_checkpoint_blob.empty()) {
+  
+  if (saved_checkpoint_blob.empty()) 
+  {
     edge_call->return_data.call_status = CALL_STATUS_ERROR;
     return;
   }
@@ -66,7 +73,8 @@ static void print_buffer_dispatch(void* buffer)
   size_t arg_size;
 
   if (edge_call_args_ptr(edge_call, &arg_ptr, &arg_size) != 0 ||
-      arg_ptr == 0 || arg_size == 0) {
+      arg_ptr == 0 || arg_size == 0) 
+  {
     edge_call->return_data.call_status = CALL_STATUS_ERROR;
     return;
   }
@@ -79,7 +87,9 @@ static void print_buffer_dispatch(void* buffer)
 static Keystone::Error configure_enclave(Enclave& enclave, Params& params, char** argv)
 {
   Keystone::Error init_ret = enclave.init(argv[1], argv[2], argv[3], params);
-  if (init_ret != Keystone::Error::Success) {
+  
+  if (init_ret != Keystone::Error::Success) 
+  {
     host_print("Error loading the enclave");
     return init_ret;
   }
@@ -94,8 +104,7 @@ static Keystone::Error configure_enclave(Enclave& enclave, Params& params, char*
   return Keystone::Error::Success;
 }
 
-int
-main(int argc, char** argv) 
+int main(int argc, char** argv) 
 {
   Params params;
   params.setFreeMemSize(256 * 1024);
@@ -105,27 +114,29 @@ main(int argc, char** argv)
   const auto success = Keystone::Error::Success;
 
   auto counter = 0;
-  const auto max_run = 10;
   while ((ret != 0 || counter==0) && // counter = 0 => initial enclave => result is null
-         counter < max_run) 
+         counter <= MAX_RUNS) 
   {
     counter++;
     Enclave enclave;
 
     host_print("configuring enclave");
-    if (configure_enclave(enclave, params, argv) != success) {
+    if (configure_enclave(enclave, params, argv) != success) 
+    {
       return 1;
     }
 
     host_print("starting enclave");
     enclave.run(&ret);
 
-    if (ret != 0) {
+    if (ret != 0) 
+    {
       host_print("enclave returned non-success, retrying");
     }
   }
 
-  if (counter==max_run){
+  if (counter==MAX_RUNS+1)
+  {
     host_print("too many runs, exiting");
   } else {
     host_print("run completed");

@@ -11,14 +11,16 @@
 #define CHECKPOINT_NONCE_SIZE 16
 #define CHECKPOINT_TAG_SIZE 16
 
-struct rewind_state {
+struct rewind_state 
+{
     int a;
     int b;
     int counter;
 };
 
 // "Safe" checkpoint - interface for the sealing blob used by enclave (plain data)
-struct rewind_checkpoint {
+struct rewind_checkpoint 
+{
     uintptr_t stack_sp;
     uintptr_t stack_fp;
     size_t stack_len;
@@ -26,7 +28,8 @@ struct rewind_checkpoint {
 };
 
 // Complete struct with blob (opaque data)
-struct rewind_checkpoint_blob {
+struct rewind_checkpoint_blob 
+{
     uintptr_t stack_sp;
     uintptr_t stack_fp;
     size_t stack_len;
@@ -37,7 +40,7 @@ struct rewind_checkpoint_blob {
     uint8_t tag[CHECKPOINT_TAG_SIZE];
 };
 
-void eapp_print(char *str);
+void eapp_print(char *str); // placeholder
 
 int load_checkpoint(struct rewind_checkpoint *checkpoint);
 int restore_checkpoint(struct rewind_state *state, const struct rewind_checkpoint *checkpoint);

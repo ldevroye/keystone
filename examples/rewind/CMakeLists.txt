@@ -3,6 +3,7 @@ set(eapp_src
   eapp/rewind.c
   eapp/checkpoint.c
   eapp/crypto.c
+  eapp/fault.c
   ${KEYSTONE_EYRIE_RUNTIME}/crypto/aes.c) # already implemented crypto scheme
 set(host_bin rewind-runner)
 set(host_src host/host.cpp)

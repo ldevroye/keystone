@@ -34,12 +34,15 @@
 
 
 // 'static' for interal usage only
-static int derive_checkpoint_material(struct sealing_key *sk, uint8_t enc_key[AES_KEY_SIZE], uint8_t auth_key[AES_KEY_SIZE])
+static int derive_checkpoint_material(struct sealing_key *sk, 
+                                        uint8_t enc_key[AES_KEY_SIZE], 
+                                        uint8_t auth_key[AES_KEY_SIZE])
 {
     const char key_id[] = "rewind-checkpoint-v1";
 
     // reuse the sealing root key, then split it into separate enc and auth keys
-    if (get_sealing_key(sk, sizeof(*sk), (void *)key_id, sizeof(key_id) - 1) != 0) {
+    if (get_sealing_key(sk, sizeof(*sk), (void *)key_id, sizeof(key_id) - 1) != 0) 
+    {
         return -1;
     }
 
@@ -61,7 +64,10 @@ static void derive_nonce(uint8_t nonce[CHECKPOINT_NONCE_SIZE], uint64_t sequence
     }
 }
 
-static int encrypt_stack(uint8_t *stack_data, size_t stack_len, const uint8_t enc_key[AES_KEY_SIZE], const uint8_t nonce[CHECKPOINT_NONCE_SIZE])
+static int encrypt_stack(uint8_t *stack_data,
+                            size_t stack_len,
+                            const uint8_t enc_key[AES_KEY_SIZE],
+                            const uint8_t nonce[CHECKPOINT_NONCE_SIZE])
 {
     WORD enc_schedule[AES_SCHEDULE_WORDS];
 
@@ -70,7 +76,10 @@ static int encrypt_stack(uint8_t *stack_data, size_t stack_len, const uint8_t en
     return 0;
 }
 
-static int decrypt_stack(uint8_t *stack_data, size_t stack_len, const uint8_t enc_key[AES_KEY_SIZE], const uint8_t nonce[CHECKPOINT_NONCE_SIZE])
+static int decrypt_stack(uint8_t *stack_data,
+                            size_t stack_len,
+                            const uint8_t enc_key[AES_KEY_SIZE],
+                            const uint8_t nonce[CHECKPOINT_NONCE_SIZE])
 {
     WORD enc_schedule[AES_SCHEDULE_WORDS];
 
@@ -79,19 +88,23 @@ static int decrypt_stack(uint8_t *stack_data, size_t stack_len, const uint8_t en
     return 0;
 }
 
-static int compute_tag(const struct rewind_checkpoint_blob *blob, const uint8_t auth_key[AES_KEY_SIZE], uint8_t tag[CHECKPOINT_TAG_SIZE])
+static int compute_tag(const struct rewind_checkpoint_blob *blob,
+                        const uint8_t auth_key[AES_KEY_SIZE],
+                        uint8_t tag[CHECKPOINT_TAG_SIZE])
 {
     WORD auth_schedule[AES_SCHEDULE_WORDS];
     uint8_t zero_iv[AES_BLOCK_SIZE] = {0};
     size_t auth_len = offsetof(struct rewind_checkpoint_blob, tag);
 
-    if (auth_len % AES_BLOCK_SIZE != 0) {
+    if (auth_len % AES_BLOCK_SIZE != 0) 
+    {
         return -1;
     }
 
     aes_key_setup(auth_key, auth_schedule, AES_KEY_BITS);
     // mac the metadata and ciphertext together so any tampering is detected
-    if (aes_encrypt_cbc_mac((const BYTE *)blob, auth_len, tag, auth_schedule, AES_KEY_BITS, zero_iv) == 0) {
+    if (aes_encrypt_cbc_mac((const BYTE *)blob, auth_len, tag, auth_schedule, AES_KEY_BITS, zero_iv) == 0) 
+    {
         return -1;
     }
 
@@ -131,17 +144,20 @@ int open_checkpoint_blob(struct rewind_checkpoint *checkpoint, struct rewind_che
     uint8_t expected_tag[CHECKPOINT_TAG_SIZE];
 
     // load path: verify first, then decrypt and rebuild the plain checkpoint view
-    if (derive_checkpoint_material(&sk, enc_key, auth_key) != 0) {
+    if (derive_checkpoint_material(&sk, enc_key, auth_key) != 0) 
+    {
         eapp_print("failed to derive sealing key");
         return -1;
     }
 
-    if (compute_tag(blob, auth_key, expected_tag) != 0) {
+    if (compute_tag(blob, auth_key, expected_tag) != 0) 
+    {
         eapp_print("failed to verify checkpoint");
         return -1;
     }
 
-    if (memcmp(expected_tag, blob->tag, sizeof(expected_tag)) != 0) {
+    if (memcmp(expected_tag, blob->tag, sizeof(expected_tag)) != 0) 
+    {
         eapp_print("checkpoint authentication failed");
         return -1;
     }

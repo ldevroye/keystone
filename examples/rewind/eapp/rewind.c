@@ -3,6 +3,7 @@
 #include "app/syscall.h"
 #include "app/eapp_utils.h"
 #include "checkpoint.h"
+#include "fault.h"
 
 #define OCALL_PRINT_BUFFER 1
 
@@ -26,7 +27,7 @@ void eapp_print(char* str)
     ocall_print_buffer("\n", 1);
 }
 
-static int format_value(char *buf,const int counter, const char* val)
+static int format_value(char *buf, const int counter, const char* val)
 {   
     const char* equal = " = ";
     const int val_len = strlen(val);
@@ -38,11 +39,13 @@ static int format_value(char *buf,const int counter, const char* val)
     int pos = pfx_len;
 
     unsigned int u;
-    if (counter == 0) {
+    if (counter == 0) 
+    {
         buf[pos++] = '0';
     } else {
         int neg = 0;
-        if (counter < 0) {
+        if (counter < 0) 
+        {
             // record the sign separately, then convert the magnitude only
             neg = 1;
             u = (unsigned)(-counter);
@@ -66,21 +69,100 @@ static int format_value(char *buf,const int counter, const char* val)
     return pos;
 }
 
+static int format_float_value(char *buf, double value, const char *val)
+{
+    const char* equal = " = ";
+    const int val_len = strlen(val);
+    const int equal_len = strlen(equal);
+    const int pfx_len = val_len + equal_len;
 
-int main() {
-    struct saved_state state = {0, 1, 0};
-    struct rewind_checkpoint checkpoint;
+    memcpy(buf, val, val_len);
+    memcpy(buf + val_len, equal, equal_len);
+
+    int pos = pfx_len;
+    if (value < 0.0) 
+    {
+        // Preserve the sign separately, then format the magnitude only.
+        buf[pos++] = '-';
+        value = -value;
+    }
+
+    // Split the value into the integer part and the fractional part.
+    unsigned long whole = (unsigned long)value;
+    double fraction = value - (double)whole;
+    // Keep only two decimal digits by scaling and rounding the fraction.
+    unsigned long scaled = (unsigned long)(fraction * 100.0 + 0.5);
+
+    // Build the integer digits from right to left because division removes
+    // the least-significant digit first.
+    char rev[32];
+    int ri = 0;
+    do 
+    {
+        rev[ri++] = (char)('0' + (whole % 10));
+        whole /= 10;
+    } while (whole != 0);
+
+    // Copy the digits back in forward order into the output buffer.
+    for (int j = ri - 1; j >= 0; --j) 
+    {
+        buf[pos++] = rev[j];
+    }
+
+    // Append the two decimal digits.
+    buf[pos++] = '.';
+    buf[pos++] = (char)('0' + (scaled / 10));
+    buf[pos++] = (char)('0' + (scaled % 10));
+    buf[pos] = '\0';
+    return pos;
+}
+
+
+int test_fault() 
+{
+    struct fault_model fault_model = MODEL_DEFAULT;
+    int counter = 0;
+    int nb_faults = 0;
+
+    for (; counter < 10000; counter++) 
+    {
+        if (fault_should_trigger(&fault_model)) 
+        {
+            nb_faults++;
+        }
+    }
+
+    char formated_counter[32], formated_fault[32], formated_rate[32];
+    double rate = nb_faults == 0 ? 0.0 : (double)counter / (double)nb_faults;
+    format_value(formated_counter, counter, "counter");
+    format_value(formated_fault, nb_faults, "nb faults");
+    format_float_value(formated_rate, rate, "rate");
+    eapp_print(formated_counter);
+    eapp_print(formated_fault);
+    eapp_print(formated_rate); // this should be equal to fault.h/PERIOD
+
+    EAPP_RETURN(0);
+}
+
+int main() 
+{
+    struct saved_state state = {0, 1, 0}; // fibonacci sequence init
+    struct rewind_checkpoint checkpoint; // empty for now as we will try to load the stack into it
+    struct fault_model fault_model = get_default_model();
 
     // on restart, recover the last sealed checkpoint if the host has one
-    if (load_checkpoint(&checkpoint) == 0) {
-        if (restore_checkpoint((struct rewind_state *)&state, &checkpoint) == 0) {
+    if (load_checkpoint(&checkpoint) == 0) 
+    {
+        if (restore_checkpoint((struct rewind_state *)&state, &checkpoint) == 0) 
+        {
             eapp_print("loading stack snapshot"); 
         }
     }
     
     eapp_print("Rewind enclave start");
 
-    for (; state.counter < 10;) {
+    for (; state.counter < 100;) 
+    {
         char formated_counter[32], formated_fib[32];
         format_value(formated_counter, state.counter, "counter");
         format_value(formated_fib, state.b, "output");
@@ -88,23 +170,28 @@ int main() {
         eapp_print(formated_counter);
         eapp_print(formated_fib);
 
+        // inject one modeled fault point using a simple pseudo-random splitex function
+        // fault happens before so that the "computation" can fail
+        if (fault_should_trigger(&fault_model)) 
+        {
+            eapp_print("Simulated fault");
+            //asm volatile("unimp"); // returns illegal RISC-V instruction
+            __builtin_trap();
+            //return 16; // Keystone::Error::EnclaveInterrupted
+        }
+
         int next = state.a + state.b;
         state.a = state.b;
         state.b = next;
         state.counter++;
 
         // save after each step so a crash resumes at the next iteration
-        if (save_checkpoint((uintptr_t)&state, sizeof(state)) != 0) {
+        if (save_checkpoint((uintptr_t)&state, sizeof(state)) != 0) 
+        {
             eapp_print("failed to save stack checkpoint");
             __builtin_trap();
         }
-
-        if (state.counter == 7) {
-            eapp_print("Simulated crash");
-            //asm volatile("unimp"); // returns illegal RISC-V instruction
-            __builtin_trap();
-            //return 16; // Keystone::Error::EnclaveInterrupted
-        }
+        
     }
 
     EAPP_RETURN(0);
