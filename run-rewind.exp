@@ -1,0 +1,28 @@
+#!/usr/bin/expect -f
+
+set timeout 120
+
+spawn make run
+
+expect "buildroot login:"
+
+send "root\r"
+
+expect "Password:"
+
+send "sifive\r"
+
+expect "#"
+
+send "modprobe keystone-driver\r"
+
+expect "#"
+
+send "/usr/share/keystone/examples/rewind.ke \r"
+
+expect "#"
+
+send "poweroff\r"
+
+expect "Power down"
+
