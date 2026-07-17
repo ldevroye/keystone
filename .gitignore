@@ -5,3 +5,6 @@ build*/
 riscv/
 riscv64/
 riscv32/
+
+.vscode/*
+!report/build/
