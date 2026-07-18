@@ -105,3 +105,142 @@ If you want to cite the project, please use the following bibtex:
     series = {EuroSys’20}
 }
 ```
+
+## This fork - Rewind
+
+This fork is made for the Master Thesis 2025-26. The goal is to implement a checkpointing algorithm that is sealed from the host and add faults happening following a pattern (mocking real life patterns for different types of faults). Then analysing the results and the impact (time, data, attack vector, etc.)
+
+Most of the work is done in '[examples/rewind/](examples/rewind/)' which is a "fork" of the '[examples/hello/](examples/hello/)' folder.
+
+### Authors
+
+Louis Devroye (loudevroye@gmail.com)
+
+### Additions
+
+- checkpointing mechanism (discrete) '[examples/rewind/eapp/checkpoint.c](examples/rewind/eapp/checkpoint.c)'
+- Sealing/cryptographic mechanism (basic) '[examples/rewind/eapp/crypto.c](examples/rewind/eapp/crypto.c)' that uses [runtime/crypto/aes.c](runtime/crypto/aes.c) cryptographic implementation
+- Fault model (splitmix64) '[examples/rewind/eapp/fault.c](examples/rewind/eapp/fault.c)' that use basic pseudo-randomness
+- Basic logging using OCALLs
+
+### Setup
+
+all compilation and run commands can be found on the official documentation website : [https://docs.keystone-enclave.org/en/latest/Getting-Started/index.html](https://docs.keystone-enclave.org/en/latest/Getting-Started/index.html).
+
+To save some trouble-shooting here are the steps that were followed to setup **this fork**.
+- [1.2.1.1 Setup repository](https://docs.keystone-enclave.org/en/latest/Getting-Started/QEMU-Setup-Repository.html)  
+  \$```git clone --recurse-submodules https://github.com/keystone-enclave/keystone.git```  
+- [1.2.1.2. Install Dependencies](https://docs.keystone-enclave.org/en/latest/Getting-Started/QEMU-Install-Dependencies.html)  
+```text  
+$sudo apt update
+sudo apt install autoconf automake autotools-dev bc \
+bison build-essential curl expat jq libexpat1-dev flex gawk gcc git \
+gperf libgmp-dev libmpc-dev libmpfr-dev libtool texinfo tmux \
+patchutils zlib1g-dev wget bzip2 patch vim-common lbzip2 python3 \
+pkg-config libglib2.0-dev libpixman-1-dev libssl-dev screen \
+device-tree-compiler expect makeself unzip cpio rsync cmake ninja-build p7zip-full
+``` 
+- [1.2.1.3. Compile Sources](https://docs.keystone-enclave.org/en/latest/Getting-Started/QEMU-Compile-Sources.html)   
+  \$```make buildroot-configure```   
+  \$```make linux-configure```  
+  These might take some time, it's normal.   
+- One should add the keystone path with \$```nano ~/.bashrc```
+```text
+export PATH=/opt/riscv/bin:$PATH
+export KEYSTONE_SDK_DIR=/keystone/sdk/build64/
+```   
+  Then restarting it using \$```source ~/.bashrc```
+
+
+### Compilation and Run
+
+All of the following steps are contained in the [usage](#usage) section' scripts. However, they are detailed here to avoid confusion and allow the user to better understand what is their logic.
+
+#### Compilation
+
+To compile the examples we just created, they first need to have a specific architecture:
+
+```text
+examples/name/
+├── CMakeLists.txt
+├── eapp/
+│   ├── name.c
+└── host/
+    └── host.cpp
+```
+
+The CMake must be changed according to the new names and dependencies. A good way to create one is to just copy the hello example and tweak it.
+
+Then the real compilation can start.   
+- First thing to know (to avoid doing things blindly) is that **Logs** when compiling can be found in the '[build-generic64/build.log](build-generic64/build.log)' (**build-\$PLATFORM$BITS/build.log**) file   
+- All the compilation is based on this command (from [1.2.1.3](https://docs.keystone-enclave.org/en/latest/Getting-Started/QEMU-Compile-Sources.html)):
+  ```BUILDROOT_TARGET=<target>-dirclean make -j$(nproc)``` where 
+  - ```BUILDROOT_TARGET=<target>-dirclean``` is the targeted directory to clean
+  - ```make -j$(nproc)``` is the compilation script.
+- To recompile (and delete) the examples : 
+  \$```BUILDROOT_TARGET=keystone-examples-dirclean make -j$(nproc)```
+- To recompile the runtime:
+  \$```BUILDROOT_TARGET=keystone-runtime-dirclean make -j$(nproc)```
+- To compile (without deleting so a stale is possible) everything :
+  \$```make -j$(nproc)```
+
+This is contained in the [make-examples.sh](make-examples.sh) script.
+
+#### Run
+
+[1.2.1.4. Running and Testing Keystone on QEMU](https://docs.keystone-enclave.org/en/latest/Getting-Started/QEMU-Run-Tests.html)   
+
+Running the emulation requires inputs and waiting time for kernel loading.
+
+each step in order is :   
+- \$```make run```   
+\*wait loading and getting the **login** request\*   
+- ```root```   
+\***password** request\*   
+- ```sifive```   
+\*wait for loading\*   
+- ```modprobe keystone-driver``` modprobe restarts drivers   
+\*wait for driver reloading\*   
+- ```/usr/share/keystone/examples/rewind.ke``` Loads the *rewind* example   
+\* wait for example to finish its execution\*   
+- ```poweroff``` This can be used at any time when logged in (CTRL+C doesn't work inside qemu)   
+\*wait for the emulation to fully stop (so that the process is terminated)\*
+
+This is contained in the [run-rewind.exp](run-rewind.exp) script.
+
+
+### Usage
+
+When everything is done for the [setup](#setup).  
+All of the waiting time described in the [compilation & run](#compilation-and-run) part makes it painful to test simple changes and is prone to human errors (forgetting commands, misstype, forgetting to re-compile, human speed limit). This is why it is *recommended* to use the scripts instead of the commands by themselves. 
+
+Use :
+- \$```./make-examples.sh``` to rebuild the examples (**compile**)   
+- \$```./run-rewind.exp``` to run the automatic qemu emulation, example launching and power off (**run**)   
+- \$```./make-run.sh``` to **compile** and **run**   
+
+**Logs**: Little reminder that logs (when compiling) can be found in the '[build-generic64/build.log](build-generic64/build.log)' (**build-\$PLATFORM$BITS/build.log**) file!
+
+### Future Work
+
+- Better checkpointing technique
+- Own/Better cryptographic scheme
+- More modular fault model (using precise statistical models)
+- Improve documentation for easier implementation
+
+### Implementing yourself
+
+[https://docs.keystone-enclave.org/en/latest/Keystone-Applications/SDK-Basics.html#writing-a-simple-application](https://docs.keystone-enclave.org/en/latest/Keystone-Applications/SDK-Basics.html#writing-a-simple-application)
+
+#### Edge calls (OCALLS)
+
+[https://docs.keystone-enclave.org/en/latest/Keystone-Applications/Edge-Calls.html](https://docs.keystone-enclave.org/en/latest/Keystone-Applications/Edge-Calls.html)
+
+#### Data Sealing
+[https://docs.keystone-enclave.org/en/latest/Keystone-Applications/Data-Sealing.html](https://docs.keystone-enclave.org/en/latest/Keystone-Applications/Data-Sealing.html)
+
+### Risks - License
+
+This fork is made as is, building on top of it is at the own risks of the users and any negative consequence is not to be put on the authors. 
+
+(Works on my machine ¯\\\_ツ\_/¯)

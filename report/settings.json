@@ -1,0 +1,28 @@
+{
+  // "latex-workshop.latex.autoBuild.run": "never",
+  "latex-workshop.latex.outDir": "./",
+  "latex-workshop.latex.auxDir": "build/output",
+  "latex-workshop.latex.tools": [
+    {
+      "name": "latexmk-root-pdf-aux-build",
+      "command": "latexmk",
+      "args": [
+        "-pdf",
+        "-interaction=nonstopmode",
+        "-file-line-error",
+        "-outdir=%OUTDIR%",
+        "-auxdir=%AUXDIR%",
+        "%DOC%"
+      ]
+    }
+  ],
+  "latex-workshop.latex.recipes": [
+    {
+      "name": "latexmk (root pdf, aux in build/output)",
+      "tools": [
+        "latexmk-root-pdf-aux-build"
+      ]
+    }
+  ],
+  "latex-workshop.latex.recipe.default": "first"
+}
