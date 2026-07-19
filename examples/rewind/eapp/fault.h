@@ -8,7 +8,7 @@
 // set to 1 to derive a pseudo-random seed at runtime instead of using SEED
 #define FAULT_RANDOMIZE_SEED 1
 // average recurrence period in calls before a fault is allowed to fire again
-#define PERIOD 10ULL
+#define PERIOD 30ULL
 
 // splitmix64 constants are the standard mixer parameters used by the algorithm
 // https://rosettacode.org/wiki/Pseudo-random_numbers/Splitmix64

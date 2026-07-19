@@ -7,12 +7,6 @@
 
 #define OCALL_PRINT_BUFFER 1
 
-struct saved_state {
-    int a;
-    int b;
-    int counter;
-};
-
 unsigned long ocall_print_buffer(char* data, size_t data_len)
 {
     unsigned long retval;
@@ -65,6 +59,39 @@ static int format_value(char *buf, const int counter, const char* val)
         // copy the reversed digits back into the output in forward order
         for (int j = ri - 1; j >= 0; --j) buf[pos++] = rev[j];
     }
+    buf[pos] = '\0';
+    return pos;
+}
+
+static int format_unsigned_value(char *buf, const unsigned long value, const char* val)
+{
+    const char* equal = " = ";
+    const int val_len = strlen(val);
+    const int equal_len = strlen(equal);
+    const int pfx_len = val_len + equal_len;
+
+    memcpy(buf, val, val_len);
+    memcpy(buf + val_len, equal, equal_len);
+
+    int pos = pfx_len;
+    unsigned long u = value;
+
+    if (u == 0)
+    {
+        buf[pos++] = '0';
+    }
+    else
+    {
+        char rev[32];
+        int ri = 0;
+        while (u) { rev[ri++] = (char)('0' + (u % 10)); u /= 10; }
+
+        for (int j = ri - 1; j >= 0; --j)
+        {
+            buf[pos++] = rev[j];
+        }
+    }
+
     buf[pos] = '\0';
     return pos;
 }
@@ -146,14 +173,14 @@ int test_fault()
 
 int main() 
 {
-    struct saved_state state = {0, 1, 0}; // fibonacci sequence init
+    struct rewind_state state = {0, 1, 0}; // fibonacci sequence init
     struct rewind_checkpoint checkpoint; // empty for now as we will try to load the stack into it
     struct fault_model fault_model = get_default_model();
 
     // on restart, recover the last sealed checkpoint if the host has one
     if (load_checkpoint(&checkpoint) == 0) 
     {
-        if (restore_checkpoint((struct rewind_state *)&state, &checkpoint) == 0) 
+        if (restore_checkpoint(&state, &checkpoint) == 0) 
         {
             eapp_print("loading stack snapshot"); 
         }
@@ -161,11 +188,11 @@ int main()
     
     eapp_print("Rewind enclave start");
 
-    for (; state.counter < 100;) 
+    for (; state.counter < 50;) 
     {
         char formated_counter[32], formated_fib[32];
         format_value(formated_counter, state.counter, "counter");
-        format_value(formated_fib, state.b, "output");
+        format_unsigned_value(formated_fib, state.b, "output");
         
         eapp_print(formated_counter);
         eapp_print(formated_fib);
@@ -180,7 +207,7 @@ int main()
             //return 16; // Keystone::Error::EnclaveInterrupted
         }
 
-        int next = state.a + state.b;
+        unsigned long next = state.a + state.b;
         state.a = state.b;
         state.b = next;
         state.counter++;

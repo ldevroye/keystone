@@ -98,7 +98,7 @@ int save_checkpoint(uintptr_t stack_anchor, size_t anchor_len)
 
     snapshot_len = snapshot_end - snapshot_sp;
 
-    // snapshot the live stack range that contains the saved_state object
+    // snapshot the live stack range that contains the rewind_state object
     // then wrap it into a sealed blob before sending it to the host
     checkpoint_storage.stack_sp = snapshot_sp;
     checkpoint_storage.stack_fp = snapshot_end;

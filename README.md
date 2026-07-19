@@ -218,6 +218,7 @@ Use :
 - \$```./make-examples.sh``` to rebuild the examples (**compile**)   
 - \$```./run-rewind.exp``` to run the automatic qemu emulation, example launching and power off (**run**)   
 - \$```./make-run.sh``` to **compile** and **run**   
+- \$```pkill -f qemu-system-riscv64``` to kill the process if the emulation is exited early
 
 **Logs**: Little reminder that logs (when compiling) can be found in the '[build-generic64/build.log](build-generic64/build.log)' (**build-\$PLATFORM$BITS/build.log**) file!
 

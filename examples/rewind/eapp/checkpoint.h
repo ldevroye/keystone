@@ -4,6 +4,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
+// fixed upper bound for the live stack window, independent of rewind_state size
 #define STACK_SNAPSHOT_SIZE 8*1024
 #define OCALL_SAVE_CHECKPOINT_BLOB 9
 #define OCALL_LOAD_CHECKPOINT_BLOB 8
@@ -13,8 +14,8 @@
 
 struct rewind_state 
 {
-    int a;
-    int b;
+    unsigned long a;
+    unsigned long b;
     int counter;
 };
 
