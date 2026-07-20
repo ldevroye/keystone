@@ -4,107 +4,22 @@
 //------------------------------------------------------------------------------
 #include "edge/edge_call.h"
 #include "host/keystone.h"
+#include "host.hpp"
+
 #include <chrono>
 #include <cstdio>
-#include <vector>
 #include <cstring>
-
-using namespace Keystone;
-
-// number of try before stopping the rewind
-#ifndef MAX_RUNS
-#define MAX_RUNS 10
-#endif
+#include <cstdint>
 
 
-// placholders for logging
-#ifndef REWIND_MAX_ITERATIONS
-#define REWIND_MAX_ITERATIONS 50
-#endif
 
-#ifndef PERIOD
-#define PERIOD 30ULL
-#endif
-
-#ifndef FAULT_RANDOMIZE_SEED
-#define FAULT_RANDOMIZE_SEED 1
-#endif
-
-#ifndef SEED
-#define SEED 0x6b656973746f6e68ULL
-#endif
-
-#ifndef EAPP_TESTING
-#define EAPP_TESTING 0
-#endif
-
-#ifndef TESTING
-#define TESTING 1
-#endif
-
-enum 
-{
-  OCALL_PRINT_BUFFER = 1,
-  OCALL_LOAD_CHECKPOINT_BLOB = 8,
-  OCALL_SAVE_CHECKPOINT_BLOB = 9,
-};
-
-static std::vector<uint8_t> saved_checkpoint_blob;
-
-// Convert macro values to string literals so they can be printed in logs.
-#ifndef STRINGIFY_IMPL
-#define STRINGIFY_IMPL(x) #x
-#define STRINGIFY(x) STRINGIFY_IMPL(x)
-#endif
-
-void host_print(const char* str);
-
-static void print_test_parameters()
-{
-#if TESTING
-  char buffer[256];
-  snprintf(buffer, sizeof(buffer), "test params:\n" 
-         "\thost_testing=%d\n"
-         "\teapp_testing=%d\n"
-         "\tmax_runs=%d\n"
-         "\trewind_max_iterations=%s\n"
-         "\tfault_period=%s\n"
-         "\tfault_randomize_seed=%s\n"
-         "\tfault_seed=%s",
-           TESTING,
-#ifdef EAPP_TESTING
-           EAPP_TESTING,
-#else
-           TESTING,
-#endif
-           MAX_RUNS,
-           STRINGIFY(REWIND_MAX_ITERATIONS),
-           STRINGIFY(PERIOD),
-           STRINGIFY(FAULT_RANDOMIZE_SEED),
-           STRINGIFY(SEED));
-  host_print(buffer);
-#endif
-}
-
-void host_print(const char* str)
-{
-  printf("[HOST] %s\n", str);
-}
-
-static void host_print_if_testing(const char* str)
-{
-#if TESTING
-  host_print(str);
-#else
-  (void)str;
-#endif
-}
-
-static void save_checkpoint_blob_dispatch(void* buffer)
+void save_checkpoint_blob_dispatch(void* buffer)
 {
   struct edge_call* edge_call = (struct edge_call*)buffer;
   uintptr_t arg_ptr;
   size_t arg_size;
+
+  auto start = chrono::steady_clock::now();
 
   // copy the sealed blob out of the enclave shared buffer into host memory
   if (edge_call_args_ptr(edge_call, &arg_ptr, &arg_size) != 0 ||
@@ -116,18 +31,28 @@ static void save_checkpoint_blob_dispatch(void* buffer)
 
   saved_checkpoint_blob.resize(arg_size);
   memcpy(saved_checkpoint_blob.data(), (void*)arg_ptr, arg_size);
-#if TESTING
+#if !ENABLE_TESTING && HOST_LOGGING
   char to_prt[80];
   sprintf(to_prt, "saved checkpoint blob size = %zu", arg_size);
-  host_print(to_prt);
+  host_print_if_not_testing(to_prt);
+#endif
+
+  auto end = chrono::steady_clock::now();
+  const auto elapsed_us = chrono::duration_cast<chrono::microseconds>(end - start).count();
+#if ENABLE_TESTING
+  update_timing_stats(save_stats, static_cast<uint64_t>(elapsed_us));
 #endif
   
   edge_call->return_data.call_status = CALL_STATUS_OK;
 }
 
-static void load_checkpoint_blob_dispatch(void* buffer)
+
+
+void load_checkpoint_blob_dispatch(void* buffer)
 {
   struct edge_call* edge_call = (struct edge_call*)buffer;
+
+  auto start = chrono::steady_clock::now();
   
   if (saved_checkpoint_blob.empty()) 
   {
@@ -140,9 +65,17 @@ static void load_checkpoint_blob_dispatch(void* buffer)
   memcpy(return_buffer, saved_checkpoint_blob.data(), saved_checkpoint_blob.size());
   edge_call_setup_ret(edge_call, return_buffer, saved_checkpoint_blob.size());
   edge_call->return_data.call_status = CALL_STATUS_OK;
+
+  auto end = chrono::steady_clock::now();
+  const auto elapsed_us = chrono::duration_cast<chrono::microseconds>(end - start).count();
+#if ENABLE_TESTING
+  update_timing_stats(load_stats, static_cast<uint64_t>(elapsed_us));
+#endif
 }
 
-static void print_buffer_dispatch(void* buffer)
+
+
+void print_buffer_dispatch(void* buffer)
 {
   struct edge_call* edge_call = (struct edge_call*)buffer;
   uintptr_t arg_ptr;
@@ -159,12 +92,14 @@ static void print_buffer_dispatch(void* buffer)
   edge_call->return_data.call_status = CALL_STATUS_OK;
 }
 
+
+
 // each fresh enclave instance must register the same ocalls before it runs
-static Keystone::Error configure_enclave(Enclave& enclave, Params& params, char** argv)
+Error configure_enclave(Enclave& enclave, Params& params, char** argv)
 {
-  Keystone::Error init_ret = enclave.init(argv[1], argv[2], argv[3], params);
+  Error init_ret = enclave.init(argv[1], argv[2], argv[3], params);
   
-  if (init_ret != Keystone::Error::Success) 
+  if (init_ret != Error::Success) 
   {
     host_print("Error loading the enclave");
     return init_ret;
@@ -177,8 +112,10 @@ static Keystone::Error configure_enclave(Enclave& enclave, Params& params, char*
   edge_call_init_internals(
     (uintptr_t)enclave.getSharedBuffer(), enclave.getSharedBufferSize());
 
-  return Keystone::Error::Success;
+  return Error::Success;
 }
+
+
 
 int main(int argc, char** argv) 
 {
@@ -188,48 +125,66 @@ int main(int argc, char** argv)
 
   print_test_parameters();
 
-  uintptr_t ret;
-  const auto success = Keystone::Error::Success;
+  uintptr_t ret = 0;
+  const auto success = Error::Success;
 
-  auto counter = 0;
-  while ((ret != 0 || counter==0) && // counter = 0 => initial enclave => result is null
-         counter <= MAX_RUNS) 
+  const auto host_retry_limit = MAX_RUNS;
+  const auto analysis_iteration_limit = ENABLE_TESTING ? ANALYSIS_RUNS : 1;
+  auto analysis_counter = 0;
+  while (analysis_counter < analysis_iteration_limit)
   {
-    counter++;
-    Enclave enclave;
+    analysis_counter++;
+    saved_checkpoint_blob.clear(); // clear checkpoint
+    run_stats = {};
+    auto retry_counter = 0;
 
-    auto run_start = std::chrono::steady_clock::now();
-    host_print_if_testing("configuring enclave");
-    if (configure_enclave(enclave, params, argv) != success) 
+    while ((ret != 0 || retry_counter == 0) && // retry_counter = 0 => initial enclave => result is null
+           retry_counter < host_retry_limit)
     {
-      return 1;
-    }
+      retry_counter++;
+      Enclave enclave;
 
-    host_print_if_testing("starting enclave");
-    enclave.run(&ret);
-    auto run_end = std::chrono::steady_clock::now();
-#if TESTING
-    auto run_ms = std::chrono::duration_cast<std::chrono::milliseconds>(run_end - run_start).count();
+      auto run_start = chrono::steady_clock::now();
+      host_print_if_not_testing("configuring enclave");
+      if (configure_enclave(enclave, params, argv) != success) 
+      {
+        return 1;
+      }
 
-    char run_stats[96];
-    sprintf(run_stats, "run=%d return_val=%lu duration_ms=%lld", counter, (unsigned long)ret, (long long)run_ms);
-    host_print(run_stats);
+      host_print_if_not_testing("starting enclave");
+      enclave.run(&ret);
+      auto run_end = chrono::steady_clock::now();
+      auto run_ms = chrono::duration_cast<chrono::milliseconds>(run_end - run_start).count();
+#if ENABLE_TESTING
+      update_timing_stats(run_stats, static_cast<uint64_t>(run_ms));
 #else
-    (void)run_start;
-    (void)run_end;
+      char run_log[128];
+      snprintf(run_log, sizeof(run_log), "analysis_run=%d retry=%d return_val=%lu duration_ms=%lld",
+                   analysis_counter, retry_counter, (unsigned long)ret, (long long)run_ms);
+      host_print(run_log);
 #endif
 
-    if (ret != 0) 
-    {
-      host_print_if_testing("enclave returned non-success, retrying");
+      if (ret != 0) 
+      {
+        host_print_if_not_testing("enclave returned non-success, retrying");
+      }
     }
+
+#if ENABLE_TESTING
+    print_analysis_run_summary(analysis_counter);
+#endif
   }
 
-  if (counter==MAX_RUNS+1)
+#if ENABLE_TESTING
+  print_timing_stats("save_checkpoint", save_stats);
+  print_timing_stats("load_checkpoint", load_stats);
+#endif
+
+  if (ret != 0)
   {
-    host_print_if_testing("too many runs, exiting");
+    host_print_if_not_testing("too many runs, exiting");
   } else {
-    host_print_if_testing("run completed");
+    host_print_if_not_testing("run completed");
   }
   
   return ret;

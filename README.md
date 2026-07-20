@@ -207,6 +207,9 @@ each step in order is :
 \*wait for the emulation to fully stop (so that the process is terminated)\*
 
 This is contained in the [run-rewind.exp](run-rewind.exp) script.
+In case of a CTRL+C inside the emulation. The process can't be terminated sucessfuly and we can't invoque *make run*. To terminate it use :
+- \$```pkill -f qemu-system-riscv64```
+
 
 
 ### Usage

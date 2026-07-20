@@ -32,7 +32,7 @@ int load_checkpoint(struct rewind_checkpoint *checkpoint)
     // the host returns the sealed blob, not plain checkpoint data
     if (ocall(OCALL_LOAD_CHECKPOINT_BLOB, NULL, 0, &checkpoint_blob, sizeof(checkpoint_blob)) != 0) 
     {
-        eapp_print("No saved checkpoint");
+        eapp_print_if_not_testing("No saved checkpoint");
         return -1;
     }
 
@@ -45,7 +45,7 @@ int load_checkpoint(struct rewind_checkpoint *checkpoint)
 
     if (checkpoint->stack_len > STACK_SNAPSHOT_SIZE) 
     {
-        eapp_print("Invalid checkpoint stack size");
+        eapp_print_if_not_testing("Invalid checkpoint stack size");
         return -1;
     }
 
@@ -59,7 +59,7 @@ int restore_checkpoint(struct rewind_state *state, const struct rewind_checkpoin
         checkpoint->stack_len > STACK_SNAPSHOT_SIZE ||
         checkpoint->stack_fp <= checkpoint->stack_sp) 
     {
-        eapp_print("Invalid checkpoint metadata");
+        eapp_print_if_not_testing("Invalid checkpoint metadata");
         return -1;
     }
 
@@ -92,7 +92,7 @@ int save_checkpoint(uintptr_t stack_anchor, size_t anchor_len)
 
     if (snapshot_end < snapshot_sp) 
     {
-        eapp_print("Invalid snapshot anchor");
+        eapp_print_if_not_testing("Invalid snapshot anchor");
         return -1;
     }
 
@@ -107,7 +107,7 @@ int save_checkpoint(uintptr_t stack_anchor, size_t anchor_len)
     // copy the live stack bytes before sealing them for host storage
     if (checkpoint_storage.stack_len > STACK_SNAPSHOT_SIZE) 
     {
-        eapp_print("Stack snapshot too large");
+        eapp_print_if_not_testing("Stack snapshot too large");
         return -1;
     }
 
@@ -127,7 +127,7 @@ int save_checkpoint(uintptr_t stack_anchor, size_t anchor_len)
 
     if (ocall(OCALL_SAVE_CHECKPOINT_BLOB, &checkpoint_blob, sizeof(checkpoint_blob), NULL, 0) != 0) 
     {
-        eapp_print("failed to save checkpoint");
+        eapp_print_if_not_testing("failed to save checkpoint");
         return -1;
     }
 

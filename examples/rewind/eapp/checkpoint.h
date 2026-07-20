@@ -41,8 +41,7 @@ struct rewind_checkpoint_blob
     uint8_t tag[CHECKPOINT_TAG_SIZE];
 };
 
-void eapp_print(char *str); // placeholder
-
+void eapp_print_if_not_testing(const char *str); // placeholder
 int load_checkpoint(struct rewind_checkpoint *checkpoint);
 int restore_checkpoint(struct rewind_state *state, const struct rewind_checkpoint *checkpoint);
 int save_checkpoint(uintptr_t stack_anchor, size_t anchor_len);
