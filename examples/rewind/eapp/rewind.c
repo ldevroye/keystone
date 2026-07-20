@@ -7,6 +7,14 @@
 
 #define OCALL_PRINT_BUFFER 1
 
+#ifndef REWIND_MAX_ITERATIONS
+#define REWIND_MAX_ITERATIONS 50
+#endif
+
+#ifndef TESTING
+#define TESTING 0
+#endif
+
 unsigned long ocall_print_buffer(char* data, size_t data_len)
 {
     unsigned long retval;
@@ -19,6 +27,15 @@ void eapp_print(char* str)
     ocall_print_buffer("[EAPP] ", 7);
     ocall_print_buffer(str, strlen(str));
     ocall_print_buffer("\n", 1);
+}
+
+static void eapp_print_if_testing(const char* str)
+{
+#if TESTING
+    eapp_print((char*)str);
+#else
+    (void)str;
+#endif
 }
 
 static int format_value(char *buf, const int counter, const char* val)
@@ -177,6 +194,8 @@ int main()
     struct rewind_checkpoint checkpoint; // empty for now as we will try to load the stack into it
     struct fault_model fault_model = get_default_model();
 
+    eapp_print_if_testing("testing mode enabled");
+
     // on restart, recover the last sealed checkpoint if the host has one
     if (load_checkpoint(&checkpoint) == 0) 
     {
@@ -188,14 +207,14 @@ int main()
     
     eapp_print("Rewind enclave start");
 
-    for (; state.counter < 50;) 
+    for (; state.counter < REWIND_MAX_ITERATIONS;) 
     {
         char formated_counter[32], formated_fib[32];
         format_value(formated_counter, state.counter, "counter");
         format_unsigned_value(formated_fib, state.b, "output");
         
-        eapp_print(formated_counter);
-        eapp_print(formated_fib);
+        eapp_print_if_testing(formated_counter);
+        eapp_print_if_testing(formated_fib);
 
         // inject one modeled fault point using a simple pseudo-random splitex function
         // fault happens before so that the "computation" can fail
@@ -212,10 +231,9 @@ int main()
         state.b = next;
         state.counter++;
 
-        // save after each step so a crash resumes at the next iteration
         if (save_checkpoint((uintptr_t)&state, sizeof(state)) != 0) 
         {
-            eapp_print("failed to save stack checkpoint");
+            eapp_print_if_testing("failed to save stack checkpoint");
             __builtin_trap();
         }
         

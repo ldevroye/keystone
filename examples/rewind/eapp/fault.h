@@ -4,11 +4,19 @@
 #include <stdint.h>
 
 // deterministic seed for repeatable fault schedules
+#ifndef SEED
 #define SEED 0x6b656973746f6e68ULL
+#endif
+
 // set to 1 to derive a pseudo-random seed at runtime instead of using SEED
+#ifndef FAULT_RANDOMIZE_SEED
 #define FAULT_RANDOMIZE_SEED 1
+#endif
+
 // average recurrence period in calls before a fault is allowed to fire again
+#ifndef PERIOD
 #define PERIOD 30ULL
+#endif
 
 // splitmix64 constants are the standard mixer parameters used by the algorithm
 // https://rosettacode.org/wiki/Pseudo-random_numbers/Splitmix64
