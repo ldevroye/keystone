@@ -15,7 +15,7 @@
 \usepackage{float}
 \PassOptionsToPackage{colorlinks=true,
             citecolor=black,
-            urlcolor=blue,
+            urlcolor=black,
             linkcolor=black,
             filecolor=black}{hyperref}
 \usepackage{attachfile2}
@@ -84,6 +84,9 @@
     \noindent\textattachfile[icon=Paperclip,color=0 0 0]{#1}{\texttt{#2}}\\
 }
 
+\newcommand{\github}{
+    \href{https://github.com/ldevroye/keystone/tree/master}{https://github.com/ldevroye/keystone/tree/master}
+}
 
 \usepackage{url}
 
@@ -177,8 +180,7 @@ Hardware is the basis off all this domain and because of this, extensive work ca
 % CYBERSEC
 Moreover, this subject can be extended to \textit{cybersecurity} in a way to harden the task (or at least the conception) of malicious programs \cite{diversification-obfuscation}. In fact, an attacker could try to reverse engineer a program, he could also try to check the memory for data or the CPU usage and instructions or even using the power supply as an attack vector \cite{ARM-TrustZone-CortexM} to prevent a task from completing. For this purpose, several techniques have been developed to try and block either the static or dynamic analysis of a program \cite{diversification-obfuscation}. Even measuring the redundancy of a program to be able to scale and compare two diversification technique and choose one for example \cite{measure-redundancy}. The research could even separate the low-level redundancy from a high-level, algorithmic, one.
 
-
-
+\github
 
 
 
@@ -484,10 +486,15 @@ As the last point, designing the possible tests and scenarios happening to the s
 Enclaves are great, even with a medium computation overhead in time and data it is useful for long processes 
 
 
-\appendix
-\label{chap:appendix-rewind}
-\section{Rewind source}
+\bibliographystyle{unsrt}
+\bibliography{ref}
 
+
+\appendix
+\label{chap:appendix}
+\section{Rewind source code}
+These files can be found in the \texttt{examples/rewind/} subfolder of the repository\\
+(\github)
 
 \begin{verbatim}
 examples/rewind/
@@ -499,7 +506,7 @@ examples/rewind/
     crypto.h
     fault.c
     fault.h
-    rewind.c
+    rewind.c    # enclave file
   host/
     host.cpp
     host.hpp
@@ -531,20 +538,21 @@ examples/rewind/
 % Build & run
 \section{Build and Run Scripts}
 
+These files can be found at the root of the repository\\
+(\github)
+
 %
-%\subsection{\texttt{make-examples.sh}}
-%\lstinputlisting[language=bash]{src/make-examples.sh}
-
-%\subsection{\texttt{run-rewind.exp}}
-%\lstinputlisting[language=tcl]{src/run-rewind.exp}
-
-%\subsection{\texttt{make-run.sh}}
-%\lstinputlisting[language=bash]{src/make-run.sh}
+\subsection{\texttt{make-examples.sh}}
+\srcattach{src/make-examples.sh}{make-examples.sh}
 
 
+\subsection{\texttt{run-rewind.exp}}
+\srcattach{src/run-rewind.exp}{run-rewind.exp}
 
 
-\bibliographystyle{unsrt}
-\bibliography{ref}
+\subsection{\texttt{make-run.sh}}
+\srcattach{src/make-run.sh}{make-run.sh}
+
+
 
 \end{document}
