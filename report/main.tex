@@ -13,22 +13,24 @@
 \usepackage{times}
 \usepackage{setspace}
 \usepackage{float}
-
-\usepackage[colorlinks=true,
+\PassOptionsToPackage{colorlinks=true,
             citecolor=black,
             urlcolor=blue,
             linkcolor=black,
-            filecolor=black,]{hyperref}
+            filecolor=black}{hyperref}
+\usepackage{attachfile2}
+
+\usepackage{hyperref}
 \usepackage{cleveref}
 
 
 % ----------------------------------------------------------- %
 % TODO: Check pdf's title
 \hypersetup{
-    pdftitle={Preparatory work for the master thesis},
+    pdftitle={Master thesis 2025-26},
     pdfauthor={Louis Devroye (Louis.Devroye@ulb.be)},
     pdfsubject={Fault-Tolerant Microarchitectures: Enhancing Reliability through Redundant Execution},
-    pdfkeywords={Microprocessor, Fault-Tolerant, Fault, Redundancy, Cybersecurity, Microarchitectures},
+    pdfkeywords={Microprocessor, Fault-Tolerant, Fault, Redundancy, Cybersecurity, Microarchitectures, Keystone, checkpointing, Rewind, Enclaves},
 }
 
 \newcommand{\thisyear}{\the\year}
@@ -77,6 +79,11 @@
     \setcounter{#1}{0}
 }
 
+% Clickable source link that also embeds the file inside the PDF.
+\newcommand{\srcattach}[2]{%
+    \noindent\textattachfile[icon=Paperclip,color=0 0 0]{#1}{\texttt{#2}}\\
+}
+
 
 \usepackage{url}
 
@@ -102,14 +109,14 @@
 \begin{Large}
 Faculty of Sciences
 \hfill
-Departement of Computer Science
+Departement of Computer Sciences
 \end{Large}
 \end{minipage}
 \\[1cm]
 \includegraphics[scale=0.15]{img/sceau.jpg}\\[1cm]
 
 \begin{minipage}{\textwidth}
-\textsc{Preparatory work for the Master thesis}
+\textsc{Master thesis}
 \end{minipage}\\[0.5cm]
 
 % Title
@@ -130,26 +137,34 @@ Departement of Computer Science
 \end{titlepage}
 
 
-% \begin{abstract}
-% Microprocessors are getting more efficient each year due to miniaturization. However, this rise in efficiency comes with the pricey cost that are faults. This problem is adressed gaining attention and the filed is structuring around the type of faults and the way to deal with them. Moreover, this subject can be extended to cybersecurity in a way to harden the task (or at least the conception) of malicious programs. This report aims at setting the bases, the goal and the methodology for the Master Thesis.
-% \end{abstract}
+
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%% ABSTRACT
+\begin{abstract}
+\TODO{ABSTRACT at the end}
+    % Microprocessors are getting more efficient each year due to miniaturization. However, this rise in efficiency comes with the pricey cost that are faults. This problem is adressed gaining attention and the filed is structuring around the type of faults and the way to deal with them. Moreover, this subject can be extended to cybersecurity in a way to harden the task (or at least the conception) of malicious programs. This report aims at setting the bases, the goal and the methodology for the Master Thesis.
+\end{abstract}
+
 
 % \chapter{Acknoledgments}
 
-
 \tableofcontents
 
+
+%%%%%%%%%%%%%%%%%%%%%%%% INTRODUCTION %%%%%%%%%%%%%%%%%%%%%%%%
 \chapter{Introduction}
 % INTRO
- Microprocessors are getting more efficient each year due to miniaturization of transistors \cite{silicon}. 
- However, this rise in efficiency comes with the pricey cost that are faults. Critical systems are particularly vulnerable considering the stakes (human lives) and the real time constraints such as time, temperature, computational power or even voltage. This field is not new \cite{vonneumann56, n-version85} but is still drawing attention, has a lot of gaps yet to be covered and is structuring, mostly around the type of faults and the way to deal with them \cite{future-research}.\\
+Microprocessors are getting more efficient each year due to miniaturization of transistors \cite{silicon}. 
+However, this rise in efficiency comes with the pricey cost that are faults. Critical systems are particularly vulnerable considering the stakes (human lives) and the real time constraints such as time, temperature, computational power or even voltage. This field is not new \cite{vonneumann56, n-version85} but is still drawing attention, has a lot of gaps yet to be covered and is structuring, mostly around the type of faults and the way to deal with them \cite{future-research}.\\
 
- %FAULT DETECTION & CORRECTION
- Fault detection is a wildly studied field \cite{fault-detection-survey}, it is a pillar for critical systems and for networks. The detection goes along with Error correction codes, these are mostly used in network due to the necessity to get the good informations using as little of time/computation as possible. However, these techniques come with a lot of overhead and assumptions that cannot be made in this field. First, network consider the source to be viable, when a request is made to a server, the informations are checked, let's say with a basic checksum. In micro architectures, the sensors would be the parallel to the server. However, the data given by the sensor are not known to be true or false (exception made for specific cases, for example if a distance check returns a negative answer). Secondly, all the layers needed to prevent a fault from happening, in TCP for example, would be too costly to just put in a micro processor, in overhead (from both computation and memory standpoint) and in time needed. In fact, the main topic is that these systems are time bounded, so it is important to be able to have the, correct, data before a certain deadline. Unfortunately, all theses constraints do not apply, at least not all at once, to networks. However, fault detection and correction are used in \\
- 
+%FAULT DETECTION & CORRECTION
+Fault detection is a wildly studied field \cite{fault-detection-survey}, it is a pillar for critical systems and for networks. The detection goes along with Error correction codes, these are mostly used in network due to the necessity to get the good informations using as little of time/computation as possible. However, these techniques come with a lot of overhead and assumptions that cannot be made in this field. First, network consider the source to be viable, when a request is made to a server, the informations are checked, let's say with a basic checksum. In micro architectures, the sensors would be the parallel to the server. However, the data given by the sensor are not known to be true or false (exception made for specific cases, for example if a distance check returns a negative answer). Secondly, all the layers needed to prevent a fault from happening, in TCP for example, would be too costly to just put in a micro processor, in overhead (from both computation and memory standpoint) and in time needed. In fact, the main topic is that these systems are time bounded, so it is important to be able to have the, correct, data before a certain deadline. Unfortunately, all theses constraints do not apply, at least not all at once, to networks. However, fault detection and correction are used in \\
 
- % SW time based
- On the other hand, a lot of programs and studies are focused on \textit{Software Implemented Fault Tolerance} (SIFT) and more precisely on \textit{time redundancy} methods, they are solely interested in making fault-tolerant programs that meet deadlines. That is in itself an honorable (and complex) goal, yet one of the main problem, related to this topic, with miniaturization being the increase in temperature. One could argue that making extra computation or overclock the CPU when an error occurs, possibly because of the aforementioned heat, wouldn't make any sens. In fact, it could slow the whole system (to cool down) or cause more fault at the time being and it would strain the system even more on the long run \cite{other-goal,bachelor-thesis}.\\
+
+% SW time based
+On the other hand, a lot of programs and studies are focused on \textit{Software Implemented Fault Tolerance} (SIFT) and more precisely on \textit{time redundancy} methods, they are solely interested in making fault-tolerant programs that meet deadlines. That is in itself an honorable (and complex) goal, yet one of the main problem, related to this topic, with miniaturization being the increase in temperature. One could argue that making extra computation or overclock the CPU when an error occurs, possibly because of the aforementioned heat, wouldn't make any sens. In fact, it could slow the whole system (to cool down) or cause more fault at the time being and it would strain the system even more on the long run \cite{other-goal,bachelor-thesis}.\\
 
 
 % ALTERNATIVES TO TIME 
@@ -159,10 +174,15 @@ To improve this contradictory aspect, some research has been done. They put the 
 % HW also
 Hardware is the basis off all this domain and because of this, extensive work can be done directly on it to prevent or recover from faults directly on the hardware. This approach deletes most of the overhead of the software techniques but it is much more restricted and complex to implement than measuring  \\
 
- % CYBERSEC
- Moreover, this subject can be extended to \textit{cybersecurity} in a way to harden the task (or at least the conception) of malicious programs \cite{diversification-obfuscation}. In fact, an attacker could try to reverse engineer a program, he could also try to check the memory for data or the CPU usage and instructions or even using the power supply as an attack vector \cite{ARM-TrustZone-CortexM} to prevent a task from completing. For this purpose, several techniques have been developed to try and block either the static or dynamic analysis of a program \cite{diversification-obfuscation}. Even measuring the redundancy of a program to be able to scale and compare two diversification technique and choose one for example \cite{measure-redundancy}. The research could even separate the low-level redundancy from a high-level, algorithmic, one.
+% CYBERSEC
+Moreover, this subject can be extended to \textit{cybersecurity} in a way to harden the task (or at least the conception) of malicious programs \cite{diversification-obfuscation}. In fact, an attacker could try to reverse engineer a program, he could also try to check the memory for data or the CPU usage and instructions or even using the power supply as an attack vector \cite{ARM-TrustZone-CortexM} to prevent a task from completing. For this purpose, several techniques have been developed to try and block either the static or dynamic analysis of a program \cite{diversification-obfuscation}. Even measuring the redundancy of a program to be able to scale and compare two diversification technique and choose one for example \cite{measure-redundancy}. The research could even separate the low-level redundancy from a high-level, algorithmic, one.
 
-% SoA
+
+
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%% SoA %%%%%%%%%%%%%%%%%%%%%%%%
 \chapter{State of the Art}
 
 % INTEREST
@@ -332,9 +352,13 @@ A derivation of this is the layout obfuscation, it consists only on destructurin
 As every domain in computer science, there are limitations. These inherent limitations are that no system is full proof. The goal here is to make the system more resilient to attacks and thus to rise the cost of developing attacks that could harm the system \cite{diversification-obfuscation} (this is seen as control flow). Another goal is to prevent someone with malicious intent to comprehend the system (static analysis) or even if they do, to prevent them understand the flow of the program as it runs (dynamic analysis).
 
 
-%---------------------------------------------------------------%
-%---------------------------------------------------------------%
-\chapter{Problem formulation}
+
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%% PROBLEM %%%%%%%%%%%%%%%%%%%%%%%%
+\chapter{Problem Statement and Objectives}
+\TODO{move to another chapter?}
 Now that everything is, roughly speaking, well defined. Although the whole domain is very interesting and always needs specific studies on various topics, it needs to be narrowed down in order to suit a Master thesis.\\
 
 First cut is the type of \textit{redundancy}. For the purpose of the research, the tests should be done using several, not yet decided, \textit{timed} redundancy methods. This allows to measure the viability and the relevance of the work done. \\
@@ -356,9 +380,20 @@ In conclusion, the research should focus on \textit{Fault recovery by rewinding 
 
 
 
-%---------------------------------------------------------------% 
-%---------------------------------------------------------------%
-% METHODO
+%%%%%%%%%%%%%%%%%%%%%%%% System Model %%%%%%%%%%%%%%%%%%%%%%%%
+\chapter{System Model and Design}
+\TODO{do it?}
+
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%% System Model %%%%%%%%%%%%%%%%%%%%%%%%
+\chapter{Keystone structure}
+\TODO{do it?}
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%% METHODO %%%%%%%%%%%%%%%%%%%%%%%%
 \chapter{Methodology and Plan of work}
 The basis of every scientific work is a plan.
 
@@ -411,20 +446,102 @@ As the last point, designing the possible tests and scenarios happening to the s
 \end{itemize}
 
 %%%%%%% FULL THESIS
-% \chapter{Background}
-% Lorem ipsum...
 
 % \chapter{Method}
 % Lorem ipsum...
 
-% \chapter{Experimental Setup}
-% Lorem ipsum...
 
-% \chapter{Results and Discussion}
-% Lorem ipsum...
 
-% \chapter{Conclusion}
-% Lorem ipsum...
+%%%%%%%%%%%%%%%%%%%%%%%% Experimental setup %%%%%%%%%%%%%%%%%%%%%%%%
+\chapter{Experimental Setup}
+\TODO{Macro setup \& workflow}
+\section{Macros}
+
+
+%%%%%%%%%%%%%%%%%%%%%%%% Results %%%%%%%%%%%%%%%%%%%%%%%%
+\chapter{Results and Discussion}
+
+\section{Results}
+\subsection{Timing overhead}
+\subsection{Data cost}
+\subsection{Timing cost}
+
+\section{Discussion}
+
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%% Future Work %%%%%%%%%%%%%%%%%%%%%%%%
+\chapter{Future Work}
+\TODO{do it?}
+
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%% Conclusion %%%%%%%%%%%%%%%%%%%%%%%%
+\chapter{Conclusion}
+\TODO{conclusion}
+Enclaves are great, even with a medium computation overhead in time and data it is useful for long processes 
+
+
+\appendix
+\label{chap:appendix-rewind}
+\section{Rewind source}
+
+
+\begin{verbatim}
+examples/rewind/
+  CMakeLists.txt
+  eapp/
+    checkpoint.c
+    checkpoint.h
+    crypto.c
+    crypto.h
+    fault.c
+    fault.h
+    rewind.c
+  host/
+    host.cpp
+    host.hpp
+\end{verbatim}
+
+\subsection{\texttt{eapp/checkpoint.c/.h}}
+\srcattach{src/rewind/eapp/checkpoint.c}{examples/rewind/eapp/checkpoint.c}
+\srcattach{src/rewind/eapp/checkpoint.h}{examples/rewind/eapp/checkpoint.h}
+
+\subsection{\texttt{eapp/crypto.c/.h}}
+\srcattach{src/rewind/eapp/crypto.c}{examples/rewind/eapp/crypto.c}
+\srcattach{src/rewind/eapp/crypto.h}{examples/rewind/eapp/crypto.h}
+
+\subsection{\texttt{eapp/fault.c/.h}}
+\srcattach{src/rewind/eapp/fault.c}{examples/rewind/eapp/fault.c}
+\srcattach{src/rewind/eapp/fault.h}{examples/rewind/eapp/fault.h}
+
+\subsection{\texttt{eapp/rewind.c}}
+\srcattach{src/rewind/eapp/rewind.c}{examples/rewind/eapp/rewind.c}
+
+\subsection{\texttt{host/host.cpp/.hpp}}
+\srcattach{src/rewind/host/host.cpp}{examples/rewind/host/host.cpp}
+\srcattach{src/rewind/host/host.hpp}{examples/rewind/host/host.hpp}
+
+\subsection{\texttt{CMakeLists.txt}}
+\srcattach{src/rewind/CMakeLists.txt}{examples/rewind/CMakeLists.txt}
+
+
+% Build & run
+\section{Build and Run Scripts}
+
+%
+%\subsection{\texttt{make-examples.sh}}
+%\lstinputlisting[language=bash]{src/make-examples.sh}
+
+%\subsection{\texttt{run-rewind.exp}}
+%\lstinputlisting[language=tcl]{src/run-rewind.exp}
+
+%\subsection{\texttt{make-run.sh}}
+%\lstinputlisting[language=bash]{src/make-run.sh}
+
+
 
 
 \bibliographystyle{unsrt}

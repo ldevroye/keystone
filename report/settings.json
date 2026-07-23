@@ -1,5 +1,5 @@
 {
-  // "latex-workshop.latex.autoBuild.run": "never",
+  "latex-workshop.latex.autoBuild.run": "onSave",
   "latex-workshop.latex.outDir": "./",
   "latex-workshop.latex.auxDir": "build/output",
   "latex-workshop.latex.tools": [
