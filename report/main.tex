@@ -88,6 +88,10 @@
     \href{https://github.com/ldevroye/keystone/tree/master}{https://github.com/ldevroye/keystone/tree/master}
 }
 
+\newcommand{\keystonegithub}{
+    \href{https://github.com/keystone-enclave/keystone}{https://github.com/keystone-enclave/keystone}
+}
+
 \usepackage{url}
 
 
@@ -160,27 +164,55 @@ Departement of Computer Sciences
 \chapter{Introduction}
 % INTRO
 Microprocessors are getting more efficient each year due to miniaturization of transistors \cite{silicon}. 
-However, this rise in efficiency comes with the pricey cost that are faults. Critical systems are particularly vulnerable considering the stakes (human lives) and the real time constraints such as time, temperature, computational power or even voltage. This field is not new \cite{vonneumann56, n-version85} but is still drawing attention, has a lot of gaps yet to be covered and is structuring, mostly around the type of faults and the way to deal with them \cite{future-research}.\\
+However, this rise in efficiency comes with the pricey cost that are faults. 
+Critical systems are particularly vulnerable considering the stakes (human lives) and the real time constraints such as time, temperature, computational power or even voltage. 
+This field is not new \cite{vonneumann56, n-version85} but is still drawing attention, has a lot of gaps yet to be covered and is structuring, mostly around the type of faults and the way to deal with them \cite{future-research}.
+\\
 
 %FAULT DETECTION & CORRECTION
-Fault detection is a wildly studied field \cite{fault-detection-survey}, it is a pillar for critical systems and for networks. The detection goes along with Error correction codes, these are mostly used in network due to the necessity to get the good informations using as little of time/computation as possible. However, these techniques come with a lot of overhead and assumptions that cannot be made in this field. First, network consider the source to be viable, when a request is made to a server, the informations are checked, let's say with a basic checksum. In micro architectures, the sensors would be the parallel to the server. However, the data given by the sensor are not known to be true or false (exception made for specific cases, for example if a distance check returns a negative answer). Secondly, all the layers needed to prevent a fault from happening, in TCP for example, would be too costly to just put in a micro processor, in overhead (from both computation and memory standpoint) and in time needed. In fact, the main topic is that these systems are time bounded, so it is important to be able to have the, correct, data before a certain deadline. Unfortunately, all theses constraints do not apply, at least not all at once, to networks. However, fault detection and correction are used in \\
+Fault detection is a wildly studied field \cite{fault-detection-survey}, it is a pillar for critical systems and for networks. 
+The detection goes along with Error Correction Codes (ECC), these are mostly used in network due to the necessity to get the good informations using as little of time/computation as possible. 
+However, these techniques come with a lot of overhead and assumptions that cannot be made in this field. 
+First, network consider the source to be viable, when a request is made to a server, the informations are checked, let's say with a basic checksum. 
+In micro architectures, the sensors would be the parallel to the server. 
+However, the data given by the sensor are not known to be true or false (exception made for specific cases, for example if a distance check returns a negative answer). 
+Secondly, all the layers needed to prevent a fault from happening, in TCP for example, would be too costly to just put in a micro processor, in overhead (from both computation and memory standpoint) and in time needed. 
+In fact, the main topic is that these systems are time bounded, so it is important to be able to have the, correct, data before a certain deadline. 
+Unfortunately, all theses constraints do not apply, at least not all at once, to networks.
+\\
 
 
 % SW time based
-On the other hand, a lot of programs and studies are focused on \textit{Software Implemented Fault Tolerance} (SIFT) and more precisely on \textit{time redundancy} methods, they are solely interested in making fault-tolerant programs that meet deadlines. That is in itself an honorable (and complex) goal, yet one of the main problem, related to this topic, with miniaturization being the increase in temperature. One could argue that making extra computation or overclock the CPU when an error occurs, possibly because of the aforementioned heat, wouldn't make any sens. In fact, it could slow the whole system (to cool down) or cause more fault at the time being and it would strain the system even more on the long run \cite{other-goal,bachelor-thesis}.\\
+On the other hand, a lot of programs and studies are focused on \textit{Software Implemented Fault Tolerance} (SIFT) and more precisely on \textit{time redundancy} methods, they are solely interested in making fault-tolerant programs that meet deadlines. 
+That is in itself an honorable (and complex) goal, yet one of the main problem, related to this topic, with miniaturization being the increase in temperature. 
+One could argue that making extra computation or overclock the CPU when an error occurs, possibly because of the aforementioned heat, wouldn't make any sens. 
+In fact, it could slow the whole system (to cool down) or cause more fault at the time being and it would strain the system even more on the long run \cite{other-goal,bachelor-thesis}.
+\\
 
 
 % ALTERNATIVES TO TIME 
-To improve this contradictory aspect, some research has been done. They put the light on other aspects than only timing constraints (while keeping the reliability). For example, power and energy consumption as the \textit{Internet of Things} (IoT) develops \cite{iot} is gaining more attention.
+To improve this contradictory aspect, some research has been done. 
+They put the light on other aspects than only timing constraints (while keeping the reliability). 
+For example, power and energy consumption as the \textit{Internet of Things} (IoT) develops \cite{iot} is gaining more attention.
 \\
 
 % HW also
-Hardware is the basis off all this domain and because of this, extensive work can be done directly on it to prevent or recover from faults directly on the hardware. This approach deletes most of the overhead of the software techniques but it is much more restricted and complex to implement than measuring  \\
+Hardware is the basis off all this domain and because of this, extensive work can be done directly on it to prevent or recover from faults directly on the hardware. 
+This approach deletes most of the overhead of the software techniques but it is much more restricted and complex than implementing and debugging a layer over a "simple" hardware structure. 
+\\
 
 % CYBERSEC
-Moreover, this subject can be extended to \textit{cybersecurity} in a way to harden the task (or at least the conception) of malicious programs \cite{diversification-obfuscation}. In fact, an attacker could try to reverse engineer a program, he could also try to check the memory for data or the CPU usage and instructions or even using the power supply as an attack vector \cite{ARM-TrustZone-CortexM} to prevent a task from completing. For this purpose, several techniques have been developed to try and block either the static or dynamic analysis of a program \cite{diversification-obfuscation}. Even measuring the redundancy of a program to be able to scale and compare two diversification technique and choose one for example \cite{measure-redundancy}. The research could even separate the low-level redundancy from a high-level, algorithmic, one.
+Moreover, this subject can be extended to \textit{cybersecurity} in a way to harden the task (or at least the conception) of malicious programs \cite{diversification-obfuscation}. 
+In fact, an attacker could try to reverse engineer a program, he could also try to check the memory for data or the CPU usage and instructions or even using the power supply as an attack vector \cite{ARM-TrustZone-CortexM} to prevent a task from completing. 
+For this purpose, several techniques have been developed to try and block either the static or dynamic analysis of a program \cite{diversification-obfuscation}. 
+Even measuring the redundancy of a program to be able to scale and compare two diversification technique and choose one for example \cite{measure-redundancy}. 
+The research could even separate the low-level redundancy from a high-level, algorithmic, one.
+\\
 
-\github
+
+The codebase (implementation of the checkpoint enclave and tests) of this thesis can be found on the \github. 
+This is a fork of the main Keystone github : \keystonegithub that adds an example (\texttt{rewind}). 
+The main files can also be found in the Appendix (\ref{chap:appendix}).
 
 
 
@@ -189,31 +221,47 @@ Moreover, this subject can be extended to \textit{cybersecurity} in a way to har
 
 % INTEREST
 \section{Engagment in the scientific community}
-For as long as computers (some could even say tools in general) have existed, so have defaults, errors and bugs \cite{vonneumann56}. However, the need for a solid structure and concretes answers increased as Moore's law kept going on \cite{moore-law}. This topic is drawing more attention as the years go by.
+For as long as computers (some could even say tools in general) have existed, so have defaults, errors and bugs \cite{vonneumann56}. 
+However, the need for a solid structure and concretes answers increased as Moore's law kept going on \cite{moore-law}. 
+This topic is drawing more attention as the years go by.
 
 % FAULTS
 \section{Faults}
-Faults are the basis of the problem but the outcome a of fault, and they way it is handeled, is equally important. To be clear and rigorous, we will use the Institute of Electrical and Electronics Engineers' (IEEE) \cite{future-research, ieee, other-goal} standards.
+Faults are the basis of the problem but the outcome a of fault, and they way it is handeled, is equally important. 
+To be clear and rigorous, we will use the Institute of Electrical and Electronics Engineers' (IEEE) \cite{future-research, ieee, other-goal} standards.
 In this goal, we can separate a fault and its consequences in 3 categories each one following from the previous one:
 \begin{itemize}
-    \item \textbf{Fault}: A defect in a hardware device or component. It can be a \textit{Single Event Upset} (SEU), otherwise seen as a bit flip or it can be other models such as \textit{Multiple Event Upset} (MEU).
-    \item \textbf{Error}: The difference between a computed, observed or measured value or condition and the true, specified, or theoretically correct value or condition. It is the effect of a fault on the system.
-    \item \textbf{Failure}: The inability of a system or component to perform its required functions within specified performance requirements. In other words, the program malfunction due to an error.
+    \item \textbf{Fault}: A defect in a hardware device or component. 
+    It can be a \textit{Single Event Upset} (SEU), otherwise seen as a bit flip or it can be other models such as \textit{Multiple Event Upset} (MEU).
+    \item \textbf{Error}: The difference between a computed, observed or measured value or condition and the true, specified, or theoretically correct value or condition. 
+    It is the effect of a fault on the system.
+    \item \textbf{Failure}: The inability of a system or component to perform its required functions within specified performance requirements. 
+    In other words, the program malfunction due to an error.
 \end{itemize}
 
 Now, we need to categorize faults \cite{future-research, other-goal}
 \begin{itemize}
-    \item \textbf{Transient}: Produces a temporary effect on the system in a very short period of time. It is often modeled using SEU. They are most likely cause by :
+    \item \textbf{Transient}: Produces a temporary effect on the system in a very short period of time. 
+    It is often modeled using SEU. They are most likely cause by :
     - \begin{itemize}
         \item alpha radiation (due to cosmic radiation or nuclear fission)
         \item electromagnetic interference
     \end{itemize}
-    \item \textbf{Intermittent}: Livespan similar to \textit{Transient} but it occurs in \textit{burst}. It is mainly caused by eternal conditions : temperature, voltage, hardware wear out and High Intensity Radiated-Field (HIRF)   
-    \item \textbf{Permanent}: Results from hardware wear out or manufacturing defects. The only fix for this type is to repair or change the hardware. Component wear out is well known in the current literature, the \textit{Bathtub curve} \cite{bathtub} describe the three main phases of a component's life : 
+    \item \textbf{Intermittent}: Livespan similar to \textit{Transient} but it occurs in \textit{burst}. 
+    It is mainly caused by eternal conditions : temperature, voltage, hardware wear out and High Intensity Radiated-Field (HIRF)   
+    \item \textbf{Permanent}: Results from hardware wear out or manufacturing defects. 
+    The only fix for this type is to repair or change the hardware. 
+    Component wear out is well known in the current literature, the \textit{Bathtub curve} \cite{bathtub} describe the three main phases of a component's life : 
     \begin{itemize}
-        \item The \textit{infant} stage is when the hardware is fairly new (not in term of design). Thus, it might be defective while still passing the basic tests required for using it. As this phase goes on, the average error rate decreases.
-        \item The \textit{main} stage is, for the main part, the longest one. The component is viable (since it has passed the previous phase) and not yet worn out. But still random faults occurs (due to environment, etc.). This phase is the best in term of fault rate (which is supposedly constant).
-        \item The \textit{wear out} stage is the first that comes to mind when speaking of permanent faults. A part of the component is defective and there is no direct fix except for replacing/repairing this part. In opposition to the $1^{st}$ phase, the average error rate increases over time.  
+        \item The \textit{infant} stage is when the hardware is fairly new (not in term of design). 
+        Thus, it might be defective while still passing the basic tests required for using it. 
+        As this phase goes on, the average error rate decreases.
+        \item The \textit{main} stage is, for the main part, the longest one. 
+        The component is viable (since it has passed the previous phase) and not yet worn out. 
+        But still random faults occurs (due to environment, etc.). This phase is the best in term of fault rate (which is supposedly constant).
+        \item The \textit{wear out} stage is the first that comes to mind when speaking of permanent faults. 
+        A part of the component is defective and there is no direct fix except for replacing/repairing this part. 
+        In opposition to the $1^{st}$ phase, the average error rate increases over time.  
     \end{itemize}
 
     %% IMG bath curve
@@ -229,28 +277,40 @@ Now, we need to categorize faults \cite{future-research, other-goal}
 \section{Fault Recovery Techniques}
 \subsection{Space Redundancy}
 \begin{itemize}
-    \item \textbf{N-modular redundancy (NMR)}: this consists of $N$ (2,3,4,..) instances of the job $i$ running at the same time, when the job $i$ finishes, a vote start and the majority is returned as the result. NMR can detect by essence and correct the error. However, it is important to note that it can only detect an \textit{error}, not a \textit{fault} \cite{future-research}. Also, each $n$ instance of the job $i$ should run on different cores to avoid SEU. 
+    \item \textbf{N-modular redundancy (NMR)}: this consists of $N$ (2,3,4,..) instances of the job $i$ running at the same time, when the job $i$ finishes, a vote start and the majority is returned as the result. 
+    NMR can detect by essence and correct the error. 
+    However, it is important to note that it can only detect an \textit{error}, not a \textit{fault} \cite{future-research}. 
+    Also, each $n$ instance of the job $i$ should run on different cores to avoid SEU. 
     
     \item \textbf{standby redundancy}:
     \begin{itemize}
-        \item \textit{Hot} standby is when the backup system runs in parallel with the main one. If something fails, the switch to the backup is almost instant since it is already active and synchronized.
-        \item \textit{Cold} standby is when the backup system is off until the main one fails. When that happens, the backup starts up and takes over. This takes longer but saves resources while things are working.
+        \item \textit{Hot} standby is when the backup system runs in parallel with the main one. 
+        If something fails, the switch to the backup is almost instant since it is already active and synchronized.
+        \item \textit{Cold} standby is when the backup system is off until the main one fails. 
+        When that happens, the backup starts up and takes over. 
+        This takes longer but saves resources while things are working.
     \end{itemize}
 \end{itemize}
 \subsection{Time Redundancy}
 
 \begin{itemize}
-    \item \textbf{re-execution}: This technique runs the same task again to see if the error happens in the same way. If the second run works fine, the first one probably had a temporary problem. It helps filter out transient faults. It has two main approaches:
+    \item \textbf{re-execution}: This technique runs the same task again to see if the error happens in the same way. 
+    If the second run works fine, the first one probably had a temporary problem. 
+    It helps filter out transient faults. It has two main approaches:
     \begin{itemize}
         \item \textit{Backward error recovery}: If the state of the job or the environment needs to be restored after a fault, then the faulty job is restarted.
         \item \textit{Multiple recovery}: due to scheduling reasons, the currently preempted jobs are also re-executed even if not affected by the fault. 
     \end{itemize}
     
-    \item \textbf{Checkpoint}: A checkpoint saves the state of the system at a certain time. If a failure happens later, the system can roll back to this saved state and continue from there without starting over from scratch. It is often used in High Performance Computing (HPC) for long running tasks and in the industry in general as it is effective.
+    \item \textbf{Checkpoint}: A checkpoint saves the state of the system at a certain time. 
+    If a failure happens later, the system can roll back to this saved state and continue from there without starting over from scratch. It is often used in High Performance Computing (HPC) for long running tasks and in the industry in general as it is effective.
     
-    \item \textbf{Recovery blocks}: This method runs a primary version of a task and checks the result. If the result fails, it runs another version (possibly degraded) to try again. This can repeat with more versions if needed until one gives a good output.
+    \item \textbf{Recovery blocks}: This method runs a primary version of a task and checks the result. 
+    If the result fails, it runs another version (possibly degraded) to try again. 
+    This can repeat with more versions if needed until one gives a good output.
     
-    \item \textbf{Forward error recovery}: Mostly used in networks, it executes a special routine that fixes the error without re-executing the original task. Simple raise/throw exception handling. 
+    \item \textbf{Forward error recovery}: Mostly used in networks, it executes a special routine that fixes the error without re-executing the original task. 
+    Simple raise/throw exception handling. 
 \end{itemize}
 
 
@@ -264,21 +324,31 @@ Now, we need to categorize faults \cite{future-research, other-goal}
 
 
 \subsection{Fault Detection}
-Even though it is not the main topic, neglecting fault detection would be just as bad as neglecting any part of the domain. To highlight this, we can note that \textit{NMR} does recover from an error occurring but it can \textit{not} detect the underlying fault. Preventing the faults as soon as possible save the whole recovery process and thus saving the additional computational power, possibly missed deadlines (in mixed critical systems for example) or even heat-induced wear out. 
+Even though it is not the main topic, neglecting fault detection would be just as bad as neglecting any part of the domain. 
+To highlight this, we can note that \textit{NMR} does recover from an error occurring but it can \textit{not} detect the underlying fault. 
+Preventing the faults as soon as possible save the whole recovery process and thus saving the additional computational power, possibly missed deadlines (in mixed critical systems for example) or even heat-induced wear out. 
 \subsubsection{Hardware}
 \begin{itemize}
-    \item \textbf{Fail-signal processor} is used in multi-processor architectures. A processor complete the task and another one checks for abnormalities (time or result) on the first one.
-    \item \textbf{Error detecting code} (EDC): Detects errors (for example checksum). It is used in the memory, the bus and on networks.
+    \item \textbf{Fail-signal processor} is used in multi-processor architectures. 
+    A processor complete the task and another one checks for abnormalities (time or result) on the first one.
+    \item \textbf{Error detecting code} (EDC): Detects errors (for example checksum). 
+    It is used in the memory, the bus and on networks.
     \item \textbf{Watchdogs}: Set a watchdog for the timing constraint.
+    \item \TODO{Error correcting code?}
 \end{itemize}
 \subsubsection{Software}
 
-Hardware has the benefit of not affecting execution time because it works in true parallel. It can run checks or backups at the same time as the main task without slowing things down.
-For software, we have to consider the worst-case execution time of tasks along with the extra time used by the checks added to each job. Software can use multithreading to help, but the extra cost is still there.
+Hardware has the benefit of not affecting execution time because it works in true parallel. 
+It can run checks or backups at the same time as the main task without slowing things down.
+For software, we have to consider the worst-case execution time of tasks along with the extra time used by the checks added to each job. 
+Software can use multithreading to help, but the extra cost is still there.
 
 
 \subsection{Fault Injection}
-Designing and implementing a system without tests cases is not imaginable. To this end, fault injection is being used. The idea is quite simple, put the system under various stress tests to check its tolerance to faults. This allows the use of a critical micro processor with no more reluctance than necessary. These injections are made using four (4) different techniques. \cite{diversification-obfuscation, future-research}
+Designing and implementing a system without tests cases is not imaginable. 
+To this end, fault injection is being used. The idea is quite simple, put the system under various stress tests to check its tolerance to faults. 
+This allows the use of a critical micro processor with no more reluctance than necessary. 
+These injections are made using four (4) different techniques. \cite{diversification-obfuscation, future-research}
 \begin{itemize}
     \item \textbf{Hardware}-based: Connect a device to mess with the system, for example with voltage spikes or imputing RF disturbances. A simple approach, yet effective. 
     \item \textbf{Software}-based: Use a program to mess with the memory allocation of the system, for example allocating random or predefined segments. It is also also fairly simple. 
@@ -290,9 +360,16 @@ Designing and implementing a system without tests cases is not imaginable. To th
 %------------------------------------------------------------------%
 % CRITICALITY
 \section{System's criticality}
-Critical systems are nearly everywhere today, from aviation \cite{avion-fault-timing-multi} (DAL) to hospitals. A lot of the critical embedded systems are in the Internet of Things (IoT). To address such variety, we can use the Mixed-Citical models. These models consist on prioritizing the tasks with higher importance. For example, a task that needs to check if the distance with the car in front of you is large enough if more important than the one that checks the temperature. If the former fails, a crash might happens as if the latter fails, temperature might go up by 0.1°C. The formal way of doing this is to map a number (the priority) to tasks, 0 being the most critical ones and as the number increases, the priority lowers. \\
+Critical systems are nearly everywhere today, from aviation \cite{avion-fault-timing-multi} (DAL) to hospitals. 
+A lot of the critical embedded systems are in the Internet of Things (IoT). 
+To address such variety, we can use the Mixed-Citical models. 
+These models consist on prioritizing the tasks with higher importance. 
+For example, a task that needs to check if the distance with the car in front of you is large enough if more important than the one that checks the temperature. 
+If the former fails, a crash might happens as if the latter fails, temperature might go up by 0.1°C. 
+The formal way of doing this is to map a number (the priority) to tasks, 0 being the most critical ones and as the number increases, the priority lowers. \\
 
-The most common, to my knowledge, mixed critical model is the \textit{Dual} \cite{scheduling-mixed}. It consists of two priority :
+The most common, to my knowledge, mixed critical model is the \textit{Dual} \cite{scheduling-mixed}. 
+It consists of two priority :
 \begin{itemize}
     \item HI-critical
     \item LO-critical
@@ -302,7 +379,8 @@ The software failure model of a task is usually considered in two senses: \begin
     \item the logical sense: the task produces an incorrect output
     \item in the timing sense: the task does not produce a correct output by the end of its deadline
 \end{itemize}
-However, all the industries (aviation, automobile, medicals, railway, spaces, industrials, etc.) have their own priority scale. All of them are, to some extent, a specification of a simple Mixed critical system with task priorities. For example, aviation with \textit{DO-178B} (or C) with the DAL priority that goes from A to E, A being the most critical and E being the least. 
+However, all the industries (aviation, automobile, medicals, railway, spaces, industrials, etc.) have their own priority scale. All of them are, to some extent, a specification of a simple Mixed critical system with task priorities. 
+For example, aviation with \textit{DO-178B} (or C) with the DAL priority that goes from A to E, A being the most critical and E being the least. 
 
 %---------------------------------------------------------------%
 % STANDARDS
@@ -321,37 +399,52 @@ However, all the industries (aviation, automobile, medicals, railway, spaces, in
 %---------------------------------------------------------------%
 % CYBER
 \section{Cybersecurity}
-Cybersecurity is also a main point of attention in this field (as it is a field itself). This is even more valid with the growth of the IoT in general on this past decades and this growth increased with the new arrival of Artificial Intelligence (AI) \cite{iot}.
+Cybersecurity is also a main point of attention in this field (as it is a field itself). 
+This is even more valid with the growth of the IoT in general on this past decades and this growth increased with the new arrival of Artificial Intelligence (AI) \cite{iot}.
 
 % TEE
 \subsection{Trusted Execution Environments (TEE)}
-A Trusted Execution Environment (TEE) is a secure part of the processor that runs code and handles data in isolation from the rest of the system. The goal is to protect sensitive operations from malware, faulty software, or even privileged system components like the OS or hypervisor. TEEs are often used for secure key storage, encryption, authentication, and digital rights management. It contains enclaves and is often run on \textit{ARM TrustZone} for mobile devices \cite{ARM-TrustZone-CortexM}.
+A Trusted Execution Environment (TEE) is a secure part of the processor that runs code and handles data in isolation from the rest of the system. The goal is to protect sensitive operations from malware, faulty software, or even privileged system components like the OS or hypervisor. TEEs are often used for secure key storage, encryption, authentication, and digital rights management. 
+It contains enclaves and is often run on \textit{ARM TrustZone} for mobile devices \cite{ARM-TrustZone-CortexM}.
 
 % ENCLAVEs
 \subsection{Enclave}
-Enclaves provide isolated execution environments that protect sensitive code and data even if the operating system is compromised \cite{enclave}. They rely on hardware-level support (TEE) to keep the enclave memory hidden from other software, reducing the attack surface. Enclaves help contain faults, data and prevent them from spreading beyond their boundary, adding both security and resilience. It is used on mobile for example to provide a safe environment for banking, cryptographic or even biometric data storage. This is to avoid any third party software being able to access confidential data.
+Enclaves provide isolated execution environments that protect sensitive code and data even if the operating system is compromised \cite{enclave}. They rely on hardware-level support (TEE) to keep the enclave memory hidden from other software, reducing the attack surface. Enclaves help contain faults, data and prevent them from spreading beyond their boundary, adding both security and resilience. It is used on mobile for example to provide a safe environment for banking, cryptographic or even biometric data storage. 
+This is to avoid any third party software being able to access confidential data.
 
 % Code obfuscation & diversification
 \subsection{Code obfuscation \& diversification}
-Code obfuscation and diversification make it harder for attackers to understand or predict the system’s behavior. Obfuscation transforms the code into a version that works the same but is harder to analyze (static analysis). Diversification changes the memory layout, instruction set, or data locations across runs or devices. These techniques slow down attacks and can stop malware that depends on known patterns, making the system more fault-tolerant against targeted exploits (Zero-day vulnerability for example).
+Code obfuscation and diversification make it harder for attackers to understand or predict the system’s behavior. Obfuscation transforms the code into a version that works the same but is harder to analyze (static analysis). Diversification changes the memory layout, instruction set, or data locations across runs or devices. 
+These techniques slow down attacks and can stop malware that depends on known patterns, making the system more fault-tolerant against targeted exploits (Zero-day vulnerability for example).
 
 %REWINDING \& DOMAINS
 \subsection{Rewinding \& Domains}
-A current approach to address attacks is to first detect the attack and then roll-back the system to a previous (supposedly) safe state by replications or checkpointing. As much as this mechanism works to ensure reliability of the system, the \textit{resilience} and \textit{availability} when it is under an attack is not the focus. This last point enables an attacker to use the delay of roll-backing the system as an attack vector. To solve this, a software library has been created for 64-bits x86 processors : \textit{Secure Domain Rewind and Discard (SDRaD)} \cite{sdrad}. The underlying logic consists of using \textit{Domains}, compartmentalized and secured spaces and using a domain for each critical task. Thus, when an error occurs, the corrupted domain can be \textit{discarded} (terminated) and the error can be handled. In this scenario, the targets services are Commercials Off-The-Shelf (COTS) processors \cite{sdrad, fault-detection-survey, future-research} (ie. processors that don't need hardware specifications or specific changes in order to work) for web services with multiple clients. The plurality of the clients is where the danger lies as if one client is malicious, it can affect the others. That is where the SDRaD mechanism comes in place, each client or subroutines of the clients could be stored in different domains making a great isolation in-between clients. The program using the library can rewind the states of the domains discarded to avoid propagation and this makes the possible Denial of Service (DoS) attack outdated as the states are saved frequently and the whole system does not need to restart from scratch (using caches services for example). 
+A current approach to address attacks is to first detect the attack and then roll-back the system to a previous (supposedly) safe state by replications or checkpointing. As much as this mechanism works to ensure reliability of the system, the \textit{resilience} and \textit{availability} when it is under an attack is not the focus. This last point enables an attacker to use the delay of roll-backing the system as an attack vector. To solve this, a software library has been created for 64-bits x86 processors : \textit{Secure Domain Rewind and Discard (SDRaD)} \cite{sdrad}. The underlying logic consists of using \textit{Domains}, compartmentalized and secured spaces and using a domain for each critical task. Thus, when an error occurs, the corrupted domain can be \textit{discarded} (terminated) and the error can be handled. In this scenario, the targets services are Commercials Off-The-Shelf (COTS) processors \cite{sdrad, fault-detection-survey, future-research} (ie. processors that don't need hardware specifications or specific changes in order to work) for web services with multiple clients. The plurality of the clients is where the danger lies as if one client is malicious, it can affect the others. 
+That is where the SDRaD mechanism comes in place, each client or subroutines of the clients could be stored in different domains making a great isolation in-between clients. 
+The program using the library can rewind the states of the domains discarded to avoid propagation and this makes the possible Denial of Service (DoS) attack outdated as the states are saved frequently and the whole system does not need to restart from scratch (using caches services for example). 
 
 
 % DATA & CONTROL FLOW
 \subsection{Data \& Control flow}
-Protecting data flow and control flow is key to stopping many types of (dynamic) attacks. Data flow checks make sure sensitive data does not leak or get overwritten. Control flow is the instructions order of execution for the CPU. Hardware or software guards can stop faults caused by memory corruption, buffer overflows, or instruction hijacking. Together, these methods help prevent faults from becoming full system breaches.
+Protecting data flow and control flow is key to stopping many types of (dynamic) attacks. Data flow checks make sure sensitive data does not leak or get overwritten. 
+Control flow is the instructions order of execution for the CPU. 
+Hardware or software guards can stop faults caused by memory corruption, buffer overflows, or instruction hijacking. 
+Together, these methods help prevent faults from becoming full system breaches.
 
 % measurement
 \subsection{Obfuscation measurement}
-A derivation of this is the layout obfuscation, it consists only on destructuring the program. This is mainly done to prevent a human reading the code base and reverse engineer the whole system (thus gaining informations and understanding of possible breaches). This a a one way approach as when the structure is deleted (when classes are merged for example or comments and name deleted) it cannot be found afterwards. \textit{Potency} and \textit{Resiliency} are used to measure this \cite{measure-redundancy}, the former is to measure human readability and the latter is used to measure how well the system resists to automated decompilers/deobfuscators/deassemblers \cite{diversification-obfuscation}. 
+A derivation of this is the layout obfuscation, it consists only on destructuring the program. 
+This is mainly done to prevent a human reading the code base and reverse engineer the whole system (thus gaining informations and understanding of possible breaches). 
+This a a one way approach as when the structure is deleted (when classes are merged for example or comments and name deleted) it cannot be found afterwards. 
+\textit{Potency} and \textit{Resiliency} are used to measure this \cite{measure-redundancy}, the former is to measure human readability and the latter is used to measure how well the system resists to automated decompilers/deobfuscators/deassemblers \cite{diversification-obfuscation}. 
 
 
 % LIMITATIONS
 \subsection{Limitations}
-As every domain in computer science, there are limitations. These inherent limitations are that no system is full proof. The goal here is to make the system more resilient to attacks and thus to rise the cost of developing attacks that could harm the system \cite{diversification-obfuscation} (this is seen as control flow). Another goal is to prevent someone with malicious intent to comprehend the system (static analysis) or even if they do, to prevent them understand the flow of the program as it runs (dynamic analysis).
+As every domain in computer science, there are limitations. 
+These inherent limitations are that no system is full proof. 
+The goal here is to make the system more resilient to attacks and thus to rise the cost of developing attacks that could harm the system \cite{diversification-obfuscation} (this is seen as control flow). 
+Another goal is to prevent someone with malicious intent to comprehend the system (static analysis) or even if they do, to prevent them understand the flow of the program as it runs (dynamic analysis).
 
 
 
@@ -361,21 +454,45 @@ As every domain in computer science, there are limitations. These inherent limit
 %%%%%%%%%%%%%%%%%%%%%%%% PROBLEM %%%%%%%%%%%%%%%%%%%%%%%%
 \chapter{Problem Statement and Objectives}
 \TODO{move to another chapter?}
-Now that everything is, roughly speaking, well defined. Although the whole domain is very interesting and always needs specific studies on various topics, it needs to be narrowed down in order to suit a Master thesis.\\
+Now that everything is, roughly speaking, well defined. 
+Although the whole domain is very interesting and always needs specific studies on various topics, it needs to be narrowed down in order to suit a Master thesis.
+\\
 
-First cut is the type of \textit{redundancy}. For the purpose of the research, the tests should be done using several, not yet decided, \textit{timed} redundancy methods. This allows to measure the viability and the relevance of the work done. \\
+First cut is the type of \textit{redundancy}. 
+For the purpose of the research, the tests should be done using several, not yet decided, \textit{timed} redundancy methods. 
+This allows to measure the viability and the relevance of the work done. 
+\\
 
-Second cut is the type of systems that needs to be modeled. My focus will be \textit{mixed critical} system, as they are great at modeling real life prioritization.\\
+Second cut is the type of systems that needs to be modeled. 
+My focus will be \textit{mixed critical} system, as they are great at modeling real life prioritization.
+\\
 
-Third cut is the type of faults. As diving in any type of fault could be a thesis in itself, the faults will be reviewed only for what they are and not necessarily for their cause. Thus, \textit{all three (3) types} will be looked upon.\\
+Third cut is the type of faults. 
+As diving in any type of fault could be a thesis in itself, the faults will be reviewed only for what they are and not necessarily for their cause. 
+Thus, \textit{all three (3) types} will be looked upon.
+\\
 
-Next cut is the channel that will be use. In other terms, \textit{hardware} and \textit{software}. As they are both important and linked in various ways. The focus will not only, at least initially, be on one of them but rather on \textit{both} and the implication that each have on the other. For example, Enclaves that need restricted access and create a waterfall of complexity in the design and implementation has on impact on both hardware and software. \\
+Next cut is the channel that will be use. 
+In other terms, \textit{hardware} and \textit{software}. 
+As they are both important and linked in various ways. 
+The focus will not only, at least initially, be on one of them but rather on \textit{both} and the implication that each have on the other. 
+For example, Enclaves that need restricted access and create a waterfall of complexity in the design and implementation has on impact on both hardware and software. 
+\\
 
-Fourth cut is about the \textit{cybersecurity} perspective. As the industry around this domain is mostly critical (aviation, automobile, space or even medical), there is a high risk with someone getting access to something they shouldn't have. Considering that, we must ensure that the faults occurring, possibly from a malicious source, does \textit{not break the system nor give informations} about it. Not much from a static analysis (reverse engineer) perspective but rather from a \textit{control flow} one. To make it more precise, on TEEs when a fault occurs, the system can try to change of enclave as if it was a \textit{Domain}. Then the system can be rewinded and set to a safe state while not being unavailable.\\
+Fourth cut is about the \textit{cybersecurity} perspective. 
+As the industry around this domain is mostly critical (aviation, automobile, space or even medical), there is a high risk with someone getting access to something they shouldn't have. Considering that, we must ensure that the faults occurring, possibly from a malicious source, does \textit{not break the system nor give informations} about it. 
+Not much from a static analysis (reverse engineer) perspective but rather from a \textit{control flow} one. 
+To make it more precise, on TEEs when a fault occurs, the system can try to change of enclave as if it was a \textit{Domain}. 
+Then the system can be rewinded and set to a safe state while not being unavailable.
+\\
 
-Fifth choice is the platform. There exists a lot of different possibilities when it comes to implementing (and testing) a system. The chosen platform to implement it is Keystone (\url{https://keystone-enclave.org}), it is an open framework used for architecturing TEEs on a RISC-V architecture.\\
+Fifth choice is the platform. 
+There exists a lot of different possibilities when it comes to implementing (and testing) a system. 
+The chosen platform to implement it is Keystone (\url{https://keystone-enclave.org}), it is an open framework used for architecturing TEEs on a RISC-V architecture.
+\\
 
-The final choice is to try an implement the whole SDRaD library in a TEE, making an equivalence between domains and enclaves. As the enclaves are subregions of a TEE, they are isolated and secure as the definition of a Domain using Private Keys for Userspace (PKU) and Memory Protection Keys (MPK) (with register mechanism and much more \cite{sdrad}). \\
+The final choice is to try an implement the whole SDRaD library in a TEE, making an equivalence between domains and enclaves. 
+As the enclaves are subregions of a TEE, they are isolated and secure as the definition of a Domain using Private Keys for Userspace (PKU) and Memory Protection Keys (MPK) (with register mechanism and much more \cite{sdrad}). \\
 
 
 In conclusion, the research should focus on \textit{Fault recovery by rewinding enclaves in a TEE on a RISC-V architecture (Keystone)} and extending existing works.
@@ -396,14 +513,15 @@ In conclusion, the research should focus on \textit{Fault recovery by rewinding 
 
 
 %%%%%%%%%%%%%%%%%%%%%%%% METHODO %%%%%%%%%%%%%%%%%%%%%%%%
-\chapter{Methodology and Plan of work}
+\chapter{Methodology}
 The basis of every scientific work is a plan.
 
 \section{Preliminary setup and selection}
 The first and most important for setting the ground basis of the research is to read more scientific literature.
 \begin{itemize}
     \item Define criteria for evaluating their performance in the context of Trusted Execution Environments.
-    \item Familiarizing with the future work environment, Keystone. For the first month. Using an empirical methodology to build up a whole architecture and start reproducing the SDRaD library on Keystone.
+    \item Familiarizing with the future work environment, Keystone. For the first month. 
+    Using an empirical methodology to build up a whole architecture and start reproducing the SDRaD library on Keystone.
 \end{itemize}
 
 \section{System modeling}
@@ -420,7 +538,6 @@ Implement the, previously modeled, system from the SDRaD library.
     \item Deploy a trusted execution environment on the RISC-V platform.
     \item Integrate enclave-based isolation into the system model.
     \item Implement migration between enclaves as a fault recovery mechanism.
-    \item Add a mixed-criticality implementation to address a wider problem. 
 \end{itemize}
 
 \section{Definition of fault scenarios}
@@ -475,15 +592,19 @@ As the last point, designing the possible tests and scenarios happening to the s
 
 %%%%%%%%%%%%%%%%%%%%%%%% Future Work %%%%%%%%%%%%%%%%%%%%%%%%
 \chapter{Future Work}
-\TODO{do it?}
 
+\section{mixed criticality}
+
+\section{More complexe fault model}
+
+\TODO{More?}
 
 
 
 %%%%%%%%%%%%%%%%%%%%%%%% Conclusion %%%%%%%%%%%%%%%%%%%%%%%%
 \chapter{Conclusion}
 \TODO{conclusion}
-Enclaves are great, even with a medium computation overhead in time and data it is useful for long processes 
+Enclaves are great, even with a medium computation overhead in time and data it is useful for long processes.
 
 
 \bibliographystyle{unsrt}
