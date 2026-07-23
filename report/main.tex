@@ -84,11 +84,11 @@
     \noindent\textattachfile[icon=Paperclip,color=0 0 0]{#1}{\texttt{#2}}\\
 }
 
-\newcommand{\github}{
+\newcommand{\github}{%
     \href{https://github.com/ldevroye/keystone/tree/master}{https://github.com/ldevroye/keystone/tree/master}
 }
 
-\newcommand{\keystonegithub}{
+\newcommand{\keystonegithub}{%
     \href{https://github.com/keystone-enclave/keystone}{https://github.com/keystone-enclave/keystone}
 }
 
@@ -453,7 +453,7 @@ Another goal is to prevent someone with malicious intent to comprehend the syste
 
 %%%%%%%%%%%%%%%%%%%%%%%% PROBLEM %%%%%%%%%%%%%%%%%%%%%%%%
 \chapter{Problem Statement and Objectives}
-\TODO{move to another chapter?}
+%% theoretical assumptions
 Now that everything is, roughly speaking, well defined. 
 Although the whole domain is very interesting and always needs specific studies on various topics, it needs to be narrowed down in order to suit a Master thesis.
 \\
@@ -497,77 +497,39 @@ As the enclaves are subregions of a TEE, they are isolated and secure as the def
 
 In conclusion, the research should focus on \textit{Fault recovery by rewinding enclaves in a TEE on a RISC-V architecture (Keystone)} and extending existing works.
 
+\TODO{add goals}
+
+
+%%%%%%%%%%%%%%%%%%%%%%%% Keystone Structure %%%%%%%%%%%%%%%%%%%%%%%%
+\chapter{Keystone structure}
+\keystonegithub
+\TODO{do it?}
+
+\section{difficulties (old doc/unstable)}
+
+
+
 
 
 %%%%%%%%%%%%%%%%%%%%%%%% System Model %%%%%%%%%%%%%%%%%%%%%%%%
 \chapter{System Model and Design}
-\TODO{do it?}
-
-
-
-
-%%%%%%%%%%%%%%%%%%%%%%%% System Model %%%%%%%%%%%%%%%%%%%%%%%%
-\chapter{Keystone structure}
-\TODO{do it?}
-
-
-
-%%%%%%%%%%%%%%%%%%%%%%%% METHODO %%%%%%%%%%%%%%%%%%%%%%%%
-\chapter{Methodology}
-The basis of every scientific work is a plan.
+\TODO{Implementation?}
 
 \section{Preliminary setup and selection}
-The first and most important for setting the ground basis of the research is to read more scientific literature.
-\begin{itemize}
-    \item Define criteria for evaluating their performance in the context of Trusted Execution Environments.
-    \item Familiarizing with the future work environment, Keystone. For the first month. 
-    Using an empirical methodology to build up a whole architecture and start reproducing the SDRaD library on Keystone.
-\end{itemize}
 
-\section{System modeling}
-After that, we must model the whole system and the future tests it should resists (or not, according to the requirements).
-\begin{itemize}
-    \item Assign each task to either hardware-bound or software-bound execution paths.
-    \item Ensure the model reflects realistic timing and resource constraints.
-    \item Make fair assumption about the system security and the adversary accesses and goals (Threat Model Requirements of the SDRaD models \cite{sdrad}). 
-\end{itemize}
+\section{Implementation}
 
-\section{Implementation of SDRaD in Keystone}
-Implement the, previously modeled, system from the SDRaD library. 
-\begin{itemize}
-    \item Deploy a trusted execution environment on the RISC-V platform.
-    \item Integrate enclave-based isolation into the system model.
-    \item Implement migration between enclaves as a fault recovery mechanism.
-\end{itemize}
+\subsection{Scripts}
 
-\section{Definition of fault scenarios}
-As the last point, designing the possible tests and scenarios happening to the system.
-\begin{itemize}
-    \item Specify the controlled fault models.
-    \item Prepare mechanisms for introducing these faults during testing.
-    \item Specify attacks-like fault injections to simulate a DoS attack.
-\end{itemize}
+\section{Data encryption}
 
+\section{Fault Modeling}
 
 \section{Testing phase}
-\begin{itemize}
-    \item Introduce faults and monitor system reaction based on what type of fault and what type of attack. 
-    \item Test complex and real-time recovery conditions and attacks.
-    \item Log timing behavior, scheduling effects, and any unexpected changes (memory, CPU usage, delays, etc.).
-\end{itemize}
 
 \section{Data analysis}
-\begin{itemize}
-    \item Process recorded data to determine recovery times, stability, availability after rewinding, and preservation of security properties (fault detection rate).
-    \item Identify any potential leakage of sensitive information caused by the recovery process (any side-channel attack).
-    \item Compare outcomes with existing approaches to evaluate improvements or trade-offs or enclaving domains.
-    \item Make a conclusion and consider the limitations of this approach. 
-\end{itemize}
 
-%%%%%%% FULL THESIS
 
-% \chapter{Method}
-% Lorem ipsum...
 
 
 
@@ -576,6 +538,8 @@ As the last point, designing the possible tests and scenarios happening to the s
 \TODO{Macro setup \& workflow}
 \section{Macros}
 
+\section{logging}
+\section{Emulation}
 
 %%%%%%%%%%%%%%%%%%%%%%%% Results %%%%%%%%%%%%%%%%%%%%%%%%
 \chapter{Results and Discussion}
@@ -593,7 +557,7 @@ As the last point, designing the possible tests and scenarios happening to the s
 %%%%%%%%%%%%%%%%%%%%%%%% Future Work %%%%%%%%%%%%%%%%%%%%%%%%
 \chapter{Future Work}
 
-\section{mixed criticality}
+\section{Mixed criticality}
 
 \section{More complexe fault model}
 
@@ -614,8 +578,7 @@ Enclaves are great, even with a medium computation overhead in time and data it 
 \appendix
 \label{chap:appendix}
 \section{Rewind source code}
-These files can be found in the \texttt{examples/rewind/} subfolder of the repository\\
-(\github)
+These files can be found in the \texttt{examples/rewind/} subfolder of the repository :\github and they are compiled in this pdf.
 
 \begin{verbatim}
 examples/rewind/
@@ -634,44 +597,52 @@ examples/rewind/
 \end{verbatim}
 
 \subsection{\texttt{eapp/checkpoint.c/.h}}
+\label{file:checkpoint}
 \srcattach{src/rewind/eapp/checkpoint.c}{examples/rewind/eapp/checkpoint.c}
 \srcattach{src/rewind/eapp/checkpoint.h}{examples/rewind/eapp/checkpoint.h}
 
 \subsection{\texttt{eapp/crypto.c/.h}}
+\label{file:crypto}
 \srcattach{src/rewind/eapp/crypto.c}{examples/rewind/eapp/crypto.c}
 \srcattach{src/rewind/eapp/crypto.h}{examples/rewind/eapp/crypto.h}
 
 \subsection{\texttt{eapp/fault.c/.h}}
+\label{file:fault}
 \srcattach{src/rewind/eapp/fault.c}{examples/rewind/eapp/fault.c}
 \srcattach{src/rewind/eapp/fault.h}{examples/rewind/eapp/fault.h}
 
 \subsection{\texttt{eapp/rewind.c}}
+\label{file:rewind}
 \srcattach{src/rewind/eapp/rewind.c}{examples/rewind/eapp/rewind.c}
 
 \subsection{\texttt{host/host.cpp/.hpp}}
+\label{file:host}
 \srcattach{src/rewind/host/host.cpp}{examples/rewind/host/host.cpp}
 \srcattach{src/rewind/host/host.hpp}{examples/rewind/host/host.hpp}
 
 \subsection{\texttt{CMakeLists.txt}}
+\label{file:CMake}
 \srcattach{src/rewind/CMakeLists.txt}{examples/rewind/CMakeLists.txt}
 
 
 % Build & run
 \section{Build and Run Scripts}
 
-These files can be found at the root of the repository\\
-(\github)
+These files can be found at the root of the repository :\github and they are compiled in this pdf.
 
 %
 \subsection{\texttt{make-examples.sh}}
+\label{file:make-examples}
 \srcattach{src/make-examples.sh}{make-examples.sh}
 
 
 \subsection{\texttt{run-rewind.exp}}
+\label{file:run-rewind}
 \srcattach{src/run-rewind.exp}{run-rewind.exp}
 
 
 \subsection{\texttt{make-run.sh}}
+\label{file:make-run}
 \srcattach{src/make-run.sh}{make-run.sh}
 
 
