@@ -24,6 +24,11 @@
 \usepackage{cleveref}
 
 
+%\usepackage[backend=biber,style=numeric,sorting=none]{biblatex}
+%\addbibresource{ref.bib}
+%\ExecuteBibliographyOptions{doi=true,url=true}
+
+
 % ----------------------------------------------------------- %
 % TODO: Check pdf's title
 \hypersetup{
@@ -89,7 +94,7 @@
 }
 
 \newcommand{\keystonegithub}{%
-    \href{https://github.com/keystone-enclave/keystone}{https://github.com/keystone-enclave/keystone}
+    \href{https://github.com/keystone-enclave/keystone}{https://github.com/keystone-enclave/keystone} (\cite{keystone-repo})
 }
 
 \usepackage{url}
@@ -397,7 +402,7 @@ It contains enclaves and is often run on \textit{ARM TrustZone} for mobile devic
 
 % ENCLAVEs
 \subsection{Enclave}
-Enclaves provide isolated execution environments that protect sensitive code and data even if the operating system is compromised \cite{enclave}. They rely on hardware-level support (TEE) to keep the enclave memory hidden from other software, reducing the attack surface. Enclaves help contain faults, data and prevent them from spreading beyond their boundary, adding both security and resilience. It is used on mobile for example to provide a safe environment for banking, cryptographic or even biometric data storage. 
+Enclaves provide isolated execution environments that protect sensitive code and data even if the Operating System (OS) is compromised \cite{enclave}. They rely on hardware-level support (TEE) to keep the enclave memory hidden from other software, reducing the attack surface. Enclaves help contain faults, data and prevent them from spreading beyond their boundary, adding both security and resilience. It is used on mobile for example to provide a safe environment for banking, cryptographic or even biometric data storage. 
 This is to avoid any third party software being able to access confidential data.
 
 % Code obfuscation & diversification
@@ -476,33 +481,41 @@ Then the system can be rewinded and set to a safe state while not being unavaila
 
 Fifth choice is the platform. 
 There exists a lot of different possibilities when it comes to implementing (and testing) a system. 
-The chosen platform to implement it is Keystone (\url{https://keystone-enclave.org}), it is an open framework used for architecturing TEEs on a RISC-V architecture.
+The chosen platform to implement it is Keystone(\cite{keystone-web}, \cite{keystone-repo}), it is an open framework used for architecturing TEEs on a RISC-V architecture.
 \\
 
 The final choice is to try an implement the whole SDRaD library in a TEE, making an equivalence between domains and enclaves. 
 As the enclaves are subregions of a TEE, they are isolated and secure as the definition of a Domain using Private Keys for Userspace (PKU) and Memory Protection Keys (MPK) (with register mechanism and much more \cite{sdrad}). \\
-
 
 In conclusion, the research should focus on \textit{Fault recovery by rewinding enclaves in a TEE on a RISC-V architecture (Keystone)} and extending existing works.
 
 \TODO{add goals}
 
 
+
+
+
+
+
+
 %%%%%%%%%%%%%%%%%%%%%%%% Keystone Structure %%%%%%%%%%%%%%%%%%%%%%%%
 \chapter{Keystone Structure}
 "Keystone is an open framework for architecting trusted execution environments (TEEs) based on hardware enclaves. Keystone aims to provide an easy way of architecting and building a customized TEE for an arbitrary RISC-V platform with a simple workflow. 
 This allows the TEE to be highly optimized for better performance, smaller trusted computing base (TCB), and programmability with a given workload and a threat model." 
-- \href{https://docs.keystone-enclave.org/en/latest/Getting-Started/How-Keystone-Works/Keystone-Basics.html#keystone-basics}{Keystone Website : 2.2. Keystone Basics}
+- \href{https://docs.keystone-enclave.org/en/latest/Getting-Started/How-Keystone-Works/Keystone-Basics.html#keystone-basics}{Keystone Website : 2.2. Keystone Basics} (\cite{keystone-web})
 \\
+
 Its implementation can be found on the corresponding github reposity: \keystonegithub.\\
-The documentation can be found at : \href{https://docs.keystone-enclave.org/en/latest/index.html}{https://docs.keystone-enclave.org/en/latest/index.html}
+The documentation can be found at : \href{https://docs.keystone-enclave.org/en/latest/index.html}{https://docs.keystone-enclave.org/en/latest/index.html} (\cite{keystone-web})
 
 
 \section{RISC-V}
 RISC-V is a free and open-source (in contrast to x86 and ARM) Instruction Set Artchitecture (ISA).
 Due to its reduced instruction set, it has become a popular architecture for embedded systems and microcontrollers as it allows to reduce power consumption, code size, and memory use. \cite{riscv-manual}
 \\
-RISC-V has three (3) priviliege levels (\href{https://docs.keystone-enclave.org/en/latest/Getting-Started/How-Keystone-Works/RISC-V-Background.html#risc-v-privilieged-isa}{2.1.2 RISC-V Backgrond}):
+
+RISC-V has three (3) priviliege levels (\href{https://docs.keystone-enclave.org/en/latest/Getting-Started/How-Keystone-Works/RISC-V-Background.html#risc-v-privilieged-isa}
+                                            {2.1.2 RISC-V Backgrond} \{\cite{keystone-web}\}):
 \begin{itemize}
     \item U-mode: User processes
     \item S-mode: Kernel
@@ -514,6 +527,7 @@ It is analogous to microcode in Complex Instruction Set Computer (CISC) ISAs (x8
 However, unlike microcode, it is implemented in existing programming languages (C) and toolchains (gcc).
 This makes it much more accessible.  
 \\
+
 The running software can thus not being interfered or interuppted by lower modes.
 In Keystone, the M-mode is used for:
 \begin{itemize}
@@ -527,12 +541,14 @@ As all of these are software implementation. It is much easier to implement, deb
 It alows the M-Mode to control physical memory access.
 PMP is ruled by a set of Control Status Registers (CSR) to restrict physical memory access for U and S mode and is configured by the M-mode.
 \\
+
 PMP as a variable number of entries depending on the the platform it is on. 
 The one in our interest is QEMU, its virtual machine have 16 entries, each entry is defined by one or more CSRs.
 It works on physical addresses, the configuration of the subsequents virtual adresses can be let to the S-mode without compromising security.
 Even with different hardware implementation, the standard garantees basic functionality. 
 \\
-More importantly, PMP is used by the SM to create memory isolation.
+
+More importantly, PMP is used by the SM to create memory isolation and can be dynamically configured by the M-mode (using CSRs).
 
 \subsection{Security Monitor (SM)}
 Is the root trusted software (and thus runs in M-mode). 
@@ -542,16 +558,18 @@ It is used to form the TCB and provides :
     \item Remote attestation
     \item Enclave thread managment
     \item PMP synchronization
-    \item Side-Channel Defense
+    \item Side-Channel Defense (FU540 module)
 \end{itemize}   
 Being a software program, it must be verified first by hardware. 
 This is done by the \textit{root of trust}. 
 At boot time, it first measure the SM, generates a keypair for remote attestation and then signs the public keep.
 After that, the boots is resumed.
 \\
-The Operating System (OS) and the enclaves can call SM functions using the Supervisor Binary Interface (SBI).
+
+The OS and the enclaves can call SM functions using the Supervisor Binary Interface (SBI).
 Each enclave use a region (section) of memory, each of these regions are defined by PMP entries.
 \\
+
 The SM uses by itself, two (2) PMP entries (SM space, untrusted memory) each of the active enclaves consum one entry.
 
 \subsection{Interrupts and Exceptions}
@@ -560,16 +578,47 @@ It thus have the full authority over th CPU scheduler. Some of its control can b
 Using a lower level to catch exception such as page fault allows them to be handled quicker as the M-mode has a lot of workload.
 S-mode is great to handle page faults and system calls because they are frequent.   
 \\
+
 U- and S-modes accesses memory via virtual addresses, while M-mode operates exclusively on physical addresses.
 Moreover, the OS cannot tamper with the page table of the enclaves, this is because of PMP restrictions on the OS.  
 
 \section{Workflow}
 
 
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.8\linewidth]{img/keystone_overview.png}
+    \caption{Keystone overview (2.2.1 (\cite{keystone-web}))}
+    \label{fig:keysotne-overview}
+\end{figure}
+
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.8\linewidth]{img/keystone_workflow.png}
+    \caption{Keystone workflow (2.2.2 (\cite{keystone-web}))}
+    \label{fig:keystone-workflow}
+\end{figure}
+
+
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.8\linewidth]{img/enclave_lifecycle.png}
+    \caption{Enclave overall life cycle (2.2.3 \cite{keystone-web})}
+    \label{fig:enclave-lifecycle}
+\end{figure}
+
+
+
 \section{QEMU}
 \subsection{Eyrie runtime}
 \subsection{FireSim}
 \section{Edge calls}
+
+\section{Encalves}
+
+
 \section{Compilation}
 \section{Encountered Difficulties}
 \TODO{old doc/unstable}
