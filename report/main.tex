@@ -24,9 +24,9 @@
 \usepackage{cleveref}
 
 
-%\usepackage[backend=biber,style=numeric,sorting=none]{biblatex}
-%\addbibresource{ref.bib}
-%\ExecuteBibliographyOptions{doi=true,url=true}
+\usepackage[backend=biber,style=numeric,sorting=none]{biblatex}
+\addbibresource{ref.bib}
+\ExecuteBibliographyOptions{doi=true,url=true}
 
 
 % ----------------------------------------------------------- %
@@ -402,7 +402,8 @@ It contains enclaves and is often run on \textit{ARM TrustZone} for mobile devic
 
 % ENCLAVEs
 \subsection{Enclave}
-Enclaves provide isolated execution environments that protect sensitive code and data even if the Operating System (OS) is compromised \cite{enclave}. They rely on hardware-level support (TEE) to keep the enclave memory hidden from other software, reducing the attack surface. Enclaves help contain faults, data and prevent them from spreading beyond their boundary, adding both security and resilience. It is used on mobile for example to provide a safe environment for banking, cryptographic or even biometric data storage. 
+Enclaves provide isolated execution environments that protect sensitive code and data even if the Operating System (OS) is compromised \cite{enclave}. 
+They rely on hardware-level support (TEE) to keep the enclave memory hidden from other software, reducing the attack surface. Enclaves help contain faults, data and prevent them from spreading beyond their boundary, adding both security and resilience. It is used on mobile for example to provide a safe environment for banking, cryptographic or even biometric data storage. 
 This is to avoid any third party software being able to access confidential data.
 
 % Code obfuscation & diversification
@@ -687,8 +688,10 @@ Moreover, the OS cannot tamper with the page table of the enclaves, this is beca
 Enclaves are great, even with a medium computation overhead in time and data it is useful for long processes.
 
 
-\bibliographystyle{unsrt}
-\bibliography{ref}
+
+\printbibliography
+%\bibliographystyle{unsrt}
+%\bibliography{ref}
 
 \newpage
 
