@@ -13,11 +13,20 @@
 \usepackage{times}
 \usepackage{setspace}
 \usepackage{float}
-\PassOptionsToPackage{colorlinks=true,
-            citecolor=black,
-            urlcolor=black,
-            linkcolor=black,
-            filecolor=black}{hyperref}
+\usepackage{hyperref} 
+\usepackage{xurl}
+\Urlmuskip=0mu plus 1mu
+            \hypersetup{backref=true,       
+                    pagebackref=true,               
+                    hyperindex=true,                
+                    colorlinks=true,                
+                    breaklinks=true,             
+                    linkcolor=black,  %idk
+                    urlcolor=blue,    %href
+                    filecolor=blue,   %table of content
+                    citecolor=red     %citations
+}
+
 \usepackage{attachfile2}
 
 \usepackage{hyperref}
@@ -26,7 +35,11 @@
 
 \usepackage[backend=biber,style=numeric,sorting=none]{biblatex}
 \addbibresource{ref.bib}
-\ExecuteBibliographyOptions{doi=true,url=true}
+\ExecuteBibliographyOptions{doi=true,url=true,eprint=true}
+\AtBeginBibliography{%
+    \sloppy
+    \setlength{\emergencystretch}{3em}
+}
 
 
 % ----------------------------------------------------------- %
@@ -34,7 +47,7 @@
 \hypersetup{
     pdftitle={Master thesis - Louis Devroye - 2025-26},
     pdfauthor={Louis Devroye (Louis.Devroye@ulb.be)},
-    pdfsubject={Fault-Tolerant Microarchitectures: Fault recovery by rewinding enclaves in a TEE on a RISC-V architecture (Keystone)},
+    pdfsubject={Fault-Tolerant Microarchitectures: Fault recovery by rewinding enclaves in a Trusted Execution Environment on a RISC-V architecture (Keystone)},
     pdfkeywords={Microprocessor, Fault-Tolerant, Fault, Redundancy, Cybersecurity, Microarchitectures, Keystone, Checkpointing, Rewind, Enclaves, TEE, RISC-V, open-source},
 }
 
@@ -90,14 +103,12 @@
 }
 
 \newcommand{\github}{%
-    \href{https://github.com/ldevroye/keystone/tree/master}{https://github.com/ldevroye/keystone/tree/master}
+    \href{https://github.com/ldevroye/keystone/tree/master}{GitHub repository}
 }
 
 \newcommand{\keystonegithub}{%
-    \href{https://github.com/keystone-enclave/keystone}{https://github.com/keystone-enclave/keystone} (\cite{keystone-repo})
+    \href{https://github.com/keystone-enclave/keystone}{Keystone repository} \cite{keystone-repo}
 }
-
-\usepackage{url}
 
 
 % 1. Introduction to the subject, state-of-the-art, situation
@@ -216,13 +227,13 @@ The research could even separate the low-level redundancy from a high-level, alg
 
 
 The codebase (implementation of the checkpoint enclave and tests) of this thesis can be found on the \github. 
-This is a fork of the main Keystone github : \keystonegithub that adds an example (\texttt{rewind}). 
+This is a fork of the main Keystone github \keystonegithub. 
 The files can also be found in the Appendix (\ref{chap:appendix}).
 
 
 
 
-%%%%%%%%%%%%%%%%%%%%%%%% SoA %%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%% SotA %%%%%%%%%%%%%%%%%%%%%%%%
 \chapter{State of the Art}
 
 % INTEREST
@@ -397,7 +408,7 @@ This is even more valid with the growth of the IoT in general on this past decad
 
 % TEE
 \subsection{Trusted Execution Environments (TEE)}
-A Trusted Execution Environment (TEE) is a secure part of the processor that runs code and handles data in isolation from the rest of the system. The goal is to protect sensitive operations from malware, faulty software, or even privileged system components like the OS or hypervisor. TEEs are often used for secure key storage, encryption, authentication, and digital rights management. 
+A Trusted Execution Environment (TEE) \cite{TEE} is a secure part of the processor that runs code and handles data in isolation from the rest of the system. The goal is to protect sensitive operations from malware, faulty software, or even privileged system components like the OS or hypervisor. TEEs are often used for secure key storage, encryption, authentication, and digital rights management. 
 It contains enclaves and is often run on \textit{ARM TrustZone} for mobile devices \cite{ARM-TrustZone-CortexM}.
 
 % ENCLAVEs
@@ -482,7 +493,7 @@ Then the system can be rewinded and set to a safe state while not being unavaila
 
 Fifth choice is the platform. 
 There exists a lot of different possibilities when it comes to implementing (and testing) a system. 
-The chosen platform to implement it is Keystone(\cite{keystone-web}, \cite{keystone-repo}), it is an open framework used for architecturing TEEs on a RISC-V architecture.
+The chosen platform to implement it is Keystone (\cite{keystone-web, keystone-repo}), it is an open framework used for architecturing TEEs on a RISC-V architecture.
 \\
 
 The final choice is to try an implement the whole SDRaD library in a TEE, making an equivalence between domains and enclaves. 
@@ -503,11 +514,13 @@ In conclusion, the research should focus on \textit{Fault recovery by rewinding 
 \chapter{Keystone Structure}
 "Keystone is an open framework for architecting trusted execution environments (TEEs) based on hardware enclaves. Keystone aims to provide an easy way of architecting and building a customized TEE for an arbitrary RISC-V platform with a simple workflow. 
 This allows the TEE to be highly optimized for better performance, smaller trusted computing base (TCB), and programmability with a given workload and a threat model." 
-- \href{https://docs.keystone-enclave.org/en/latest/Getting-Started/How-Keystone-Works/Keystone-Basics.html#keystone-basics}{Keystone Website : 2.2. Keystone Basics} (\cite{keystone-web})
+- 2.2. Keystone Basics \cite{keystone-web}
+\\\\
+Its implementation can be found on the corresponding github reposity: \keystonegithub.
 \\
-
-Its implementation can be found on the corresponding github reposity: \keystonegithub.\\
-The documentation can be found at : \href{https://docs.keystone-enclave.org/en/latest/index.html}{https://docs.keystone-enclave.org/en/latest/index.html} (\cite{keystone-web})
+The corresponding documentation can be found at :
+\href{https://docs.keystone-enclave.org/en/latest/index.html}{https://docs.keystone-enclave.org/} 
+\cite{keystone-web}
 
 
 \section{RISC-V}
@@ -515,8 +528,7 @@ RISC-V is a free and open-source (in contrast to x86 and ARM) Instruction Set Ar
 Due to its reduced instruction set, it has become a popular architecture for embedded systems and microcontrollers as it allows to reduce power consumption, code size, and memory use. \cite{riscv-manual}
 \\
 
-RISC-V has three (3) priviliege levels (\href{https://docs.keystone-enclave.org/en/latest/Getting-Started/How-Keystone-Works/RISC-V-Background.html#risc-v-privilieged-isa}
-                                            {2.1.2 RISC-V Backgrond} \{\cite{keystone-web}\}):
+RISC-V has three (3) priviliege levels (2.1.2. RISC-V background \cite{keystone-web}):
 \begin{itemize}
     \item U-mode: User processes
     \item S-mode: Kernel
@@ -538,7 +550,8 @@ In Keystone, the M-mode is used for:
 As all of these are software implementation. It is much easier to implement, debug and fix than it would be on hardware.
 
 \subsection{Physical Memory Protection (PMP)}
-"Physical Memory Protection (PMP) is a part of the RISC-V Privileged Architecture Specification which discribes the interface for a standard RISC-V memory protection unit." - \href{https://sifive.github.io/freedom-metal-docs/devguide/pmps.html}{Physical Memory Protection - SiFive}
+"Physical Memory Protection (PMP) is a part of the RISC-V Privileged Architecture Specification which discribes the interface for a standard RISC-V memory protection unit." 
+- \cite{SiFive}
 It alows the M-Mode to control physical memory access.
 PMP is ruled by a set of Control Status Registers (CSR) to restrict physical memory access for U and S mode and is configured by the M-mode.
 \\
@@ -580,49 +593,98 @@ Using a lower level to catch exception such as page fault allows them to be hand
 S-mode is great to handle page faults and system calls because they are frequent.   
 \\
 
-U- and S-modes accesses memory via virtual addresses, while M-mode operates exclusively on physical addresses.
-Moreover, the OS cannot tamper with the page table of the enclaves, this is because of PMP restrictions on the OS.  
-
-\section{Workflow}
+U and S modes access memory via virtual addresses while M-mode operates exclusively on physical addresses.
+In fact, the OS cannot tamper with the page table of the enclaves, this is because of PMP restrictions on the OS.  
 
 
+\section{Basics}
+\subsection{Overview}
 \begin{figure}[H]
     \centering
     \includegraphics[width=0.8\linewidth]{img/keystone_overview.png}
-    \caption{Keystone overview (2.2.1 (\cite{keystone-web}))}
-    \label{fig:keysotne-overview}
+    \caption{Keystone overview (2.2.1 \cite{keystone-web})}
+    \label{fig:keystone-overview}
 \end{figure}
 
+The keystone environment is made of several, unequal and concurrent, components.
+The diagram shown in figure \ref{fig:keystone-overview} highlights a privilege hierarchy, going from most to least privileged:
+\begin{itemize}
+    \item Trusted Hardware: That is composed of \textit{supposedly} trustworthy and contains RISC-V standards cores compatible with Keystone and a Root of Trust (for the SM machine).
+    This part can also bring optional features working with memory (cache partitioning, encryption, cryptographic randomness, etc.). 
+    For these features to be usable, the SM requires platform specific plug-ins (FU540 for example).    
+    \item M-mode: The SM, with a small TCB is the communication between the OS and the Enclaves.
+    \item S-mode: Composed mainly of the OS and then each RunTime (RT) part of enclaves are all separated to preserve isolation. The RT part of the encalves manage all the system call, interruptions, memory managment and traps. the  
+    \item U-mode: Is composed of all the untrusted apps (supervised by the OS) of the computer and all the Eapp part of the enclaves. Note that the enclaves, even in this mode, are encapsulated
+\end{itemize}
 
+\subsection{Workflow}
 \begin{figure}[H]
     \centering
     \includegraphics[width=0.8\linewidth]{img/keystone_workflow.png}
-    \caption{Keystone workflow (2.2.2 (\cite{keystone-web}))}
+    \caption{Keystone workflow (2.2.2 \cite{keystone-web})}
     \label{fig:keystone-workflow}
 \end{figure}
 
+Keystone is a two-way framework. 
+It is customizable by both the developers (of the enclaves) and by the platform producers. 
+This means that building on it works in two different ways.
+The former is the one that is in our interest. 
+Even more, the need to develop a host "supervisor" of the enclave and interface to keep track inbetween runs will add a step.
+\\
+
+The basic workflow os to build de the eapps, the host and then \textit{possibly modified} runtime binaries.
+Then, they can (but don't have to), be packaged together into a file (4,5).
+The files are then deployed (6,7) into the remote system.
+\\
+
+Keystone also allows the enclaves to do a remote attestation (2.2.2.3. \cite{keystone-web}).
 
 
+
+
+\section{Encalves}
+\subsection{Enclave lifecycle}
 \begin{figure}[H]
     \centering
     \includegraphics[width=0.8\linewidth]{img/enclave_lifecycle.png}
-    \caption{Enclave overall life cycle (2.2.3 \cite{keystone-web})}
+    \caption{Enclave overall lifecycle (2.2.3 \cite{keystone-web})}
     \label{fig:enclave-lifecycle}
 \end{figure}
 
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.7\linewidth]{img/diagram_lifecycle.png}
+    \caption{Current Enclave Lifecycle (1.9. Keystone Security Monitor\cite{keystone-web})}
+    \label{fig:current-enclave-lifecycle}
+\end{figure}
 
+There are three (3) main states for the enclave to be in:
+\begin{itemize}
+    \item (2.2.3.1. Creation): The (untrusted) host calls the SM with the Enclave Private Memory (EPM) allocated and the encalve's Page Table (PT).
+    The SM then receives the host's call and encapsulate the EPM using a PMP entry.
+    The entry is then shared among the cores so that the EPM is sealed from other cores.
+    The SM then checks, right before execution, the state of the enclave (in case of an error). 
+
+    \item (2.2.3.2. Execution): Still on the host side, it makes a call to the SM. This time to execute the enclave and passing it to on of the SM's core.
+    The SM thus relieves a PMP entry to one of its core  and the execution starts.
+    The enclave can be exited and resumed at any time in the execution. Each time the PMP permission is switched to maintain isolation.
+    
+    \item (2.2.3.3. Destruction) As well as exiting and resuming the enclave, the host can destroy it.
+    For that, the host calls the SM. the later clears the EPM and then relieve the PMP entry.
+    Last step is for the host to reclaim the newly available memory. 
+     
+\end{itemize}
 
 \section{QEMU}
+\cite{qemu-website}
+
 \subsection{Eyrie runtime}
 \subsection{FireSim}
 \section{Edge calls}
-
-\section{Encalves}
-
-
+\section{Data sealing}
 \section{Compilation}
-\section{Encountered Difficulties}
-\TODO{old doc/unstable}
+
+\section{Encountered difficulties}
 
 
 
@@ -696,11 +758,18 @@ Enclaves are great, even with a medium computation overhead in time and data it 
 \newpage
 
 \appendix
+\chapter*{Appendix}
 \label{chap:appendix}
 \section*{Rewind source code}
-These files can be found in the \texttt{examples/rewind/} subfolder of the repository :\github and they are compiled in this pdf.
+These files (and their usage) can be found in the repository: \github and they are compiled (downloadable) in this pdf.
 
 \begin{verbatim}
+# scripts
+make-examples.sh
+make-run.sh
+run-rewind.sh
+
+# source files
 examples/rewind/
   CMakeLists.txt
   eapp/
@@ -716,17 +785,17 @@ examples/rewind/
     host.hpp
 \end{verbatim}
 
-\subsection*{\texttt{eapp/checkpoint.c/.h}}
+\subsection*{\texttt{eapp/checkpoint}}
 \label{file:checkpoint}
 \srcattach{src/rewind/eapp/checkpoint.c}{examples/rewind/eapp/checkpoint.c}
 \srcattach{src/rewind/eapp/checkpoint.h}{examples/rewind/eapp/checkpoint.h}
 
-\subsection*{\texttt{eapp/crypto.c/.h}}
+\subsection*{\texttt{eapp/crypto}}
 \label{file:crypto}
 \srcattach{src/rewind/eapp/crypto.c}{examples/rewind/eapp/crypto.c}
 \srcattach{src/rewind/eapp/crypto.h}{examples/rewind/eapp/crypto.h}
 
-\subsection*{\texttt{eapp/fault.c/.h}}
+\subsection*{\texttt{eapp/fault}}
 \label{file:fault}
 \srcattach{src/rewind/eapp/fault.c}{examples/rewind/eapp/fault.c}
 \srcattach{src/rewind/eapp/fault.h}{examples/rewind/eapp/fault.h}
@@ -735,7 +804,7 @@ examples/rewind/
 \label{file:rewind}
 \srcattach{src/rewind/eapp/rewind.c}{examples/rewind/eapp/rewind.c}
 
-\subsection*{\texttt{host/host.cpp/.hpp}}
+\subsection*{\texttt{host/host}}
 \label{file:host}
 \srcattach{src/rewind/host/host.cpp}{examples/rewind/host/host.cpp}
 \srcattach{src/rewind/host/host.hpp}{examples/rewind/host/host.hpp}
@@ -743,27 +812,22 @@ examples/rewind/
 \subsection*{\texttt{CMakeLists.txt}}
 \label{file:CMake}
 \srcattach{src/rewind/CMakeLists.txt}{examples/rewind/CMakeLists.txt}
+\\\\
 
+\section*{Scripts}
 
-% Build & run
-\section*{Build and Run Scripts}
-
-These files can be found at the root of the repository :\github and they are compiled in this pdf.
-
-%
 \subsection*{\texttt{make-examples.sh}}
 \label{file:make-examples}
-\srcattach{src/make-examples.sh}{make-examples.sh}
+\srcattach{src/make-examples.sh}{./make-examples.sh}
 
 
 \subsection*{\texttt{run-rewind.exp}}
 \label{file:run-rewind}
-\srcattach{src/run-rewind.exp}{run-rewind.exp}
-
+\srcattach{src/run-rewind.exp}{./run-rewind.exp}
 
 \subsection*{\texttt{make-run.sh}}
 \label{file:make-run}
-\srcattach{src/make-run.sh}{make-run.sh}
+\srcattach{src/make-run.sh}{./make-run.sh}
 
 
 
