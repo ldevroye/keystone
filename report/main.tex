@@ -653,7 +653,7 @@ Keystone also allows the enclaves to do a remote attestation (2.2.2.3. \cite{key
 
 \begin{figure}[H]
     \centering
-    \includegraphics[width=0.7\linewidth]{img/diagram_lifecycle.png}
+    \includegraphics[width=0.5\linewidth]{img/diagram_lifecycle.png}
     \caption{Current Enclave Lifecycle (1.9. Keystone Security Monitor\cite{keystone-web})}
     \label{fig:current-enclave-lifecycle}
 \end{figure}
@@ -666,7 +666,7 @@ There are three (3) main states for the enclave to be in:
     The SM then checks, right before execution, the state of the enclave (in case of an error). 
 
     \item (2.2.3.2. Execution): Still on the host side, it makes a call to the SM. This time to execute the enclave and passing it to on of the SM's core.
-    The SM thus relieves a PMP entry to one of its core  and the execution starts.
+    The SM thus relieves a PMP entry and the execution starts.
     The enclave can be exited and resumed at any time in the execution. Each time the PMP permission is switched to maintain isolation.
     
     \item (2.2.3.3. Destruction) As well as exiting and resuming the enclave, the host can destroy it.
