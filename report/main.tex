@@ -528,7 +528,7 @@ RISC-V is a free and open-source (in contrast to x86 and ARM) Instruction Set Ar
 Due to its reduced instruction set, it has become a popular architecture for embedded systems and microcontrollers as it allows to reduce power consumption, code size, and memory use. \cite{riscv-manual}
 \\
 
-RISC-V has three (3) priviliege levels (2.1.2. RISC-V background \cite{keystone-web}):
+RISC-V has three (3) priviliege levels (2.1.2. RISC-V background \cite{keystone-web, review-keystone}):
 \begin{itemize}
     \item U-mode: User processes
     \item S-mode: Kernel
@@ -669,22 +669,77 @@ There are three (3) main states for the enclave to be in:
     The SM thus relieves a PMP entry and the execution starts.
     The enclave can be exited and resumed at any time in the execution. Each time the PMP permission is switched to maintain isolation.
     
-    \item (2.2.3.3. Destruction) As well as exiting and resuming the enclave, the host can destroy it.
+    \item (2.2.3.3. Destruction): As well as exiting and resuming the enclave, the host can destroy it.
     For that, the host calls the SM. the later clears the EPM and then relieve the PMP entry.
     Last step is for the host to reclaim the newly available memory. 
      
 \end{itemize}
 
-\section{QEMU}
-\cite{qemu-website}
+\section{Quick EMUlator (QEMU)}
+QEMU is a free and open-source emulator and vizualizer \cite{qemu-website}. 
+It has three (3) different operating modes:
+\begin{itemize}
+    \item The user emulation that runs a single program.
+    \item The system emulation which emulates a (and possibly several) full system, including preipherals and different architectures like RISC-V. 
+    This is the mode used for Keystone. 
+    \item The hypervisor support to act as a virtual-machine manager (VMM) or a backend emulation-device for virtual machines.
+\end{itemize} 
 
 \subsection{Eyrie runtime}
-\subsection{FireSim}
-\section{Edge calls}
-\section{Data sealing}
-\section{Compilation}
+Eyrie is Keystone’s reference enclave runtime, it runs inside the enclave in trusted mode, manages memory and basic system-calls.
+It sits between the enclave Eapp and the SM interface \cite{Eyrie, review-keystone}.
+The module is not a submodule of Keystone, this allows modularity and force manual updates \cite{keystone-web}. 
 
-\section{Encountered difficulties}
+\subsection{FireSim}
+"FireSim is an FPGA-based cycle-accurate simulator for RISC-V processors. 
+Using FireSim, you can test Keystone on open-source processors" (1.2.2 \cite{keystone-web}).
+It is an alternative run (for Keystone's usage) to QEMU as it simulates the hardware \cite{FireSim}.
+
+\section{Edge calls}
+An Edge call is a function that enters or exits the system. 
+A visual representation is that it is at the \textit{edge} of it, meaning that the method goes from inside to outside and the other way around.
+\\
+
+In Keystone, it is used to communicate between the host (unsafe) and the encalve (safe). 
+This is accomplished using shared memmory between the two. 
+More precisely using Outbound CALLs (\texttt{OCALL}). However, this is done by using offsets in memmory region, using solely offsets (neglecting virtual address pointers)
+\cite{keystone-web, review-keystone}.
+
+\subsection{OCALL lifecycle}
+To make things clear, we'll use an example of usage. 
+If we want to print something from inside the enclave, we need to : 
+
+\begin{itemize}
+    \item First, decide, with the host (at implemtation time), for the edge call corresponding to print: \texttt{OCALL\_PRINT\_VALUE}. 
+    \item Next, stock the value input \texttt{val} ($enclave\rightarrow host$) we want to print.
+    \item Optional, we decide of a return buffer value \texttt{ret} ($host \rightarrow enclave$).
+    \item Now make the \texttt{OCALL}: \\
+    \texttt{ocall(OCALL\_PRINT\_VALUE, \&val, sizeof(val), }\\
+    \texttt{\&ret, sizeof(ret))}
+\end{itemize}
+
+Now the runtime part allocates an \texttt{edge\_call\_t} structure in shared memmory. 
+Then fills the call type and copies the value in the another part of the shared memory using an offset.
+The last part for the enclave now is for the runtime to exit the enclave without destroying it. 
+This is done with an \texttt{SBI\_CALL} expressing an ocall.
+\\
+Now the kernel resumes, checks for the enclave and sees a pending ocall. 
+The execution is thus passed to the host.
+The host read the \texttt{edge\_call\_t} (destroying it at the same time) and notice that it is \texttt{OCALL\_PRINT\_VALUE}.
+The host then uses the same offset to read the buffered value and calls \texttt{\_print\_value} with the previously read value as an argument.
+After that, as for the enclave call, the \texttt{ret} buffer can be filled (if it was not 0 in the original ocall) with with data in the shared memory.
+The \texttt{edge\_call\_t} status is set to \texttt{SUCCESS} and the edge call is done for the host.
+\\
+
+An \texttt{SBI\_CALL} is emitted and the runtime re-enters the enclave. 
+The runtime checks for a returned value (if the return buffer wa not 0 at the start). 
+If so it then uses the offset to put the data in \texttt{ret} and then resumes the wrapper code and passes any return value to the first ocall function.
+
+
+\section{Data sealing}
+Keystone has a data sealing process. 
+
+\section{Compilation}
 
 
 
@@ -707,6 +762,9 @@ There are three (3) main states for the enclave to be in:
 \section{Testing phase}
 
 \section{Data analysis}
+
+\section{Encountered difficulties}
+
 
 
 
