@@ -575,7 +575,7 @@ It is used to form the TCB and provides :
     \item Side-Channel Defense (FU540 module)
 \end{itemize}   
 Being a software program, it must be verified first by hardware. 
-This is done by the \textit{root of trust}. 
+This is done by the \textit{Root of Trust} (RoT). 
 At boot time, it first measure the SM, generates a keypair for remote attestation and then signs the public keep.
 After that, the boots is resumed.
 \\
@@ -733,11 +733,82 @@ The \texttt{edge\_call\_t} status is set to \texttt{SUCCESS} and the edge call i
 
 An \texttt{SBI\_CALL} is emitted and the runtime re-enters the enclave. 
 The runtime checks for a returned value (if the return buffer wa not 0 at the start). 
-If so it then uses the offset to put the data in \texttt{ret} and then resumes the wrapper code and passes any return value to the first ocall function.
+If so, it then uses the offset to put the data in \texttt{ret} and then resumes the wrapper code and passes any return value to the first ocall function.
+\\
 
+Note that this can also be used to provide networking operations \cite{review-keystone}.
 
 \section{Data sealing}
-Keystone has a data sealing process. 
+Keystone has a sealing protocol. 
+Using this, an enclave can save data in an untrusted, non-volatile, memory outside of its memory range.
+It works by enabling the SM to to compute a \texttt{deterministic key} from the RoT for the enclave to use.
+The key works both for sealing and unsealing data.
+The deterministic operation is based on the device, a given enclave and a given SM running on a given processor will always yield the same key. 
+Therefore, a combination including any differing component will give a different key \cite{keystone-web, review-keystone}.
+\\
+
+A simple example of usage is given in the github repository (\keystonegithub)
+at \texttt{examples/tests/data-sealing/data-sealing.c}:
+\begin{verbatim}
+char *key_identifier = "identifier";
+struct sealing_key key_buffer;
+int ret = 0;
+
+/* Derive the sealing key */
+ret = get_sealing_key(&key_buffer, sizeof(key_buffer),
+                    (void *)key_identifier, 
+                    strlen(key_identifier));
+
+\end{verbatim}
+This snippet is implemented in the enclave side. 
+Note that there is an \textit{identifier} \label{def:key-identifier}, this allows the enclave to ask for several keys.
+Each of them are unique (and deterministic) for a given identifier. 
+\\
+
+Another subroutine for an enclave is to ask for an attestation using an SBI call \texttt{attest} that can be passed to the host using an edge call.
+The SM will generate and sign an attestation for the enclave.
+More informations about this can be found in the documentation at \textit{5. Attestation} \cite{keystone-web}.
+
+\subsection{Key-Hierarchy}
+\label{sub:key-hierarchy}
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.8\linewidth]{img/keystone_key_hierarchy.png}
+    \caption{Key-Hierarchy (6.1. Keystone Key-Hierarchy \cite{keystone-web})}
+    \label{fig:key-hierarchy}
+\end{figure}
+The base of this hierarchy is at the left-most. This is the asymetric key pair (public and private) of the processor (\texttt{PK\_D, SK\_D}).
+Computing the private key with the SM hash (\texttt{H\_SM}) which is derived from the RoT in SHA3. 
+Thus, as long as the RoT is safe, so is the SM's measurments.
+The result of the computation is used as a scalar for the Elliptic-Curve (ECC) Cryptography Key Generator.
+The final reslt is another key pair. This is the SM key pair (\texttt{PK\_SM, SK\_SM}).
+
+\subsection{Key Derivation}
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.8\linewidth]{img/sealing_key_deriv.png}
+    \caption{Key Derivation Diagram (6.2 Sealing-Key Derivation \cite{keystone-web})}
+    \label{fig:sealing-key}
+\end{figure}
+The red blocks are what we already computed in the Key Hierarchy \ref{sub:key-hierarchy} subsection.
+\\\\
+Now that the SM has a key pair, it can derive keys for the enclaves.
+This is done using three (3) components:
+\begin{itemize}
+    \item \texttt{SK\_SM}: SM private key, it ensures that the key is bounder to the SM (and thus the RoT).
+    \item The Enclave Hash, it ensures that the key is bounded to the enclave.
+    \item A \textit{key Identifier} (\ref{def:key-identifier}), it is an additionnal input for the enclave to be able to derive multiple keys.
+\end{itemize}
+
+The three components are computed in a Key Derivation Function (KDF). 
+The resulting sealing key is then signed using ECC and then putted in the Seal Key Struct (implemented as \texttt{sealing\_key}):
+\begin{verbatim}
+struct sealing_key {
+    uint8_t key[SEALING_KEY_LENGTH];
+    uint8_t signature[SIGNATURE_SIZE];
+};    
+\end{verbatim}
+
 
 \section{Compilation}
 
