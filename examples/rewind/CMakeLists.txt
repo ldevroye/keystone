@@ -1,5 +1,4 @@
-set(main_eapp_bin rewind)
-set(fallback_eapp_bin rewind-fallback)
+set(eapp_bin rewind)
 set(eapp_src
   eapp/rewind.c
   eapp/checkpoint.c
@@ -9,73 +8,68 @@ set(eapp_src
 set(host_bin rewind-runner)
 set(host_src host/host.cpp)
 set(package_name "rewind.ke")
-set(package_script "./rewind-runner ${main_eapp_bin} eyrie-rt loader.bin ${fallback_eapp_bin}")
+set(package_script "./rewind-runner rewind eyrie-rt loader.bin")
 set(eyrie_plugins "io_syscall linux_syscall env_setup")
 
 
 
 ###################### macros definitions (can be left empty) ######################
-set(FAULT_PERIOD "30" CACHE STRING "optional override for PERIOD macro (example: 30ULL)")
+set(FAULT_PERIOD "50" CACHE STRING "optional override for PERIOD macro (example: 30ULL)")
 set(FAULT_RANDOMIZE_SEED "1" CACHE STRING "optional override for FAULT_RANDOMIZE_SEED macro (0 or 1)")
 set(FAULT_SEED "" CACHE STRING "optional override for SEED macro (example: 0x6b656973746f6e68ULL)")
-set(EAPP_RUNS "50" CACHE STRING "optional override for the eapp main loop bound (example: 50)")
+set(EAPP_RUNS "100" CACHE STRING "optional override for the eapp main loop bound (example: 50)")
 set(HOST_MAX_RUN "20" CACHE STRING "optional override for host main loop bound before stopping execution (example: 10)")
 set(HOST_LOGGING "1" CACHE STRING "optional override for host logging (0 or 1)")
 set(EAPP_LOGGING "1" CACHE STRING "optional override for enclave logging (0 or 1)")
-set(ENABLE_TESTING "0" CACHE STRING "enable analysis mode with summary-only logs (0 or 1)")
+set(ENABLE_TESTING "1" CACHE STRING "enable analysis mode with summary-only logs (0 or 1)")
 set(ANALYSIS_RUNS "10" CACHE STRING "number of executions to average over in analysis mode")
 
 
 
 ###################### EAPP ######################
-function(configure_rewind_eapp target_name enclave_label)
-  add_executable(${target_name} ${eapp_src})
-  target_link_libraries(${target_name} "-nostdlib -static" ${KEYSTONE_LIB_EAPP} ${KEYSTONE_LIB_EDGE})
+add_executable(${eapp_bin} ${eapp_src})
+target_link_libraries(${eapp_bin} "-nostdlib -static" ${KEYSTONE_LIB_EAPP} ${KEYSTONE_LIB_EDGE})
 
-  # private keeps the frame layout stable for inspection during fault tracing
-  target_compile_options(${target_name} PRIVATE -fno-omit-frame-pointer)
+# PRIVATE is for end use of the option, meaning only these will have the tag
+# compiler option that keeps stack frames easier to inspect for
+target_compile_options(${eapp_bin} PRIVATE -fno-omit-frame-pointer)
 
-  # page crypto stays enabled for both identities
-  target_compile_options(${target_name} PRIVATE -DUSE_PAGE_CRYPTO)
-  target_compile_definitions(${target_name} PRIVATE ENCLAVE_LABEL="${enclave_label}")
+# build-time switch that enables page-crypto code path in the generated Eyrie runtime
+target_compile_options(${eapp_bin} PRIVATE -DUSE_PAGE_CRYPTO)
 
-  if(NOT "${FAULT_PERIOD}" STREQUAL "")
-    target_compile_definitions(${target_name} PRIVATE PERIOD=${FAULT_PERIOD})
-  endif()
+if(NOT "${FAULT_PERIOD}" STREQUAL "")
+  target_compile_definitions(${eapp_bin} PRIVATE PERIOD=${FAULT_PERIOD})
+endif()
 
-  if(NOT "${FAULT_RANDOMIZE_SEED}" STREQUAL "")
-    target_compile_definitions(${target_name} PRIVATE FAULT_RANDOMIZE_SEED=${FAULT_RANDOMIZE_SEED})
-  endif()
+if(NOT "${FAULT_RANDOMIZE_SEED}" STREQUAL "")
+  target_compile_definitions(${eapp_bin} PRIVATE FAULT_RANDOMIZE_SEED=${FAULT_RANDOMIZE_SEED})
+endif()
 
-  if(NOT "${FAULT_SEED}" STREQUAL "")
-    target_compile_definitions(${target_name} PRIVATE SEED=${FAULT_SEED})
-  endif()
+if(NOT "${FAULT_SEED}" STREQUAL "")
+  target_compile_definitions(${eapp_bin} PRIVATE SEED=${FAULT_SEED})
+endif()
 
-  if(NOT "${EAPP_RUNS}" STREQUAL "")
-    target_compile_definitions(${target_name} PRIVATE EAPP_RUNS=${EAPP_RUNS})
-  endif()
+if(NOT "${EAPP_RUNS}" STREQUAL "")
+  target_compile_definitions(${eapp_bin} PRIVATE EAPP_RUNS=${EAPP_RUNS})
+endif()
 
-  if(NOT "${EAPP_LOGGING}" STREQUAL "")
-    target_compile_definitions(${target_name} PRIVATE EAPP_LOGGING=${EAPP_LOGGING})
-  endif()
+if(NOT "${EAPP_LOGGING}" STREQUAL "")
+  target_compile_definitions(${eapp_bin} PRIVATE EAPP_LOGGING=${EAPP_LOGGING})
+endif()
 
-  if(NOT "${ENABLE_TESTING}" STREQUAL "")
-    target_compile_definitions(${target_name} PRIVATE ENABLE_TESTING=${ENABLE_TESTING})
-  endif()
+if(NOT "${ENABLE_TESTING}" STREQUAL "")
+  target_compile_definitions(${eapp_bin} PRIVATE ENABLE_TESTING=${ENABLE_TESTING})
+endif()
 
-  if(NOT "${ANALYSIS_RUNS}" STREQUAL "")
-    target_compile_definitions(${target_name} PRIVATE ANALYSIS_RUNS=${ANALYSIS_RUNS})
-  endif()
+if(NOT "${ANALYSIS_RUNS}" STREQUAL "")
+  target_compile_definitions(${eapp_bin} PRIVATE ANALYSIS_RUNS=${ANALYSIS_RUNS})
+endif()
 
-  # public includes are shared by both enclave identities
-  target_include_directories(${target_name}
-    PUBLIC ${KEYSTONE_SDK_DIR}/include/app
-    PUBLIC ${KEYSTONE_SDK_DIR}/include/edge
-    PUBLIC ${KEYSTONE_EYRIE_RUNTIME}/include)
-endfunction()
-
-configure_rewind_eapp(${main_eapp_bin} MAIN)
-configure_rewind_eapp(${fallback_eapp_bin} FALLBACK)
+# PUBLIC is for project dependency level, meaning the whole project will have these included
+target_include_directories(${eapp_bin}
+  PUBLIC ${KEYSTONE_SDK_DIR}/include/app
+  PUBLIC ${KEYSTONE_SDK_DIR}/include/edge
+  PUBLIC ${KEYSTONE_EYRIE_RUNTIME}/include)
 
 
 
@@ -129,18 +123,18 @@ target_include_directories(${host_bin}
 ###################### RUNTIME ######################
 # add target for Eyrie runtime (see keystone.cmake)
 set(eyrie_files_to_copy .options_log eyrie-rt loader.bin)
-add_eyrie_runtime(${main_eapp_bin}-eyrie
+add_eyrie_runtime(${eapp_bin}-eyrie
   ${eyrie_plugins}
   ${eyrie_files_to_copy})
 
 # add target for packaging (see keystone.cmake)
 
-add_keystone_package(${main_eapp_bin}-package
+add_keystone_package(${eapp_bin}-package
   ${package_name}
   ${package_script}
-  ${eyrie_files_to_copy} ${main_eapp_bin} ${fallback_eapp_bin} ${host_bin})
+  ${eyrie_files_to_copy} ${eapp_bin} ${host_bin})
 
-add_dependencies(${main_eapp_bin}-package ${main_eapp_bin}-eyrie)
+add_dependencies(${eapp_bin}-package ${eapp_bin}-eyrie)
 
 # add package to the top-level target
-add_dependencies(examples ${main_eapp_bin}-package)
+add_dependencies(examples ${eapp_bin}-package)

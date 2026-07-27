@@ -95,17 +95,9 @@ void print_buffer_dispatch(void* buffer)
 
 
 // each fresh enclave instance must register the same ocalls before it runs
-Error configure_enclave(Enclave& enclave, Params& params, int argc, char** argv, int retry_counter)
+Error configure_enclave(Enclave& enclave, Params& params, char** argv)
 {
-  if (argc < 5)
-  {
-    host_print("missing fallback enclave binary argument");
-    return Error::InvalidEnclave;
-  }
-
-  const char* enclave_binary = (retry_counter % 2 == 0) ? argv[1] : argv[4];
-  // round robin main/fallback binaries; conf and runtime stay shared
-  Error init_ret = enclave.init(enclave_binary, argv[2], argv[3], params);
+  Error init_ret = enclave.init(argv[1], argv[2], argv[3], params);
   
   if (init_ret != Error::Success) 
   {
@@ -154,7 +146,7 @@ int main(int argc, char** argv)
 
       auto run_start = chrono::steady_clock::now();
       host_print_if_not_testing("configuring enclave");
-      if (configure_enclave(enclave, params, argc, argv, retry_counter - 1) != success)
+      if (configure_enclave(enclave, params, argv) != success) 
       {
         return 1;
       }
