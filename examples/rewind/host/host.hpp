@@ -76,7 +76,7 @@ inline vector<uint8_t> saved_checkpoint_blob;
 void save_checkpoint_blob_dispatch(void* buffer);
 void load_checkpoint_blob_dispatch(void* buffer);
 void print_buffer_dispatch(void* buffer);
-Error configure_enclave(Enclave& enclave, Params& params, char** argv);
+Error configure_enclave(Enclave& enclave, Params& params, int argc, char** argv, int retry_counter);
 
 inline void host_print(const char* str)
 {

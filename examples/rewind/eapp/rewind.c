@@ -19,6 +19,10 @@
 #define ENABLE_TESTING 0
 #endif
 
+#ifndef ENCLAVE_LABEL
+#define ENCLAVE_LABEL "MAIN"
+#endif
+
 unsigned long ocall_print_buffer(char* data, size_t data_len)
 {
     unsigned long retval;
@@ -198,6 +202,7 @@ int main()
     struct rewind_checkpoint checkpoint; // empty for now as we will try to load the stack into it
     struct fault_model fault_model = get_default_model();
 
+    eapp_print_if_not_testing(ENCLAVE_LABEL);
     eapp_print_if_not_testing("testing mode enabled");
 
     // on restart, recover the last sealed checkpoint if the host has one
