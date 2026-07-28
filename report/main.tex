@@ -13,6 +13,8 @@
 \usepackage{times}
 \usepackage{setspace}
 \usepackage{float}
+\usepackage[a4paper,top=18mm,bottom=26mm,left=30mm,right=30mm,headheight=14pt,footskip=14mm]{geometry}
+\usepackage{titlesec}
 \usepackage{hyperref} 
 \usepackage{xurl}
 \Urlmuskip=0mu plus 1mu
@@ -79,6 +81,9 @@
   \ClearShipoutPictureBG%
 }
 
+\titlespacing*{\chapter}{0pt}{-1.2em}{0.8em}
+\titlespacing*{\section}{0pt}{0.5em}{0.3em}
+\titlespacing*{\subsection}{0pt}{0.4em}{0.2em}
 
 %COUNTER-------------------------------------------------------  %%%
 \newcounter{todocounter}
@@ -111,12 +116,6 @@
 }
 
 
-% 1. Introduction to the subject, state-of-the-art, situation
-% 2. Description, problem formulation
-% 3. Project of implementation, plan of realisation
-% 4. Reference list: extensive and relevant
-
-
 
 %-------------------------------------------------------%
 \begin{document}
@@ -124,7 +123,7 @@
 
 \setcounter{oldyear}{\year}
 \addtocounter{oldyear}{-1}
-\textwidth 145mm
+\setlength{\textwidth}{145mm}
 
 \begin{titlepage}
 \begin{center}
@@ -335,7 +334,7 @@ Now, we need to categorize faults \cite{future-research, other-goal}
 \begin{figure}[H]
     \centering
     \includegraphics[width=1\linewidth]{img/main_recovery_techniques.png}
-    \caption{The four (4) main fault recovery approaches. \\"In (a), (b), and (c), the symbol $\mathcal{T}^{(k)}_{i, j}$ represents the $j^{th}$ job of the $i^{th}$ task, and $k$ identifies the redundancy or re-execution job. Instead, in (d), $\mathcal{T}_{i,j,k}$ is the $k^{th}$ part of the job $\mathcal{T}_{i, j}$ . In the depicted example, the job $\mathcal{T}_{1,1}$ is composed of three parts" - Figure 1 of \cite{future-research}}
+    \caption{The four main fault recovery approaches. \\"In (a), (b), and (c), the symbol $\mathcal{T}^{(k)}_{i, j}$ represents the $j^{th}$ job of the $i^{th}$ task, and $k$ identifies the redundancy or re-execution job. Instead, in (d), $\mathcal{T}_{i,j,k}$ is the $k^{th}$ part of the job $\mathcal{T}_{i, j}$ . In the depicted example, the job $\mathcal{T}_{1,1}$ is composed of three parts" - Figure 1 of \cite{future-research}}
     \label{fig:main_recovery_techniques}
 \end{figure}
 
@@ -365,7 +364,7 @@ Software can use multithreading to help, but the extra cost is still there.
 Designing and implementing a system without tests cases is not imaginable. 
 To this end, fault injection is being used. The idea is quite simple, put the system under various stress tests to check its tolerance to faults. 
 This allows the use of a critical micro processor with no more reluctance than necessary. 
-These injections are made using four (4) different techniques. \cite{diversification-obfuscation, future-research}
+These injections are made using four different techniques. \cite{diversification-obfuscation, future-research}
 \begin{itemize}
     \item \textbf{Hardware}-based: Connect a device to mess with the system, for example with voltage spikes or imputing RF disturbances. A simple approach, yet effective. 
     \item \textbf{Software}-based: Use a program to mess with the memory allocation of the system, for example allocating random or predefined segments. It is also also fairly simple. 
@@ -405,6 +404,7 @@ For example, aviation with \textit{DO-178B} (or C) with the DAL priority that go
 \section{Cybersecurity}
 Cybersecurity is also a main point of attention in this field (as it is a field itself). 
 This is even more valid with the growth of the IoT in general on this past decades and this growth increased with the new arrival of Artificial Intelligence (AI) \cite{iot}.
+\TODO{Threat models \cite{security-privacy}} .
 
 % TEE
 \subsection{Trusted Execution Environments (TEE)}
@@ -474,7 +474,7 @@ My focus will be \textit{mixed critical} system, as they are great at modeling r
 
 Third cut is the type of faults. 
 As diving in any type of fault could be a thesis in itself, the faults will be reviewed only for what they are and not necessarily for their cause. 
-Thus, \textit{all three (3) types} will be looked upon.
+Thus, \textit{all three types} will be looked upon.
 \\
 
 Next cut is the channel that will be use. 
@@ -528,7 +528,7 @@ RISC-V is a free and open-source (in contrast to x86 and ARM) Instruction Set Ar
 Due to its reduced instruction set, it has become a popular architecture for embedded systems and microcontrollers as it allows to reduce power consumption, code size, and memory use. \cite{riscv-manual}
 \\
 
-RISC-V has three (3) priviliege levels (2.1.2. RISC-V background \cite{keystone-docs, review-keystone}):
+RISC-V has three priviliege levels (2.1.2. RISC-V background \cite{keystone-docs, review-keystone}):
 \begin{itemize}
     \item U-mode: User processes
     \item S-mode: Kernel
@@ -586,7 +586,7 @@ The OS and the enclaves can call SM functions using the Supervisor Binary Interf
 Each enclave use a region (section) of memory, each of these regions are defined by PMP entries.
 \\
 
-The SM uses by itself, two (2) PMP entries (SM space, untrusted memory) each of the active enclaves consum one entry.
+The SM uses by itself, two PMP entries (SM space, untrusted memory) each of the active enclaves consum one entry.
 
 \subsection{Interrupts and Exceptions}
 Any interruption or exception is received by the M-mode (by default). 
@@ -660,18 +660,18 @@ Keystone also allows the enclaves to do a remote attestation (2.2.2.3. \cite{key
     \label{fig:current-enclave-lifecycle}
 \end{figure}
 
-There are three (3) main states for the enclave to be in:
+There are three main states for the enclave to be in ((2.2.3) \cite{keystone-docs}):
 \begin{itemize}
-    \item (2.2.3.1. Creation): The (untrusted) host calls the SM with the Enclave Private Memory (EPM) allocated and the enclave's Page Table (PT).
+    \item \textbf{Creation}: The (untrusted) host calls the SM with the Enclave Private Memory (EPM) allocated and the enclave's Page Table (PT).
     The SM then receives the host's call and encapsulate the EPM using a PMP entry.
     The entry is then shared among the cores so that the EPM is sealed from other cores.
     The SM then checks, right before execution, the state of the enclave (in case of an error). 
 
-    \item (2.2.3.2. Execution): Still on the host side, it makes a call to the SM. This time to execute the enclave and passing it to on of the SM's core.
+    \item \textbf{Execution}: Still on the host side, it makes a call to the SM. This time to execute the enclave and passing it to on of the SM's core.
     The SM thus relieves a PMP entry and the execution starts.
     The enclave can be exited and resumed at any time in the execution. Each time the PMP permission is switched to maintain isolation.
     
-    \item (2.2.3.3. Destruction): As well as exiting and resuming the enclave, the host can destroy it.
+    \item \textbf{Destruction}: As well as exiting and resuming the enclave, the host can destroy it.
     For that, the host calls the SM. the later clears the EPM and then relieve the PMP entry.
     Last step is for the host to reclaim the newly available memory. 
      
@@ -680,7 +680,7 @@ There are three (3) main states for the enclave to be in:
 \section{Quick EMUlator (QEMU)}
 \label{sub:qemu}
 QEMU is a free and open-source emulator and vizualizer \cite{qemu-website}. 
-It has three (3) different operating modes:
+It has three different operating modes:
 \begin{itemize}
     \item The user emulation that runs a single program.
     \item The system emulation which emulates a (and possibly several) full system, including preipherals and different architectures like RISC-V. 
@@ -800,7 +800,7 @@ The red blocks are what we already computed in the Key Hierarchy \ref{sub:key-hi
 \\
 
 Now that the SM has a key pair, it can derive keys for the enclaves.
-This is done using three (3) components:
+This is done using three components:
 \begin{itemize}
     \item \texttt{SK\_SM}: SM private key, it ensures that the key is bounder to the SM (and thus the RoT).
     \item The Enclave Hash, it ensures that the key is bounded to the enclave.
@@ -892,7 +892,7 @@ Sets the configuration file for the buildroot to use.
 
 %%%%%%%%%%%%%%%%%%%%%%%% System Model %%%%%%%%%%%%%%%%%%%%%%%%
 \chapter{System Model and Design}
-This chapter describes the concrete implementation, the choices and the assumptions that have been made as well as the questions that are coming along.
+This chapter describes the concrete implementation, the choices and the assumptions that have been made.
 
 \section{Preliminary setup and selection}
 The first step is to have a strong, yet modular, idea of the concept to be implemented.
@@ -921,7 +921,7 @@ Only the last checkpoint is saved.
 \TODO{cite papers}
 Finaly, some rewind models can have modified (often degraded) version in case of a discard. 
 This is done to prevent attacks using the computation power and overloading a server by making it fail a task idefinitly for example. 
-This isn't the case here as there is only one binary source (the compile code) and it doesn't implement any fault assessment, the enclave behaves as if the fault caused a fatal crash and stops immediatly, returning an error.
+In this project, there is only one binary source (the compile code) and it doesn't implement any fault assessment, the enclave behaves as if the fault caused a fatal crash and stops immediatly, returning an error.
 However, we address this in the future work section \ref{sub:back-complexity}.
 \\
 
@@ -930,20 +930,47 @@ However, we address this in the future work section \ref{sub:back-complexity}.
 
 
 \section{Threat Model}
+
+\TODO{Review + small text}
+
 \subsection{Assumptions}
+The attacker may obtain arbitrary access to process memory and may trigger run-time attacks (faults) that corrupt application state, but cannot modify code pages under a W\(\oplus\)X policy \cite{sdrad, security-privacy}. 
+The attacker is also assumed to detect or exploit software-level vulnerabilities, while transient execution attacks, hardware-level fault injection, and other hardware or firmware-level attacks are out of scope and assumed to be covered by the Keystone security implementation. 
+In the Keystone setting, we additionally assume the enclave isolation and the underlying secure world mechanisms protect enclave code and secrets against direct software manipulation, and that the host is not trusted with enclave state recovery details.
+\\
+
+We further assume that the checkpointing and rewind mechanism operates securely, thaht is: a state external to the protected domain may be compromised, but the protected recovery boundary must remain trustworthy. 
+For the intermittent-device context, the checkpointed state may be exposed to physical disruption such as power loss or tampering with external storage, so recovery data must be authenticated and protected against rollback or corruption.
+
 \subsection{Requirements}
+The system must allow the application to continue operation after a detected fault or attack by restoring a trusted state and resuming execution from a safe point. 
+The recovery mechanism must preserve memory integrity after rewind, and isolation must ensure that faults in one compartment do not compromise other protected compartments or the logic responsible for transitions and recovery.
+\\
+
+An enclave state must remain protected across enclave transitions, that recovery metadata must be authenticated, and that the host must not be able to forge, tamper with, or roll back a checkpoint without detection. 
+Also, the checkpointed state should also be encrypted; integrity and continuity remain the minimum security target. 
+The design should also preserve the smallest possible trusted computing base and keep the rewind path testable and bounded as given by the Keystone architecture.
+
 
 
 \section{Implementation}
 
-\subsection{Scripts}
-
-\subsubsection{Logs}
-The compilation logs can be found in the \\
-\verb|build-$PLATFORM$BITS/build.log| file.
-
+\subsection{Rewind}
 \subsection{Data encryption}
 \subsection{Fault Modeling}
+
+\subsection{Scripts}
+Building and running scripts are great to make the development quicker and less prone to error.
+There are three scripts:
+\begin{itemize}
+    \item \verb|make-examples.sh| is rather simple and serves as the compilation.
+    \item \verb|run-rewind.exp| is the most complex one as qemu \ref{sub:qemu} is an emulation, inputs (and waiting times) are expected from the user.
+    A \verb|.exp| script is perfectly suited since they are the same each time.
+    \item \verb|make-run.sh| is a simple concatenation of the two other ones.
+\end{itemize}
+All of these can be found in the \github and in the Appendix \ref{file:scripts}.
+Also note that the compilation logs produced can be found in the \verb|build-$PLATFORM$BITS/build.log| file.
+
 
 \section{Testing phase}
 
@@ -1009,6 +1036,7 @@ Enclaves are great, even with a medium computation overhead in time and data it 
 \chapter*{Appendix}
 \label{chap:appendix}
 \section*{Rewind source code}
+\label{file:source-code}
 These files (and their usage) can be found in the repository: \github and they are compiled (downloadable) in this pdf.
 
 \begin{verbatim}
@@ -1063,7 +1091,7 @@ examples/rewind/
 \\\\
 
 \section*{Scripts}
-
+\label{file:scripts}
 \subsection*{\texttt{make-examples.sh}}
 \label{file:make-examples}
 \srcattach{src/make-examples.sh}{./make-examples.sh}
