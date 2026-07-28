@@ -817,6 +817,7 @@ struct sealing_key {
 
 
 \section{Compilation}
+\label{sub:compilation}
 As shown in the documentation, compilation in Keystone is, at first sight, a simple task (1.2.1.3. Compile Sources \cite{keystone-docs}).
 However, all of its different, standalone, components (\ref{sub:eyrie}, \ref{sub:qemu}) make it  very modular and thus more complex.
 
@@ -961,22 +962,19 @@ The design should also preserve the smallest possible trusted computing base and
 
 \subsection{Scripts}
 Building and running scripts are great to make the development quicker and less prone to error.
-There are three scripts:
+There are three scripts at the root of the project that can be used in order to compile, to run and to do both sequentialy:
 \begin{itemize}
-    \item \verb|make-examples.sh| is rather simple and serves as the compilation.
-    \item \verb|run-rewind.exp| is the most complex one as qemu \ref{sub:qemu} is an emulation, inputs (and waiting times) are expected from the user.
-    A \verb|.exp| script is perfectly suited since they are the same each time.
-    \item \verb|make-run.sh| is a simple concatenation of the two other ones.
+    \item \verb|make-examples.sh|: A rather simple one, it serves as the compilation (of the examples \ref{sub:compilation}).
+    \item \verb|run-rewind.exp|: The the most complex one as qemu \ref{sub:qemu} is an emulation, inputs (and waiting times) are expected from the user.
+    A \verb|.exp| script is perfectly suited, even more since they are the same each time.
+    \item \verb|make-run.sh|: This one is a simple concatenation of the other two.
 \end{itemize}
 All of these can be found in the \github and in the Appendix \ref{file:scripts}.
 Also note that the compilation logs produced can be found in the \verb|build-$PLATFORM$BITS/build.log| file.
 
 
 \section{Testing phase}
-
-
 \section{Data analysis}
-
 \section{Encountered difficulties}
 
 
