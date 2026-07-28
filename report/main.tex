@@ -493,7 +493,7 @@ Then the system can be rewinded and set to a safe state while not being unavaila
 
 Fifth choice is the platform. 
 There exists a lot of different possibilities when it comes to implementing (and testing) a system. 
-The chosen platform to implement it is Keystone (\cite{keystone-web, keystone-docs keystone-repo}), it is an open framework used for architecturing TEEs on a RISC-V architecture.
+The chosen platform to implement it is Keystone (\cite{keystone-repo, keystone-web, keystone-docs}), it is an open framework used for architecturing TEEs on a RISC-V architecture.
 \\
 
 The final choice is to try an implement the whole SDRaD library in a TEE, making an equivalence between domains and enclaves. 
@@ -550,6 +550,7 @@ In Keystone, the M-mode is used for:
 As all of these are software implementation. It is much easier to implement, debug and fix than it would be on hardware.
 
 \subsection{Physical Memory Protection (PMP)}
+\label{sub:pmp}
 "Physical Memory Protection (PMP) is a part of the RISC-V Privileged Architecture Specification which discribes the interface for a standard RISC-V memory protection unit." 
 - \cite{SiFive}
 It alows the M-Mode to control physical memory access.
@@ -565,6 +566,7 @@ Even with different hardware implementation, the standard garantees basic functi
 More importantly, PMP is used by the SM to create memory isolation and can be dynamically configured by the M-mode (using CSRs).
 
 \subsection{Security Monitor (SM)}
+\label{sub:sm}
 Is the root trusted software (and thus runs in M-mode). 
 It is used to form the TCB and provides :
 \begin{itemize}
@@ -613,7 +615,7 @@ The diagram shown in figure \ref{fig:keystone-overview} highlights a privilege h
     This part can also bring optional features working with memory (cache partitioning, encryption, cryptographic randomness, etc.). 
     For these features to be usable, the SM requires platform specific plug-ins (FU540 for example).    
     \item M-mode: The SM, with a small TCB is the communication between the OS and the Enclaves.
-    \item S-mode: Composed mainly of the OS and then each RunTime (RT) part of enclaves are all separated to preserve isolation. The RT part of the encalves manage all the system call, interruptions, memory managment and traps. the  
+    \item S-mode: Composed mainly of the OS and then each RunTime (RT) part of enclaves are all separated to preserve isolation. The RT part of the enclaves manage all the system call, interruptions, memory managment and traps. the  
     \item U-mode: Is composed of all the untrusted apps (supervised by the OS) of the computer and all the Eapp part of the enclaves. Note that the enclaves, even in this mode, are encapsulated
 \end{itemize}
 
@@ -642,7 +644,7 @@ Keystone also allows the enclaves to do a remote attestation (2.2.2.3. \cite{key
 
 
 
-\section{Encalves}
+\section{Enclaves}
 \subsection{Enclave lifecycle}
 \begin{figure}[H]
     \centering
@@ -660,7 +662,7 @@ Keystone also allows the enclaves to do a remote attestation (2.2.2.3. \cite{key
 
 There are three (3) main states for the enclave to be in:
 \begin{itemize}
-    \item (2.2.3.1. Creation): The (untrusted) host calls the SM with the Enclave Private Memory (EPM) allocated and the encalve's Page Table (PT).
+    \item (2.2.3.1. Creation): The (untrusted) host calls the SM with the Enclave Private Memory (EPM) allocated and the enclave's Page Table (PT).
     The SM then receives the host's call and encapsulate the EPM using a PMP entry.
     The entry is then shared among the cores so that the EPM is sealed from other cores.
     The SM then checks, right before execution, the state of the enclave (in case of an error). 
@@ -698,11 +700,12 @@ Using FireSim, you can test Keystone on open-source processors" (1.2.2 \cite{key
 It is an alternative run (for Keystone's usage) to QEMU as it simulates the hardware \cite{FireSim}.
 
 \section{Edge calls}
+\label{sub:edge-calls}
 An Edge call is a function that enters or exits the system. 
 A visual representation is that it is at the \textit{edge} of it, meaning that the method goes from inside to outside and the other way around.
 \\
 
-In Keystone, it is used to communicate between the host (unsafe) and the encalve (safe). 
+In Keystone, it is used to communicate between the host (unsafe) and the enclave (safe). 
 This is accomplished using shared memmory between the two. 
 More precisely using Outbound CALLs (\texttt{OCALL}). However, this is done by using offsets in memmory region, using solely offsets (neglecting virtual address pointers)
 \cite{keystone-docs, review-keystone}.
@@ -741,6 +744,7 @@ If so, it then uses the offset to put the data in \texttt{ret} and then resumes 
 Note that this can also be used to provide networking operations \cite{review-keystone}.
 
 \section{Data sealing}
+\label{sub:data-sealing}
 Keystone has a sealing protocol. 
 Using this, an enclave can save data in an untrusted, non-volatile, memory outside of its memory range.
 It works by enabling the SM to to compute a \texttt{deterministic key} from the RoT for the enclave to use.
@@ -849,6 +853,17 @@ this could be :
     \item \verb|all|
     \item etc.
 \end{itemize}
+When the compiler notices a stale, a warning message will be shown :
+\begin{verbatim}
+>>>  (WRN) Stale build directory detected for keystone-examples! 
+>>>  (WRN) You should build keystone-examples-dirclean to remove them. 
+>>>  (WRN) Not doing so may leave your build in an inconsistent state.
+\end{verbatim}
+For this example, the following build command should be ran:
+\begin{center}
+\verb|BUILDROOT_TARGET=host-keystone-examples-dirclean make -j$(nproc)|
+\end{center}
+
 
 \subsection{Platform}
 We can configures the platform to build. 
@@ -877,8 +892,47 @@ Sets the configuration file for the buildroot to use.
 
 %%%%%%%%%%%%%%%%%%%%%%%% System Model %%%%%%%%%%%%%%%%%%%%%%%%
 \chapter{System Model and Design}
+This chapter describes the concrete implementation, the choices and the assumptions that have been made as well as the questions that are coming along.
 
 \section{Preliminary setup and selection}
+The first step is to have a strong, yet modular, idea of the concept to be implemented.
+The goal is to obtain domains that can be checkpointed and the data that has been sealed needes to be accessible in another one.
+The domains discussed here are the ones from the "Rewind $\&$ Discard: Improving Software Resilience using Isolated Domains" \cite{sdrad}.
+We can make an easy parallel between enclaves and domains as they are executed in an isolated execution context with controlled memmory (\ref{sub:pmp}) from the outer, untrusted, world.
+The SM (\ref{sub:sm}) is an enclave factory and provides them with, as previously mentionned, controlled memmory.
+\\
+
+% data sealing
+Furthermore, several enclaves of the same binary (compiled source file) can be initialized. 
+This is important for the key generation of an enclave (\ref{sub:data-sealing}).
+In the case of a fault occuring in an enclave, the host can see the return code of the enclave and ask for the SM to create another instance of that same enclave (using PMP entries).
+The two instances will (as the key generation is determistic \cite{keystone-docs, review-keystone}) have the same resulting sealing key.
+This is true if we consider the identifier to be the same for both, as it is implemented in the binary of the enclave's eapp, the statement is supposedly satisfied.
+\\
+
+% data sealing & edge calls
+For the checkpointing scheme, the enclave use the edge calls (\ref{sub:edge-calls}) already implemented in keystone. 
+The checkpointed data is sent and retrieved (to and from the host's memmory space) using the enclave's key (\ref{sub:data-sealing}) using two custom edge calls, one for sending and one for retrieving. 
+To ensure that the data isn't tampered, there is a layer on top of Keystone's encryption scheme.
+The layer adds a tag for the enclave to check if the unsealed data corresponds to the sealed one.
+Only the last checkpoint is saved.
+\\
+
+\TODO{cite papers}
+Finaly, some rewind models can have modified (often degraded) version in case of a discard. 
+This is done to prevent attacks using the computation power and overloading a server by making it fail a task idefinitly for example. 
+This isn't the case here as there is only one binary source (the compile code) and it doesn't implement any fault assessment, the enclave behaves as if the fault caused a fatal crash and stops immediatly, returning an error.
+However, we address this in the future work section \ref{sub:back-complexity}.
+\\
+
+% Fault model
+% Tests
+
+
+\section{Threat Model}
+\subsection{Assumptions}
+\subsection{Requirements}
+
 
 \section{Implementation}
 
@@ -888,11 +942,11 @@ Sets the configuration file for the buildroot to use.
 The compilation logs can be found in the \\
 \verb|build-$PLATFORM$BITS/build.log| file.
 
-\section{Data encryption}
-
-\section{Fault Modeling}
+\subsection{Data encryption}
+\subsection{Fault Modeling}
 
 \section{Testing phase}
+
 
 \section{Data analysis}
 
@@ -932,6 +986,7 @@ The compilation logs can be found in the \\
 \section{More complexe fault model}
 
 \section{Enclave Complexity on backup}
+\label{sub:back-complexity}
 
 \TODO{More?}
 
