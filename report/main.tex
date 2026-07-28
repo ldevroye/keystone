@@ -965,8 +965,8 @@ Building and running scripts are great to make the development quicker and less 
 There are three scripts at the root of the project that can be used in order to compile, to run and to do both sequentialy:
 \begin{itemize}
     \item \verb|make-examples.sh|: A rather simple one, it serves as the compilation (of the examples \ref{sub:compilation}).
-    \item \verb|run-rewind.exp|: The the most complex one as qemu \ref{sub:qemu} is an emulation, inputs (and waiting times) are expected from the user.
-    A \verb|.exp| script is perfectly suited, even more since they are the same each time.
+    \item \verb|run-rewind.exp|: The most complex one as qemu \ref{sub:qemu} is an emulation, inputs and waiting times (interactions) are expected from the user.
+    Thus, an \verb|.exp| (expect) script is perfectly suited.
     \item \verb|make-run.sh|: This one is a simple concatenation of the other two.
 \end{itemize}
 All of these can be found in the \github and in the Appendix \ref{file:scripts}.
