@@ -166,7 +166,6 @@ Departement of Computer Sciences
 %%%%%%%%%%%%%%%%%%%%%%%% ABSTRACT
 \begin{abstract}
 \TODO{ABSTRACT at the end}
-    % Microprocessors are getting more efficient each year due to miniaturization. However, this rise in efficiency comes with the pricey cost that are faults. This problem is adressed gaining attention and the filed is structuring around the type of faults and the way to deal with them. Moreover, this subject can be extended to cybersecurity in a way to harden the task (or at least the conception) of malicious programs. This report aims at setting the bases, the goal and the methodology for the Master Thesis.
 \end{abstract}
 
 
@@ -177,6 +176,13 @@ Departement of Computer Sciences
 
 %%%%%%%%%%%%%%%%%%%%%%%% INTRODUCTION %%%%%%%%%%%%%%%%%%%%%%%%
 \chapter{Introduction}
+
+
+%Motivation
+%Thesis question / objective
+%Contributions
+%Document structure
+
 % INTRO
 Microprocessors are getting more efficient each year due to miniaturization of transistors \cite{silicon}. 
 However, this rise in efficiency comes with the pricey cost that are faults. 
@@ -234,6 +240,14 @@ The files can also be found in the Appendix (\ref{chap:appendix}).
 
 %%%%%%%%%%%%%%%%%%%%%%%% SotA %%%%%%%%%%%%%%%%%%%%%%%%
 \chapter{State of the Art}
+\label{chap:SotA}
+
+%Fault tolerance / redundancy overview
+%Checkpointing and rewind
+%TEEs and enclaves
+%Keystone architecture
+%Existing related work close to your implementation
+
 
 % INTEREST
 \section{Engagment in the scientific community}
@@ -446,10 +460,16 @@ This a a one way approach as when the structure is deleted (when classes are mer
 
 % LIMITATIONS
 \subsection{Limitations}
-As every domain in computer science, there are limitations. 
+One of the goals is to make the system more resilient to attacks and thus to rise the cost of developing attacks that could harm the system \cite{diversification-obfuscation} (this is seen as control flow). 
+Another one is to prevent someone with malicious intent to comprehend the system (static analysis) or even if they do, to prevent them understand the flow of the program as it runs (dynamic analysis).
+However, as for every domain (in computer science), there are limitations. 
 These inherent limitations are that no system is full proof. 
-The goal here is to make the system more resilient to attacks and thus to rise the cost of developing attacks that could harm the system \cite{diversification-obfuscation} (this is seen as control flow). 
-Another goal is to prevent someone with malicious intent to comprehend the system (static analysis) or even if they do, to prevent them understand the flow of the program as it runs (dynamic analysis).
+
+
+\section{Background work}
+\TODO{related work that's already done, that I'm basing myself of.}
+% papers
+\cite{sdrad,ARM-TrustZone-CortexM}
 
 
 
@@ -955,8 +975,14 @@ The design should also preserve the smallest possible trusted computing base and
 
 
 \section{Implementation}
+So far, this thesis has mainly covered concepts \ref{chap:SotA}, ground work \cite{ARM-TrustZone-CortexM, sdrad, keystone-repo} and limitiations.
+All of these are used to produce the implementation of the rewind enclave mechanism.
+\\
 
-\subsection{Rewind}
+The files that are implemented and described can be found on the \github and in the \ref{chap:appendix}{Appendix}
+
+
+\subsection{Rewind \& Checkpointing}
 \subsection{Data encryption}
 \subsection{Fault Modeling}
 
@@ -966,16 +992,13 @@ There are three scripts at the root of the project that can be used in order to 
 \begin{itemize}
     \item \verb|make-examples.sh|: A rather simple one, it serves as the compilation (of the examples \ref{sub:compilation}).
     \item \verb|run-rewind.exp|: The most complex one as qemu \ref{sub:qemu} is an emulation, inputs and waiting times (interactions) are expected from the user.
-    Thus, an \verb|.exp| (expect) script is perfectly suited.
+    Thus, a \verb|.exp| (expect) script is perfectly suited.
     \item \verb|make-run.sh|: This one is a simple concatenation of the other two.
 \end{itemize}
-All of these can be found in the \github and in the Appendix \ref{file:scripts}.
 Also note that the compilation logs produced can be found in the \verb|build-$PLATFORM$BITS/build.log| file.
 
 
-\section{Testing phase}
-\section{Data analysis}
-\section{Encountered difficulties}
+
 
 
 
@@ -984,11 +1007,12 @@ Also note that the compilation logs produced can be found in the \verb|build-$PL
 
 %%%%%%%%%%%%%%%%%%%%%%%% Experimental setup %%%%%%%%%%%%%%%%%%%%%%%%
 \chapter{Experimental Setup}
-\TODO{Macro setup \& workflow}
 \section{Macros}
-
-\section{logging}
+\subsection{Logging}
 \section{Emulation}
+\section{Testing phase}
+\section{Data analysis}
+\section{Encountered difficulties}
 
 %%%%%%%%%%%%%%%%%%%%%%%% Results %%%%%%%%%%%%%%%%%%%%%%%%
 \chapter{Results and Discussion}
