@@ -620,6 +620,7 @@ In fact, the OS cannot tamper with the page table of the enclaves, this is becau
 
 
 \section{Basics}
+\label{sub:basics}
 \subsection{Overview}
 \begin{figure}[H]
     \centering
@@ -983,8 +984,43 @@ The files that are implemented and described can be found on the \github and in 
 
 
 \subsection{Rewind \& Checkpointing}
+Implementing the rewind example is done in two different places, the \verb|eapp/| and \verb|host| subfolders.
+The eapp is, as shown is the Keystone Basics \ref{sub:basics}, the trusted part and would be considered a \textit{transient domain} \cite{sdrad}.
+A transient domain can exit (abnormally or not), it doesn't retain data upon exiting and is closed from the outer world (in both writing and reading).
+In comparison, the host would be considered a \textit{persistent domain} as it keeps the enclave data (the sealed checkpoint), it cannot look into an enclave's memory region (except for the shared one given by the SM).
+However, the host is \textbf{not} trusted in itself.
+\\
+
+To address this security issue, the checkpoint is sealed (using the sealing key given by the SM) and uses a tag. This ensure that the host can neither read it or tamper with it.
+Upon unsealing a the checkpoint, the enclave checks its tag so see if it fits the data. If not, the  data is discarded and the enclave restarts the computation from the beginning.
+\\
+
+The discard and rewind is done by destroying the enclave and building a new one on the the same binary
+
 \subsection{Data encryption}
+
 \subsection{Fault Modeling}
+The fault detection and correction is not in the scope of this thesis.
+Thus, a small fault model is implemented \ref{file:fault}. it is based of of the the SplitMix \cite{splitmix,splitmix1} algorithm. 
+It is a small, object-oriented, non-cryptographic, Pseudo-Random Number Generator (PRNG) and is based on Linear Congruential Generators (LCG) followed by bit-mixing (XOR-shifts) operations. 
+It produces good enough results while being lightweight. 
+We use the 64bit version (SplitMix64).
+\\
+
+We maintain a 64-bit \verb|fault_model| structure with three fields:
+\begin{itemize}
+    \item \textbf{seed}: initial value for the generator
+    \item \textbf{step}: current iteration count
+    \item \textbf{period}: inverse of fault probability
+\end{itemize}
+
+The seed and the period can be chosen by modifying the according macros in the \verb|CMakeList| \ref{file:CMake}.
+Furthermore, the seed can be either random (based on the runtime cycle counter) or fixed.
+\begin{itemize}
+    \item \verb|SEED|: the seed to be picked
+    \item \verb|FAULT_RANDOMIZE_SEED|: if set to true then the seed is "randomly" picked, otherwise it is set to \verb|SEED|
+    \item \verb|PERIOD|: the number of call to the function, on average, before it should return true
+\end{itemize}
 
 \subsection{Scripts}
 Building and running scripts are great to make the development quicker and less prone to error.
