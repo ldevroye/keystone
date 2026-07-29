@@ -47,13 +47,12 @@ void not_implemented_fatal(struct encl_ctx* ctx){
 #endif
 
     // Bail to m-mode
-    /*__asm__ volatile("csrr a0, scause\r\nli a7, 1111\r\n ecall");
-
+    __asm__ volatile("csrr a0, scause\r\nli a7, 1111\r\n ecall");
     return;
-    */
     
-    sbi_exit_enclave(-1);
-    while(1);
+    
+    //sbi_exit_enclave(-1);
+    //while(1);
 }
 
 

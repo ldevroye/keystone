@@ -228,7 +228,8 @@ int main()
         {
             eapp_print_if_not_testing("Simulated fault");
             //asm volatile("unimp"); // returns illegal RISC-V instruction
-            __builtin_trap();
+            //__builtin_trap();
+            EAPP_RETURN(16);
             //return 16; // Keystone::Error::EnclaveInterrupted
         }
 
@@ -240,7 +241,8 @@ int main()
         if (save_checkpoint((uintptr_t)&state, sizeof(state)) != 0) 
         {
             eapp_print_if_not_testing("failed to save stack checkpoint");
-            __builtin_trap();
+            //__builtin_trap();
+            EAPP_RETURN(16);
         }
         
     }
