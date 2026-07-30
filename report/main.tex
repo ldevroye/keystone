@@ -104,7 +104,7 @@
 
 % Clickable source link that also embeds the file inside the PDF.
 \newcommand{\srcattach}[2]{%
-    \noindent\textattachfile[icon=Paperclip,color=0 0 0]{#1}{\texttt{#2}}\\
+    \textattachfile[icon=Paperclip,color=0 0 0]{#1}{\texttt{#2}}\\
 }
 
 \newcommand{\github}{%
@@ -980,7 +980,7 @@ So far, this thesis has mainly covered concepts \ref{chap:SotA}, ground work \ci
 All of these are used to produce the implementation of the rewind enclave mechanism.
 \\
 
-The files that are implemented and described can be found on the \github and in the \ref{chap:appendix}{Appendix}
+The files that are implemented and described can be found on the \github and in the Appendix \ref{chap:appendix}
 
 
 \subsection{Rewind}
@@ -1011,35 +1011,60 @@ There is only one execution changing macro, other setups are the edge calls :
 \end{itemize}
 The rewinding protocol in the \verb|host.cpp/.hpp| file \ref{file:host} looks like:
 \begin{verbatim}
-    // 1. setup :
-    //  - the macros in the CMakeList 
-    //  - the edge calls number to be mapped
+// 1. setup :
+//  - the macros in the CMakeList 
+//  - the edge calls number to be mapped
 
-    // 2. Setup the enclave parameters (memory-wise)
-    Params params;
-    uintptr_t ret = 1;
-    auto retry_counter = 0;
+// 2. Setup the enclave parameters (memory-wise)
+Params params;
+uintptr_t ret = 1;
+auto retry_counter = 0;
 
-    // 3. Beginning the execution loop
-    while (ret != 0  && retry_counter < MAX_RUNS) 
-    {
+// 3. Beginning the execution loop
+while (ret != 0  && retry_counter < MAX_RUNS) 
+{
 
-        // 3.A Configure the enclave
-        // enclave.init() && linking edge calls to 
-        configure_enclave(enclave, params, argv); 
+    // 3a. Configure the enclave
+    // enclave.init() && linking edge calls to 
+    configure_enclave(enclave, params, argv); 
 
-        //SM destroy the encalve upon completion
-        enclave.run(&ret); 
-    }
+    //SM destroy the encalve upon completion
+    enclave.run(&ret); 
+}
 
-    // 4. Exiting
-    return ret;
+// 4. Exiting
+return ret;
 \end{verbatim}
-
-The edge wrappers are working in parallel to the main loop.
+The edge call wrappers are working in parallel to the main loop.
 These wrappers are implemented as such:
 \begin{verbatim}
-    
+// 1. Linking the edge calls to the functions
+// this is done in configure_enclave()
+enclave.registerOcallDispatch(incoming_call_dispatch);
+register_call(OCALL_PRINT_BUFFER, print_buffer_dispatch);
+register_call(OCALL_SAVE_CHECKPOINT_BLOB, 
+            save_checkpoint_blob_dispatch);
+register_call(OCALL_LOAD_CHECKPOINT_BLOB, 
+            load_checkpoint_blob_dispatch);
+
+// 2. Basic edge call structure
+edge_call_wrapper(void *buffer) 
+{
+
+    // 3. Checks the call sanity  
+    if (edge_call_args_ptr(edge_call, &arg_ptr, &arg_size) != 0 
+        || arg_size == 0) 
+    {
+        edge_call->return_data.call_status = CALL_STATUS_ERROR;
+        return;
+    }
+
+    /* 4. Wrapper logic */ 
+
+    // 5. Exiting
+    edge_call->return_data.call_status = CALL_STATUS_OK;
+
+}
 \end{verbatim}
 
 \subsubsection{Enclave-side (EAPP)}
@@ -1053,44 +1078,73 @@ Note that the edge calls must be the same for the host and enclave in order to e
 \end{itemize}
 The rewinding protocol in the \verb|rewind.c| file \ref{file:rewind} looks like:
 \begin{verbatim}
-    // 1. Setup :
-    //  - the macros in the CMakeList 
-    //  - the edge calls number to be mapped
+// 1. Setup :
+//  - the macros in the CMakeList 
+//  - the edge calls number to be mapped
 
-    // 2. Load the structs
-    struct rewind_state state = {0, 1, 0}; // a, b, counter
-    struct rewind_checkpoint checkpoint;
-    struct fault_model f_m = get_default_model();
+// 2. Load the structs
+struct rewind_state state = {0, 1, 0}; // a, b, counter
+struct rewind_checkpoint checkpoint;
+struct fault_model f_m = get_default_model();
 
-    2.A check for an existing checkpoint save
-    // OCALL the host
-    if (load_checkpoint(&checkpoint) == 0) 
+2a. check for an existing checkpoint save
+// OCALL the host
+if (load_checkpoint(&checkpoint) == 0) 
+{
+    2b. try and restore the saved checkpoint if there is one 
+    restore_checkpoint(&state, &checkpoint)
+}
+
+// 3. Beginning the execution loop
+for (; state.counter < EAPP_RUNS;)
+{
+
+    // Fault happens before the end of the computation 
+    // to mimic stall in the process.
+    if (fault_should_trigger(&f_m)) 
     {
-        2.B try and restore the saved checkpoint if there is one 
-        restore_checkpoint(&state, &checkpoint)
+        // More explanations in Fault section
+        EAPP_RETURN(16); 
     }
 
-    // 3. Beginning the execution loop
-    for (; state.counter < EAPP_RUNS;)
+    // Fibonacci
+    auto next = state.a + state.b;
+    state.a = state.b;
+    state.b = next;
+
+    save_checkpoint((uintptr_t)&state, sizeof(state));
+}
+
+// 4. Exiting
+EAPP_RETURN(0);
+\end{verbatim}
+In contrast to the host, the edge calls, being introduced by the enclave are sequential to the main loop:
+
+\begin{verbatim}
+// 1. Linking the edge calls to the functions
+// this is done in configure_enclave()
+save_checkpoint()
+load_checkpoint()
+restore_checkpoint()
+
+// 2. Basic edge call structure
+edge_call_wrapper(void *buffer) 
+{
+
+    // 3. Checks the call sanity  
+    if (edge_call_args_ptr(edge_call, &arg_ptr, &arg_size) != 0 
+        || arg_size == 0) 
     {
-
-        // Fault happens before the end of the computation 
-        // to mimic stall in the process.
-        if (fault_should_trigger(&f_m)) 
-        {
-            // More explanations in Fault section
-            EAPP_RETURN(16); 
-        }
-
-        // Fibonacci
-        auto next = state.a + state.b;
-        state.a = state.b;
-        state.b = next;
-
-        save_checkpoint((uintptr_t)&state, sizeof(state));
+        edge_call->return_data.call_status = CALL_STATUS_ERROR;
+        return;
     }
 
-    EAPP_RETURN(0);
+    /* 4. Wrapper logic */
+
+    // 5. Exiting
+    edge_call->return_data.call_status = CALL_STATUS_OK;
+
+}
 \end{verbatim}
 
 \subsection{Checkpoint}
@@ -1116,25 +1170,25 @@ Furthermore, the seed can be either random (based on the runtime cycle counter) 
 \begin{itemize}
     \item \verb|SEED|: The seed to be picked, useful for testing.
     \item \verb|FAULT_RANDOMIZE_SEED|: If set to true (by default) then the seed is "randomly" picked, otherwise it is set to \verb|SEED|.
-    \item \verb|PERIOD|: The number of call to the function, on average, before it should return true.\\
+    \item \verb|PERIOD|: The number of call to the function, on average, before it should return true.
 \end{itemize}
 The normal usage is : 
 \begin{verbatim}
 
 
-    // 1. setup the macros in the CMakeList
+// 1. setup the macros in the CMakeList
 
-    // 2. initialize the faut_model
-    struct fault_model f_m = get_default_model();
+// 2. initialize the faut_model
+struct fault_model f_m = get_default_model();
 
-    // 3. at each step, trigger a possible fault
-    // chances are 1/PERIOD
-    if (fault_should_trigger(&f_m)) 
-    {
-        // 4. Exit then encalve with abnormal code
-        // Keystone::Error::EnclaveInterrupted = 16, the enum
-        EAPP_RETURN(16);
-    }
+// 3. at each step, trigger a possible fault
+// chances are 1/PERIOD
+if (fault_should_trigger(&f_m)) 
+{
+    // 4. Exit then encalve with abnormal code
+    // Keystone::Error::EnclaveInterrupted = 16, the enum
+    EAPP_RETURN(16);
+}
 \end{verbatim}
 Note that we treat a fault as an error as the goal is to checkpoint and not to catch, SEUs, bursts, permanently damaged hardware.
 Malicious data tampering in the enclave is not discussed as Keystone supposedly guarantees data isolation using PMP \ref{sub:pmp}, the SM \ref{sub:sm} (and thus a RoT).   
@@ -1149,7 +1203,7 @@ There are three scripts at the root of the project that can be used in order to 
     Thus, a \verb|.exp| (expect) script is perfectly suited.
     \item \verb|make-run.sh|: A simple concatenation of the other two.
 \end{itemize}
-Also note that the compilation logs produced can be found in the \verb|build-$PLATFORM$BITS/build.log| file.
+Note that the logs produced can be found in the \verb|build-$PLATFORM$BITS/build.log| file.
 
 
 
@@ -1263,7 +1317,6 @@ examples/rewind/
 \subsection*{\texttt{CMakeLists.txt}}
 \label{file:CMake}
 \srcattach{src/rewind/CMakeLists.txt}{examples/rewind/CMakeLists.txt}
-\\\\
 
 \section*{Scripts}
 \label{file:scripts}
