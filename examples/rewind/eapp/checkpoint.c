@@ -54,7 +54,6 @@ int load_checkpoint(struct rewind_checkpoint *checkpoint)
 
 int restore_checkpoint(struct rewind_state *state, const struct rewind_checkpoint *checkpoint)
 {
-    // the demo only restores the state object that was deliberately kept on the stack
     if (checkpoint->stack_len < sizeof(*state) ||
         checkpoint->stack_len > STACK_SNAPSHOT_SIZE ||
         checkpoint->stack_fp <= checkpoint->stack_sp) 

@@ -1041,7 +1041,8 @@ These wrappers are implemented as such:
 // 1. Linking the edge calls to the functions
 // this is done in configure_enclave()
 enclave.registerOcallDispatch(incoming_call_dispatch);
-register_call(OCALL_PRINT_BUFFER, print_buffer_dispatch);
+register_call(OCALL_PRINT_BUFFER, 
+            print_buffer_dispatch);
 register_call(OCALL_SAVE_CHECKPOINT_BLOB, 
             save_checkpoint_blob_dispatch);
 register_call(OCALL_LOAD_CHECKPOINT_BLOB, 
@@ -1061,8 +1062,24 @@ edge_call_wrapper(void *buffer)
 
     /* 4. Wrapper logic */ 
 
-    // 5. Exiting
-    edge_call->return_data.call_status = CALL_STATUS_OK;
+    // 5. Setup return data
+    ret_val = /* some logic */
+
+    uintptr_t data_section = edge_call_data_ptr();
+    memcpy((void*)data_section, 
+            &ret_val, 
+            sizeof(type_to_return));
+            
+    if (edge_call_setup_ret(edge_call, 
+                            (void*)data_section, 
+                            sizeof(type_to_return))) 
+    {
+        call_status = CALL_STATUS_BAD_PTR;
+    }
+
+    // 6. Exiting
+    edge_call->return_data.call_status = call_status;
+    return;
 
 }
 \end{verbatim}
@@ -1119,18 +1136,16 @@ for (; state.counter < EAPP_RUNS;)
 EAPP_RETURN(0);
 \end{verbatim}
 In contrast to the host, the edge calls, being introduced by the enclave are sequential to the main loop:
-
 \begin{verbatim}
-// 1. Linking the edge calls to the functions
-// this is done in configure_enclave()
-save_checkpoint()
-load_checkpoint()
-restore_checkpoint()
+// 1. The edge functions are
+unsigned long ocall_print_buffer(char* data, size_t data_len);
+void save_checkpoint_blob_dispatch(void* buffer);
+void load_checkpoint_blob_dispatch(void* buffer);
 
 // 2. Basic edge call structure
 edge_call_wrapper(void *buffer) 
 {
-
+    auto call_status = CALL_STATUS_OK;
     // 3. Checks the call sanity  
     if (edge_call_args_ptr(edge_call, &arg_ptr, &arg_size) != 0 
         || arg_size == 0) 
@@ -1141,9 +1156,24 @@ edge_call_wrapper(void *buffer)
 
     /* 4. Wrapper logic */
 
-    // 5. Exiting
-    edge_call->return_data.call_status = CALL_STATUS_OK;
+    // 5. Setup return data
+    ret_val = /* some logic */
 
+    uintptr_t data_section = edge_call_data_ptr();
+    memcpy((void*)data_section, 
+            &ret_val, 
+            sizeof(type_to_return));
+            
+    if (edge_call_setup_ret(edge_call, 
+                            (void*)data_section, 
+                            sizeof(type_to_return))) 
+    {
+        call_status = CALL_STATUS_BAD_PTR;
+    }
+
+    // 6. Exiting
+    edge_call->return_data.call_status = call_status;
+    return;
 }
 \end{verbatim}
 
@@ -1154,7 +1184,7 @@ edge_call_wrapper(void *buffer)
 
 
 \subsection{Fault Modeling}
-The fault detection and correction is not in the scope of this thesis.
+Advanced fault detection and correction is not in the scope of this thesis.
 Thus, a small fault model is implemented \ref{file:fault}. it is based of of the the SplitMix \cite{splitmix,splitmix1} algorithm. 
 It is a small, object-oriented, non-cryptographic, Pseudo-Random Number Generator (PRNG) and is based on Linear Congruential Generators (LCG) followed by bit-mixing (XOR-shifts) operations. 
 It produces good enough results while being lightweight. 
@@ -1174,8 +1204,6 @@ Furthermore, the seed can be either random (based on the runtime cycle counter) 
 \end{itemize}
 The normal usage is : 
 \begin{verbatim}
-
-
 // 1. setup the macros in the CMakeList
 
 // 2. initialize the faut_model
