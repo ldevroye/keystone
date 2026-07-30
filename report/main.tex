@@ -1001,10 +1001,96 @@ If the host has one it will copy the blob in the shared memory region and the en
 If not, the enclave will start from scratch.
 Note that the first enclave also does this protocol (as the same code is being used).
 
-The normal workflow looks like:
+\subsubsection{Host-side}
+There is only one execution changing macro, other setups are the edge calls :
+\begin{itemize}
+    \item \verb|MAX_RUNS|: Decides how many tries the host should do before stopping and considering the job failed.
+    \item \verb|OCALL_PRINT_BUFFER = 1|: Links the OCALL $1$ to the print wrapper.
+    \item \verb|OCALL_LOAD_CHECKPOINT_BLOB = 8|: Links the OCALL $8$ to the load checkpoint (output) wrapper.
+    \item \verb|OCALL_SAVE_CHECKPOINT_BLOB = 9|: Links the OCALL $9$ to the save checkpoint (input) wrapper.
+\end{itemize}
+The rewinding protocol in the \verb|host.cpp/.hpp| file \ref{file:host} looks like:
 \begin{verbatim}
-    // 1. give the values to macros in the CMakeList
-    // 2. 
+    // 1. setup :
+    //  - the macros in the CMakeList 
+    //  - the edge calls number to be mapped
+
+    // 2. Setup the enclave parameters (memory-wise)
+    Params params;
+    uintptr_t ret = 1;
+    auto retry_counter = 0;
+
+    // 3. Beginning the execution loop
+    while (ret != 0  && retry_counter < MAX_RUNS) 
+    {
+
+        // 3.A Configure the enclave
+        // enclave.init() && linking edge calls to 
+        configure_enclave(enclave, params, argv); 
+
+        //SM destroy the encalve upon completion
+        enclave.run(&ret); 
+    }
+
+    // 4. Exiting
+    return ret;
+\end{verbatim}
+
+The edge wrappers are working in parallel to the main loop.
+These wrappers are implemented as such:
+\begin{verbatim}
+    
+\end{verbatim}
+
+\subsubsection{Enclave-side (EAPP)}
+As for the host, there is only execution changing macro, other setups are the (same) edge calls.
+Note that the edge calls must be the same for the host and enclave in order to efficiently communicate.
+\begin{itemize}
+    \item \verb|EAPP_RUNS|: Decides how many iterations the enclave should do before stopping and considering the job done.
+    \item \verb|OCALL_PRINT_BUFFER = 1|
+    \item \verb|OCALL_LOAD_CHECKPOINT_BLOB = 8|
+    \item \verb|OCALL_SAVE_CHECKPOINT_BLOB = 9|
+\end{itemize}
+The rewinding protocol in the \verb|rewind.c| file \ref{file:rewind} looks like:
+\begin{verbatim}
+    // 1. Setup :
+    //  - the macros in the CMakeList 
+    //  - the edge calls number to be mapped
+
+    // 2. Load the structs
+    struct rewind_state state = {0, 1, 0}; // a, b, counter
+    struct rewind_checkpoint checkpoint;
+    struct fault_model f_m = get_default_model();
+
+    2.A check for an existing checkpoint save
+    // OCALL the host
+    if (load_checkpoint(&checkpoint) == 0) 
+    {
+        2.B try and restore the saved checkpoint if there is one 
+        restore_checkpoint(&state, &checkpoint)
+    }
+
+    // 3. Beginning the execution loop
+    for (; state.counter < EAPP_RUNS;)
+    {
+
+        // Fault happens before the end of the computation 
+        // to mimic stall in the process.
+        if (fault_should_trigger(&f_m)) 
+        {
+            // More explanations in Fault section
+            EAPP_RETURN(16); 
+        }
+
+        // Fibonacci
+        auto next = state.a + state.b;
+        state.a = state.b;
+        state.b = next;
+
+        save_checkpoint((uintptr_t)&state, sizeof(state));
+    }
+
+    EAPP_RETURN(0);
 \end{verbatim}
 
 \subsection{Checkpoint}
@@ -1036,7 +1122,7 @@ The normal usage is :
 \begin{verbatim}
 
 
-    // 1. give the values to macros in the CMakeList
+    // 1. setup the macros in the CMakeList
 
     // 2. initialize the faut_model
     struct fault_model f_m = get_default_model();

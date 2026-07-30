@@ -72,6 +72,9 @@ inline timing_stats load_stats;
 inline timing_stats run_stats;
 inline vector<uint8_t> saved_checkpoint_blob;
 
+const auto success = Error::Success;
+
+
 
 void save_checkpoint_blob_dispatch(void* buffer);
 void load_checkpoint_blob_dispatch(void* buffer);

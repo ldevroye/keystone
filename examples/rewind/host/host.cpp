@@ -99,7 +99,7 @@ Error configure_enclave(Enclave& enclave, Params& params, char** argv)
 {
   Error init_ret = enclave.init(argv[1], argv[2], argv[3], params);
   
-  if (init_ret != Error::Success) 
+  if (init_ret != success) 
   {
     host_print("Error loading the enclave");
     return init_ret;
@@ -112,7 +112,7 @@ Error configure_enclave(Enclave& enclave, Params& params, char** argv)
   edge_call_init_internals(
     (uintptr_t)enclave.getSharedBuffer(), enclave.getSharedBufferSize());
 
-  return Error::Success;
+  return success;
 }
 
 
@@ -126,7 +126,6 @@ int main(int argc, char** argv)
   print_test_parameters();
 
   uintptr_t ret = 0;
-  const auto success = Error::Success;
 
   const auto host_retry_limit = MAX_RUNS;
   const auto analysis_iteration_limit = ENABLE_TESTING ? ANALYSIS_RUNS : 1;
