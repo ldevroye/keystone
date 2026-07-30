@@ -4,6 +4,8 @@
 //------------------------------------------------------------------------------
 #include "edge/edge_call.h"
 #include "host/keystone.h"
+
+
 #include "host.hpp"
 
 #include <chrono>
@@ -31,6 +33,7 @@ void save_checkpoint_blob_dispatch(void* buffer)
 
   saved_checkpoint_blob.resize(arg_size);
   memcpy(saved_checkpoint_blob.data(), (void*)arg_ptr, arg_size);
+
 #if !ENABLE_TESTING && HOST_LOGGING
   char to_prt[80];
   sprintf(to_prt, "saved checkpoint blob size = %zu", arg_size);
@@ -59,6 +62,18 @@ void load_checkpoint_blob_dispatch(void* buffer)
     edge_call->return_data.call_status = CALL_STATUS_ERROR;
     return;
   }
+
+  if (!test_done && strcmp(TEST_TAMPER_MODE, "none") != 0)
+  {
+    tamper_checkpoint_blob(saved_checkpoint_blob);
+    char tamper_log[96];
+    snprintf(tamper_log, sizeof(tamper_log), "tampering checkpoint blob with mode=%s", TEST_TAMPER_MODE);
+    host_print(tamper_log);
+
+    test_done = true;
+  }
+
+  
 
   // copy the opaque blob back through the shared return buffer, not a host pointer
   void* return_buffer = (void*)edge_call_data_ptr();

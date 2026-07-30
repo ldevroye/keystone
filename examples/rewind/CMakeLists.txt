@@ -6,7 +6,7 @@ set(eapp_src
   eapp/fault.c
   ${KEYSTONE_EYRIE_RUNTIME}/crypto/aes.c) # already implemented crypto scheme
 set(host_bin rewind-runner)
-set(host_src host/host.cpp)
+set(host_src host/host.cpp host/test_support.cpp)
 set(package_name "rewind.ke")
 set(package_script "./rewind-runner rewind eyrie-rt loader.bin")
 set(eyrie_plugins "io_syscall linux_syscall env_setup")
@@ -23,6 +23,9 @@ set(HOST_LOGGING "1" CACHE STRING "optional override for host logging (0 or 1)")
 set(EAPP_LOGGING "1" CACHE STRING "optional override for enclave logging (0 or 1)")
 set(ENABLE_TESTING "0" CACHE STRING "enable analysis mode with summary-only logs (0 or 1)")
 set(ANALYSIS_RUNS "10" CACHE STRING "number of executions to average over in analysis mode")
+
+
+set(TEST_TAMPER_MODE "bitflip" CACHE STRING "tamper mode for checkpoint tests (none/bitflip/truncate/last-byte)")
 
 
 
@@ -110,6 +113,15 @@ endif()
 if(NOT "${EAPP_RUNS}" STREQUAL "")
   target_compile_definitions(${host_bin} PRIVATE EAPP_RUNS=${EAPP_RUNS})
 endif()
+
+
+########### TESTS MACROS (host side) ###########
+if(NOT "${TEST_TAMPER_MODE}" STREQUAL "")
+  target_compile_definitions(${host_bin} PRIVATE TEST_TAMPER_MODE=\"${TEST_TAMPER_MODE}\")
+endif()
+
+
+
 
 set_target_properties(${host_bin}
   PROPERTIES CXX_STANDARD 17 CXX_STANDARD_REQUIRED YES CXX_EXTENSIONS NO)
