@@ -1005,7 +1005,7 @@ Note that the first enclave also does this protocol (as the same code is being u
 There is only one execution changing macro, other setups are the edge calls :
 \begin{itemize}
     \item \verb|MAX_RUNS|: Decides how many tries the host should do before stopping and considering the job failed.
-    \item \verb|OCALL_PRINT_BUFFER = 1|: Links the OCALL $1$ to the print wrapper.
+    \item \verb|OCALL_PRINT_BUFFER = 1|: Links the OCALL $1$ to the print (input) wrapper.
     \item \verb|OCALL_LOAD_CHECKPOINT_BLOB = 8|: Links the OCALL $8$ to the load checkpoint (output) wrapper.
     \item \verb|OCALL_SAVE_CHECKPOINT_BLOB = 9|: Links the OCALL $9$ to the save checkpoint (input) wrapper.
 \end{itemize}
@@ -1040,16 +1040,18 @@ These wrappers are implemented as such:
 \begin{verbatim}
 // 1. Linking the edge calls to the functions
 // this is done in configure_enclave()
-enclave.registerOcallDispatch(incoming_call_dispatch);
+
+// binds ocalls to the enclave 
+enclave.registerOcallDispatch(incoming_call_dispatch); 
 register_call(OCALL_PRINT_BUFFER, 
-            print_buffer_dispatch);
+            print_buffer_dispatch); // input
 register_call(OCALL_SAVE_CHECKPOINT_BLOB, 
-            save_checkpoint_blob_dispatch);
+            save_checkpoint_blob_dispatch); // input
 register_call(OCALL_LOAD_CHECKPOINT_BLOB, 
-            load_checkpoint_blob_dispatch);
+            load_checkpoint_blob_dispatch); // output
 
 // 2. Basic edge call structure
-edge_call_wrapper(void *buffer) 
+void edge_call_wrapper(void *buffer) 
 {
 
     // 3. Checks the call sanity  
@@ -1064,7 +1066,6 @@ edge_call_wrapper(void *buffer)
 
     // 5. Setup return data
     ret_val = /* some logic */
-
     uintptr_t data_section = edge_call_data_ptr();
     memcpy((void*)data_section, 
             &ret_val, 
@@ -1089,9 +1090,10 @@ As for the host, there is only execution changing macro, other setups are the (s
 Note that the edge calls must be the same for the host and enclave in order to efficiently communicate.
 \begin{itemize}
     \item \verb|EAPP_RUNS|: Decides how many iterations the enclave should do before stopping and considering the job done.
-    \item \verb|OCALL_PRINT_BUFFER = 1|
-    \item \verb|OCALL_LOAD_CHECKPOINT_BLOB = 8|
-    \item \verb|OCALL_SAVE_CHECKPOINT_BLOB = 9|
+    \item \verb|OCALL_PRINT_BUFFER = 1| output
+    \item \verb|OCALL_SAVE_CHECKPOINT_BLOB = 9| output
+    \item \verb|OCALL_LOAD_CHECKPOINT_BLOB = 8| input
+
 \end{itemize}
 The rewinding protocol in the \verb|rewind.c| file \ref{file:rewind} looks like:
 \begin{verbatim}
@@ -1104,11 +1106,10 @@ struct rewind_state state = {0, 1, 0}; // a, b, counter
 struct rewind_checkpoint checkpoint;
 struct fault_model f_m = get_default_model();
 
-2a. check for an existing checkpoint save
-// OCALL the host
+// 2a. check for an existing checkpoint save
 if (load_checkpoint(&checkpoint) == 0) 
 {
-    2b. try and restore the saved checkpoint if there is one 
+    // 2b. try and restore the saved checkpoint if there is one 
     restore_checkpoint(&state, &checkpoint)
 }
 
@@ -1128,6 +1129,7 @@ for (; state.counter < EAPP_RUNS;)
     auto next = state.a + state.b;
     state.a = state.b;
     state.b = next;
+    state.counter++;
 
     save_checkpoint((uintptr_t)&state, sizeof(state));
 }
@@ -1135,45 +1137,41 @@ for (; state.counter < EAPP_RUNS;)
 // 4. Exiting
 EAPP_RETURN(0);
 \end{verbatim}
-In contrast to the host, the edge calls, being introduced by the enclave are sequential to the main loop:
+As shown above, the edge calls in the enclave are sequential in the main loop.
 \begin{verbatim}
-// 1. The edge functions are
+// The edge functions are :
+// output
+int save_checkpoint(uintptr_t stack_anchor, size_t anchor_len);
 unsigned long ocall_print_buffer(char* data, size_t data_len);
-void save_checkpoint_blob_dispatch(void* buffer);
-void load_checkpoint_blob_dispatch(void* buffer);
 
-// 2. Basic edge call structure
-edge_call_wrapper(void *buffer) 
-{
-    auto call_status = CALL_STATUS_OK;
-    // 3. Checks the call sanity  
-    if (edge_call_args_ptr(edge_call, &arg_ptr, &arg_size) != 0 
-        || arg_size == 0) 
-    {
-        edge_call->return_data.call_status = CALL_STATUS_ERROR;
-        return;
+// input
+int load_checkpoint(struct rewind_checkpoint *checkpoint);
+
+
+// 1. Basic edge call wrapper structure
+auto edge_call_wrapper(int argc, char** argv) 
+{   
+    // 2. OUTPUT functions
+    {    
+        /* output wrapper logic */
     }
 
-    /* 4. Wrapper logic */
+    // 3. OCALL
+    auto retval;
+    ocall(OCALL_ENUM_NUMBER, 
+            data, 
+            data_len, 
+            &retval, 
+            sizeof(retval));
 
-    // 5. Setup return data
-    ret_val = /* some logic */
-
-    uintptr_t data_section = edge_call_data_ptr();
-    memcpy((void*)data_section, 
-            &ret_val, 
-            sizeof(type_to_return));
-            
-    if (edge_call_setup_ret(edge_call, 
-                            (void*)data_section, 
-                            sizeof(type_to_return))) 
+    // 4. INPUT functions
     {
-        call_status = CALL_STATUS_BAD_PTR;
+        /* input wrapper logic */
     }
 
-    // 6. Exiting
-    edge_call->return_data.call_status = call_status;
-    return;
+    //5. Exit
+    return output ? retvall : some_valuue;
+    
 }
 \end{verbatim}
 
@@ -1185,7 +1183,7 @@ edge_call_wrapper(void *buffer)
 
 \subsection{Fault Modeling}
 Advanced fault detection and correction is not in the scope of this thesis.
-Thus, a small fault model is implemented \ref{file:fault}. it is based of of the the SplitMix \cite{splitmix,splitmix1} algorithm. 
+Thus, a small fault model is implemented : Appendix \ref{file:fault}. it is based of of the the SplitMix \cite{splitmix,splitmix1} algorithm. 
 It is a small, object-oriented, non-cryptographic, Pseudo-Random Number Generator (PRNG) and is based on Linear Congruential Generators (LCG) followed by bit-mixing (XOR-shifts) operations. 
 It produces good enough results while being lightweight. 
 \\\\
@@ -1218,7 +1216,8 @@ if (fault_should_trigger(&f_m))
     EAPP_RETURN(16);
 }
 \end{verbatim}
-Note that we treat a fault as an error as the goal is to checkpoint and not to catch, SEUs, bursts, permanently damaged hardware.
+Note that we treat a fault as an error. 
+That is because the goal is to checkpoint and not to catch, SEUs, bursts or even permanently damaged (worn out) hardware.
 Malicious data tampering in the enclave is not discussed as Keystone supposedly guarantees data isolation using PMP \ref{sub:pmp}, the SM \ref{sub:sm} (and thus a RoT).   
 Moreover, other possible fault modeling approaches are discussed in \ref{sub:fault-model}.
 
@@ -1231,32 +1230,27 @@ There are three scripts at the root of the project that can be used in order to 
     Thus, a \verb|.exp| (expect) script is perfectly suited.
     \item \verb|make-run.sh|: A simple concatenation of the other two.
 \end{itemize}
+
 Note that the logs produced can be found in the \verb|build-$PLATFORM$BITS/build.log| file.
-
-
-
-
-
 
 
 
 
 %%%%%%%%%%%%%%%%%%%%%%%% Experimental setup %%%%%%%%%%%%%%%%%%%%%%%%
 \chapter{Experimental Setup}
+The Rewind encalve is evaluated on its overhead computation time and data cost.
 \section{Macros}
-\subsection{Logging}
-\section{Emulation}
-\section{Testing phase}
-\section{Data analysis}
-\section{Encountered difficulties}
+In order to drive the tests, and considering 
 
 %%%%%%%%%%%%%%%%%%%%%%%% Results %%%%%%%%%%%%%%%%%%%%%%%%
 \chapter{Results and Discussion}
+
 
 \section{Results}
 \subsection{Timing overhead}
 \subsection{Data cost}
 \subsection{Timing cost}
+
 
 \section{Discussion}
 
