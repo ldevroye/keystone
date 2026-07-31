@@ -26,19 +26,12 @@ unsigned long ocall_print_buffer(char* data, size_t data_len)
     return retval;
 }
 
-void eapp_print(char* str)
-{
+void eapp_print(const char* str)
+{   
+#if EAPP_LOGGING
     ocall_print_buffer("[EAPP] ", 7);
     ocall_print_buffer(str, strlen(str));
     ocall_print_buffer("\n", 1);
-}
-
-void eapp_print_if_not_testing(const char* str)
-{
-#if EAPP_LOGGING && !ENABLE_TESTING
-    eapp_print((char*)str);
-#else
-    (void)str;
 #endif
 }
 
@@ -185,11 +178,10 @@ int test_fault()
     format_value(formated_counter, counter, "counter");
     format_value(formated_fault, nb_faults, "nb faults");
     format_float_value(formated_rate, rate, "rate");
-    eapp_print_if_not_testing(formated_counter);
-    eapp_print_if_not_testing(formated_fault);
-    eapp_print_if_not_testing(formated_rate); // this should be equal to fault.h/PERIOD
+    eapp_print(formated_counter);
+    eapp_print(formated_fault);
+    eapp_print(formated_rate); // this should be equal to fault.h/PERIOD
 
-    EAPP_RETURN(0);
 }
 
 int main() 
@@ -198,18 +190,35 @@ int main()
     struct rewind_checkpoint checkpoint; // empty for now as we will try to load the stack into it
     struct fault_model fault_model = get_default_model();
 
-    eapp_print_if_not_testing("testing mode enabled");
+
+#if ENABLE_TESTING
+    eapp_print("testing mode enabled");
+
+    test_fault();
+
+    if (run_round_trip_test() != 0) 
+    {
+        eapp_print("round-trip test failed");
+        
+    }
+    else 
+    {
+        eapp_print("reound-trip test passed");
+    }
+
+    EAPP_RETURN(0);
+#endif
 
     // on restart, recover the last sealed checkpoint if the host has one
     if (load_checkpoint(&checkpoint) == 0) 
     {
         if (restore_checkpoint(&state, &checkpoint) == 0) 
         {
-            eapp_print_if_not_testing("loading stack snapshot"); 
+            eapp_print("loading stack snapshot"); 
         }
     }
     
-    eapp_print_if_not_testing("Rewind enclave start");
+    eapp_print("Rewind enclave start");
 
     for (; state.counter < EAPP_RUNS;)
     {
@@ -219,14 +228,14 @@ int main()
         format_value(formated_counter, state.counter, "counter");
         format_unsigned_value(formated_fib, state.b, "output");
         
-        eapp_print_if_not_testing(formated_counter);
-        eapp_print_if_not_testing(formated_fib);
+        eapp_print(formated_counter);
+        eapp_print(formated_fib);
 #endif
         // inject one modeled fault point using a simple pseudo-random splitex function
         // fault happens before so that the "computation" can fail
         if (fault_should_trigger(&fault_model)) 
         {
-            eapp_print_if_not_testing("Simulated fault");
+            eapp_print("Simulated fault");
             //asm volatile("unimp"); // returns illegal RISC-V instruction
             //__builtin_trap();
             EAPP_RETURN(16);
@@ -240,7 +249,7 @@ int main()
 
         if (save_checkpoint((uintptr_t)&state, sizeof(state)) != 0) 
         {
-            eapp_print_if_not_testing("failed to save stack checkpoint");
+            eapp_print("failed to save stack checkpoint");
             //__builtin_trap();
             EAPP_RETURN(16);
         }

@@ -45,6 +45,6 @@ struct fault_model
 uint64_t fault_default_seed(void);
 struct fault_model get_default_model();
 int fault_should_trigger(struct fault_model *model);
-void eapp_print(char* str); /// placeholder
+void eapp_print(const char* str); /// placeholder
 
 #endif

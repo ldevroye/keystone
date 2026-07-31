@@ -28,15 +28,8 @@ void tamper_checkpoint_blob(vector<uint8_t>& blob)
 
 void host_print(const char* str)
 {
+#if HOST_LOGGING
   printf("[HOST] %s\n", str);
-}
-
-void host_print_if_not_testing(const char* str)
-{
-#if HOST_LOGGING && !ENABLE_TESTING
-  host_print(str);
-#else
-  (void)str;
 #endif
 }
 

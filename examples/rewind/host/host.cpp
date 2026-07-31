@@ -37,7 +37,7 @@ void save_checkpoint_blob_dispatch(void* buffer)
 #if !ENABLE_TESTING && HOST_LOGGING
   char to_prt[80];
   sprintf(to_prt, "saved checkpoint blob size = %zu", arg_size);
-  host_print_if_not_testing(to_prt);
+  host_print(to_prt);
 #endif
 
   auto end = chrono::steady_clock::now();
@@ -63,6 +63,7 @@ void load_checkpoint_blob_dispatch(void* buffer)
     return;
   }
 
+#if ENABLE_TESTING 
   if (!test_done && strcmp(TEST_TAMPER_MODE, "none") != 0)
   {
     tamper_checkpoint_blob(saved_checkpoint_blob);
@@ -72,7 +73,7 @@ void load_checkpoint_blob_dispatch(void* buffer)
 
     test_done = true;
   }
-
+#endif
   
 
   // copy the opaque blob back through the shared return buffer, not a host pointer
@@ -159,19 +160,18 @@ int main(int argc, char** argv)
       Enclave enclave;
 
       auto run_start = chrono::steady_clock::now();
-      host_print_if_not_testing("configuring enclave");
+      host_print("configuring enclave");
       if (configure_enclave(enclave, params, argv) != success) 
       {
         return 1;
       }
 
-      host_print_if_not_testing("starting enclave");
+      host_print("starting enclave");
       enclave.run(&ret);
       auto run_end = chrono::steady_clock::now();
       auto run_ms = chrono::duration_cast<chrono::milliseconds>(run_end - run_start).count();
 #if ENABLE_TESTING
       update_timing_stats(run_stats, static_cast<uint64_t>(run_ms));
-#else
       char run_log[128];
       snprintf(run_log, sizeof(run_log), "analysis_run=%d retry=%d return_val=%lu duration_ms=%lld",
                    analysis_counter, retry_counter, (unsigned long)ret, (long long)run_ms);
@@ -180,7 +180,7 @@ int main(int argc, char** argv)
 
       if (ret != 0) 
       {
-        host_print_if_not_testing("enclave returned non-success, retrying");
+        host_print("enclave returned non-success, retrying");
       }
     }
 
@@ -192,14 +192,14 @@ int main(int argc, char** argv)
 #if ENABLE_TESTING
   print_timing_stats("save_checkpoint", save_stats);
   print_timing_stats("load_checkpoint", load_stats);
-#endif
-
+#else
   if (ret != 0)
   {
-    host_print_if_not_testing("too many runs, exiting");
+    host_print("too many runs, exiting");
   } else {
-    host_print_if_not_testing("run completed");
+    host_print("run completed");
   }
+#endif
   
   return ret;
 }

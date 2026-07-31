@@ -21,7 +21,6 @@ extern bool test_done;
 
 void tamper_checkpoint_blob(vector<uint8_t>& blob);
 void host_print(const char* str);
-void host_print_if_not_testing(const char* str);
 void update_timing_stats(timing_stats& stats, uint64_t value);
 void print_timing_stats(const char* label, const timing_stats& stats);
 void print_analysis_run_summary(uint64_t analysis_index);

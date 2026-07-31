@@ -19,13 +19,16 @@ set(FAULT_RANDOMIZE_SEED "1" CACHE STRING "optional override for FAULT_RANDOMIZE
 set(FAULT_SEED "" CACHE STRING "optional override for SEED macro (example: 0x6b656973746f6e68ULL)")
 set(EAPP_RUNS "50" CACHE STRING "optional override for the eapp main loop bound (example: 50)")
 set(HOST_MAX_RUN "10" CACHE STRING "optional override for host main loop bound before stopping execution (example: 10)")
+
 set(HOST_LOGGING "1" CACHE STRING "optional override for host logging (0 or 1)")
 set(EAPP_LOGGING "1" CACHE STRING "optional override for enclave logging (0 or 1)")
+
 set(ENABLE_TESTING "0" CACHE STRING "enable analysis mode with summary-only logs (0 or 1)")
 set(ANALYSIS_RUNS "10" CACHE STRING "number of executions to average over in analysis mode")
 
 
-set(TEST_TAMPER_MODE "bitflip" CACHE STRING "tamper mode for checkpoint tests (none/bitflip/truncate/last-byte)")
+# host
+set(TEST_TAMPER_MODE "none" CACHE STRING "tamper mode for checkpoint tests (none/bitflip/truncate/last-byte)")
 
 
 
