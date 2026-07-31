@@ -8,7 +8,7 @@
 #include <cstdlib>
 #include <vector>
 
-#include "test_support.hpp"
+#include "host_test.hpp"
 
 using namespace Keystone;
 using namespace std;
@@ -46,7 +46,7 @@ using namespace std;
 #endif
 
 #ifndef ANALYSIS_RUNS
-#define ANALYSIS_RUNS 1000
+#define ANALYSIS_RUNS 20
 #endif
 
 #ifndef STRINGIFY_IMPL
@@ -68,6 +68,8 @@ inline vector<uint8_t> saved_checkpoint_blob;
 
 const auto success = Error::Success;
 
+void host_print(const char* str);
+void host_print_if_not_testing(const char* str);
 void save_checkpoint_blob_dispatch(void* buffer);
 void load_checkpoint_blob_dispatch(void* buffer);
 void print_buffer_dispatch(void* buffer);

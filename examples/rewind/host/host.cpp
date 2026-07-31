@@ -13,7 +13,19 @@
 #include <cstring>
 #include <cstdint>
 
+void host_print(const char* str)
+{
+  printf("[HOST] %s\n", str);
+}
 
+void host_print_if_not_testing(const char* str)
+{
+#if HOST_LOGGING && !ENABLE_TESTING
+  host_print(str);
+#else
+  (void)str;
+#endif
+}
 
 void save_checkpoint_blob_dispatch(void* buffer)
 {

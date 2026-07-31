@@ -4,9 +4,10 @@ set(eapp_src
   eapp/checkpoint.c
   eapp/crypto.c
   eapp/fault.c
+  eapp/eapp_test.c
   ${KEYSTONE_EYRIE_RUNTIME}/crypto/aes.c) # already implemented crypto scheme
 set(host_bin rewind-runner)
-set(host_src host/host.cpp host/test_support.cpp)
+set(host_src host/host.cpp host/host_test.cpp)
 set(package_name "rewind.ke")
 set(package_script "./rewind-runner rewind eyrie-rt loader.bin")
 set(eyrie_plugins "io_syscall linux_syscall env_setup")
@@ -23,7 +24,7 @@ set(HOST_MAX_RUN "10" CACHE STRING "optional override for host main loop bound b
 set(HOST_LOGGING "1" CACHE STRING "optional override for host logging (0 or 1)")
 set(EAPP_LOGGING "1" CACHE STRING "optional override for enclave logging (0 or 1)")
 
-set(ENABLE_TESTING "0" CACHE STRING "enable analysis mode with summary-only logs (0 or 1)")
+set(ENABLE_TESTING "1" CACHE STRING "enable analysis mode with summary-only logs (0 or 1)")
 set(ANALYSIS_RUNS "10" CACHE STRING "number of executions to average over in analysis mode")
 
 

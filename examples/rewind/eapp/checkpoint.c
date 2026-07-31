@@ -67,50 +67,6 @@ int restore_checkpoint(struct rewind_state *state, const struct rewind_checkpoin
     return 0;
 }
 
-int run_round_trip_test(void)
-{
-    struct rewind_checkpoint checkpoint;
-    struct rewind_checkpoint restored;
-    struct rewind_checkpoint_blob blob;
-    static const uint8_t test_pattern[] = "round-trip-checkpoint";
-
-    memset(&checkpoint, 0, sizeof(checkpoint));
-    memset(&restored, 0, sizeof(restored));
-    memset(&blob, 0, sizeof(blob));
-
-    checkpoint.stack_sp = 0x1000u;
-    checkpoint.stack_fp = 0x2000u;
-    checkpoint.stack_len = sizeof(test_pattern) - 1;
-    memcpy(checkpoint.stack_data, test_pattern, checkpoint.stack_len);
-
-    blob.stack_sp = checkpoint.stack_sp;
-    blob.stack_fp = checkpoint.stack_fp;
-    blob.stack_len = checkpoint.stack_len;
-    blob.checkpoint_seq = 42;
-    memcpy(blob.stack_data, checkpoint.stack_data, checkpoint.stack_len);
-
-    if (seal_checkpoint_blob(&blob) != 0) {
-        eapp_print("round-trip test sealing failed");
-        return -1;
-    }
-
-    if (open_checkpoint_blob(&restored, &blob) != 0) {
-        eapp_print("round-trip test opening failed");
-        return -1;
-    }
-
-    if (restored.stack_len != checkpoint.stack_len ||
-        restored.stack_sp != checkpoint.stack_sp ||
-        restored.stack_fp != checkpoint.stack_fp ||
-        memcmp(restored.stack_data, checkpoint.stack_data, checkpoint.stack_len) != 0) {
-        eapp_print("round-trip test validation failed");
-        return -1;
-    }
-
-    eapp_print("round-trip test passed");
-    return 0;
-}
-
 int save_checkpoint(uintptr_t stack_anchor, size_t anchor_len)
 {
     uintptr_t stack_sp;

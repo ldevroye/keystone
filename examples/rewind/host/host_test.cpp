@@ -26,13 +26,6 @@ void tamper_checkpoint_blob(vector<uint8_t>& blob)
   }
 }
 
-void host_print(const char* str)
-{
-#if HOST_LOGGING
-  printf("[HOST] %s\n", str);
-#endif
-}
-
 void update_timing_stats(timing_stats& stats, uint64_t value)
 {
   if (stats.count == 0)

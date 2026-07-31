@@ -1174,6 +1174,8 @@ auto edge_call_wrapper(int argc, char** argv)
     
 }
 \end{verbatim}
+Note that no standard library is used in the enclave as the Keystone tutorial (7.1.1 \cite{keystone-web}) explicitly states that printf is not a secure I/O interface.
+Considering this, small functions to format numbers into strings (char*) have been implemented.
 
 \subsection{Checkpoint}
 

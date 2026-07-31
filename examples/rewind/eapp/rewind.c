@@ -3,6 +3,7 @@
 #include "app/syscall.h"
 #include "app/eapp_utils.h"
 #include "checkpoint.h"
+#include "eapp_test.h"
 #include "fault.h"
 
 #define OCALL_PRINT_BUFFER 1
@@ -12,11 +13,15 @@
 #endif
 
 #ifndef EAPP_LOGGING
-#define EAPP_LOGGING 0
+#define EAPP_LOGGING 1
 #endif
 
 #ifndef ENABLE_TESTING
 #define ENABLE_TESTING 0
+#endif
+
+#ifndef ANALYSIS_RUNS
+#define ANALYSIS_RUNS 20
 #endif
 
 unsigned long ocall_print_buffer(char* data, size_t data_len)
@@ -35,179 +40,18 @@ void eapp_print(const char* str)
 #endif
 }
 
-static int format_value(char *buf, const int counter, const char* val)
-{   
-    const char* equal = " = ";
-    const int val_len = strlen(val);
-    const int equal_len = strlen(equal);
-    const int pfx_len = val_len + equal_len;
-
-    memcpy(buf, val, val_len);
-    memcpy(buf + val_len, equal, equal_len);
-    int pos = pfx_len;
-
-    unsigned int u;
-    if (counter == 0) 
-    {
-        buf[pos++] = '0';
-    } else {
-        int neg = 0;
-        if (counter < 0) 
-        {
-            // record the sign separately, then convert the magnitude only
-            neg = 1;
-            u = (unsigned)(-counter);
-        } else {
-            u = (unsigned)counter;
-        }
-
-        /* build the decimal digits in reverse order
-         * from least significant digit to most significant digit
-         * bcs the modulo and division operations operates from the right
-        */
-        char rev[16];
-        int ri = 0;
-        while (u) { rev[ri++] = '0' + (u % 10); u /= 10; }
-        if (neg) buf[pos++] = '-';
-
-        // copy the reversed digits back into the output in forward order
-        for (int j = ri - 1; j >= 0; --j) buf[pos++] = rev[j];
-    }
-    buf[pos] = '\0';
-    return pos;
-}
-
-static int format_unsigned_value(char *buf, const unsigned long value, const char* val)
-{
-    const char* equal = " = ";
-    const int val_len = strlen(val);
-    const int equal_len = strlen(equal);
-    const int pfx_len = val_len + equal_len;
-
-    memcpy(buf, val, val_len);
-    memcpy(buf + val_len, equal, equal_len);
-
-    int pos = pfx_len;
-    unsigned long u = value;
-
-    if (u == 0)
-    {
-        buf[pos++] = '0';
-    }
-    else
-    {
-        char rev[32];
-        int ri = 0;
-        while (u) { rev[ri++] = (char)('0' + (u % 10)); u /= 10; }
-
-        for (int j = ri - 1; j >= 0; --j)
-        {
-            buf[pos++] = rev[j];
-        }
-    }
-
-    buf[pos] = '\0';
-    return pos;
-}
-
-static int format_float_value(char *buf, double value, const char *val)
-{
-    const char* equal = " = ";
-    const int val_len = strlen(val);
-    const int equal_len = strlen(equal);
-    const int pfx_len = val_len + equal_len;
-
-    memcpy(buf, val, val_len);
-    memcpy(buf + val_len, equal, equal_len);
-
-    int pos = pfx_len;
-    if (value < 0.0) 
-    {
-        // Preserve the sign separately, then format the magnitude only.
-        buf[pos++] = '-';
-        value = -value;
-    }
-
-    // Split the value into the integer part and the fractional part.
-    unsigned long whole = (unsigned long)value;
-    double fraction = value - (double)whole;
-    // Keep only two decimal digits by scaling and rounding the fraction.
-    unsigned long scaled = (unsigned long)(fraction * 100.0 + 0.5);
-
-    // Build the integer digits from right to left because division removes
-    // the least-significant digit first.
-    char rev[32];
-    int ri = 0;
-    do 
-    {
-        rev[ri++] = (char)('0' + (whole % 10));
-        whole /= 10;
-    } while (whole != 0);
-
-    // Copy the digits back in forward order into the output buffer.
-    for (int j = ri - 1; j >= 0; --j) 
-    {
-        buf[pos++] = rev[j];
-    }
-
-    // Append the two decimal digits.
-    buf[pos++] = '.';
-    buf[pos++] = (char)('0' + (scaled / 10));
-    buf[pos++] = (char)('0' + (scaled % 10));
-    buf[pos] = '\0';
-    return pos;
-}
-
-
-int test_fault() 
-{
-    struct fault_model fault_model = MODEL_DEFAULT;
-    int counter = 0;
-    int nb_faults = 0;
-
-    for (; counter < 10000; counter++) 
-    {
-        if (fault_should_trigger(&fault_model)) 
-        {
-            nb_faults++;
-        }
-    }
-
-    char formated_counter[32], formated_fault[32], formated_rate[32];
-    double rate = nb_faults == 0 ? 0.0 : (double)counter / (double)nb_faults;
-    format_value(formated_counter, counter, "counter");
-    format_value(formated_fault, nb_faults, "nb faults");
-    format_float_value(formated_rate, rate, "rate");
-    eapp_print(formated_counter);
-    eapp_print(formated_fault);
-    eapp_print(formated_rate); // this should be equal to fault.h/PERIOD
-
-}
 
 int main() 
 {
+
+#if ENABLE_TESTING && ANALYSIS_RUNS<2
+    eapp_print("testing mode enabled");
+    EAPP_RETURN(run_eapp_tests);
+#endif
+
     struct rewind_state state = {0, 1, 0}; // fibonacci sequence init
     struct rewind_checkpoint checkpoint; // empty for now as we will try to load the stack into it
     struct fault_model fault_model = get_default_model();
-
-
-#if ENABLE_TESTING
-    eapp_print("testing mode enabled");
-
-    test_fault();
-
-    if (run_round_trip_test() != 0) 
-    {
-        eapp_print("round-trip test failed");
-        
-    }
-    else 
-    {
-        eapp_print("reound-trip test passed");
-    }
-
-    EAPP_RETURN(0);
-#endif
 
     // on restart, recover the last sealed checkpoint if the host has one
     if (load_checkpoint(&checkpoint) == 0) 
@@ -223,14 +67,13 @@ int main()
     for (; state.counter < EAPP_RUNS;)
     {
 
-#if !ENABLE_TESTING
         char formated_counter[32], formated_fib[32];
         format_value(formated_counter, state.counter, "counter");
         format_unsigned_value(formated_fib, state.b, "output");
         
         eapp_print(formated_counter);
         eapp_print(formated_fib);
-#endif
+
         // inject one modeled fault point using a simple pseudo-random splitex function
         // fault happens before so that the "computation" can fail
         if (fault_should_trigger(&fault_model)) 
@@ -252,8 +95,7 @@ int main()
             eapp_print("failed to save stack checkpoint");
             //__builtin_trap();
             EAPP_RETURN(16);
-        }
-        
+        }       
     }
 
     EAPP_RETURN(0);
