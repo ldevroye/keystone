@@ -20,7 +20,7 @@ void host_print(const char* str)
 
 void host_print_if_not_testing(const char* str)
 {
-#if HOST_LOGGING && !ENABLE_TESTING
+#if HOST_LOGGING && !HOST_TESTING
   host_print(str);
 #else
   (void)str;
@@ -46,7 +46,7 @@ void save_checkpoint_blob_dispatch(void* buffer)
   saved_checkpoint_blob.resize(arg_size);
   memcpy(saved_checkpoint_blob.data(), (void*)arg_ptr, arg_size);
 
-#if !ENABLE_TESTING && HOST_LOGGING
+#if !HOST_TESTING && HOST_LOGGING
   char to_prt[80];
   sprintf(to_prt, "saved checkpoint blob size = %zu", arg_size);
   host_print(to_prt);
@@ -54,7 +54,7 @@ void save_checkpoint_blob_dispatch(void* buffer)
 
   auto end = chrono::steady_clock::now();
   const auto elapsed_us = chrono::duration_cast<chrono::microseconds>(end - start).count();
-#if ENABLE_TESTING
+#if HOST_TESTING
   update_timing_stats(save_stats, static_cast<uint64_t>(elapsed_us));
 #endif
   
@@ -75,7 +75,7 @@ void load_checkpoint_blob_dispatch(void* buffer)
     return;
   }
 
-#if ENABLE_TESTING 
+#if HOST_TESTING 
   if (!test_done && strcmp(TEST_TAMPER_MODE, "none") != 0)
   {
     tamper_checkpoint_blob(saved_checkpoint_blob);
@@ -96,7 +96,7 @@ void load_checkpoint_blob_dispatch(void* buffer)
 
   auto end = chrono::steady_clock::now();
   const auto elapsed_us = chrono::duration_cast<chrono::microseconds>(end - start).count();
-#if ENABLE_TESTING
+#if HOST_TESTING
   update_timing_stats(load_stats, static_cast<uint64_t>(elapsed_us));
 #endif
 }
@@ -156,7 +156,7 @@ int main(int argc, char** argv)
   uintptr_t ret = 0;
 
   const auto host_retry_limit = MAX_RUNS;
-  const auto analysis_iteration_limit = ENABLE_TESTING ? ANALYSIS_RUNS : 1;
+  const auto analysis_iteration_limit = HOST_TESTING ? ANALYSIS_RUNS : 1;
   auto analysis_counter = 0;
   while (analysis_counter < analysis_iteration_limit)
   {
@@ -182,7 +182,7 @@ int main(int argc, char** argv)
       enclave.run(&ret);
       auto run_end = chrono::steady_clock::now();
       auto run_ms = chrono::duration_cast<chrono::milliseconds>(run_end - run_start).count();
-#if ENABLE_TESTING
+#if HOST_TESTING
       update_timing_stats(run_stats, static_cast<uint64_t>(run_ms));
       char run_log[128];
       snprintf(run_log, sizeof(run_log), "analysis_run=%d retry=%d return_val=%lu duration_ms=%lld",
@@ -196,12 +196,12 @@ int main(int argc, char** argv)
       }
     }
 
-#if ENABLE_TESTING
+#if HOST_TESTING
     print_analysis_run_summary(analysis_counter);
 #endif
   }
 
-#if ENABLE_TESTING
+#if HOST_TESTING
   print_timing_stats("save_checkpoint", save_stats);
   print_timing_stats("load_checkpoint", load_stats);
 #else

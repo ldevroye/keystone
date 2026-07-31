@@ -24,7 +24,8 @@ set(HOST_MAX_RUN "10" CACHE STRING "optional override for host main loop bound b
 set(HOST_LOGGING "1" CACHE STRING "optional override for host logging (0 or 1)")
 set(EAPP_LOGGING "1" CACHE STRING "optional override for enclave logging (0 or 1)")
 
-set(ENABLE_TESTING "1" CACHE STRING "enable analysis mode with summary-only logs (0 or 1)")
+set(HOST_TESTING "0" CACHE STRING "enable host-side analysis/tamper timing mode (0 or 1)")
+set(EAPP_TESTING "0" CACHE STRING "enable enclave self-tests mode (0 or 1)")
 set(ANALYSIS_RUNS "10" CACHE STRING "number of executions to average over in analysis mode")
 
 
@@ -64,12 +65,8 @@ if(NOT "${EAPP_LOGGING}" STREQUAL "")
   target_compile_definitions(${eapp_bin} PRIVATE EAPP_LOGGING=${EAPP_LOGGING})
 endif()
 
-if(NOT "${ENABLE_TESTING}" STREQUAL "")
-  target_compile_definitions(${eapp_bin} PRIVATE ENABLE_TESTING=${ENABLE_TESTING})
-endif()
-
-if(NOT "${ANALYSIS_RUNS}" STREQUAL "")
-  target_compile_definitions(${eapp_bin} PRIVATE ANALYSIS_RUNS=${ANALYSIS_RUNS})
+if(NOT "${EAPP_TESTING}" STREQUAL "")
+  target_compile_definitions(${eapp_bin} PRIVATE EAPP_TESTING=${EAPP_TESTING})
 endif()
 
 # PUBLIC is for project dependency level, meaning the whole project will have these included
@@ -98,8 +95,8 @@ if(NOT "${FAULT_PERIOD}" STREQUAL "")
   target_compile_definitions(${host_bin} PRIVATE PERIOD=${FAULT_PERIOD})
 endif()
 
-if(NOT "${ENABLE_TESTING}" STREQUAL "")
-  target_compile_definitions(${host_bin} PRIVATE ENABLE_TESTING=${ENABLE_TESTING})
+if(NOT "${HOST_TESTING}" STREQUAL "")
+  target_compile_definitions(${host_bin} PRIVATE HOST_TESTING=${HOST_TESTING})
 endif()
 
 if(NOT "${ANALYSIS_RUNS}" STREQUAL "")

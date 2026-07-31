@@ -7,6 +7,10 @@
 #define TEST_TAMPER_MODE "none"
 #endif
 
+#ifndef HOST_TESTING
+#define HOST_TESTING 0
+#endif
+
 using namespace std;
 
 struct timing_stats

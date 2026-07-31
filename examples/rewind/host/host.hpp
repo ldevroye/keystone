@@ -41,8 +41,12 @@ using namespace std;
 #define HOST_LOGGING 1
 #endif
 
-#ifndef ENABLE_TESTING
-#define ENABLE_TESTING 0
+#ifndef HOST_TESTING
+#define HOST_TESTING 0
+#endif
+
+#ifndef EAPP_TESTING
+#define EAPP_TESTING 0
 #endif
 
 #ifndef ANALYSIS_RUNS
@@ -77,12 +81,14 @@ Error configure_enclave(Enclave& enclave, Params& params, char** argv);
 
 inline void print_test_parameters()
 {
-#if ENABLE_TESTING || HOST_LOGGING
+#if HOST_TESTING || HOST_LOGGING
   char buffer[320];
 
   snprintf(buffer, sizeof(buffer), "test params:\n"
          "\thost_logging=%d\n"
          "\teapp_logging=%d\n"
+         "\thost_testing=%d\n"
+         "\teapp_testing=%d\n"
          "\thost_max_runs=%d\n"
          "\tanalysis_runs=%d\n"
          "\teapp_runs=%s\n"
@@ -96,8 +102,10 @@ inline void print_test_parameters()
 #else
                 HOST_LOGGING,
 #endif
+                HOST_TESTING,
+                EAPP_TESTING,
                 MAX_RUNS,
-                ENABLE_TESTING ? ANALYSIS_RUNS : 1,
+                HOST_TESTING ? ANALYSIS_RUNS : 1,
                 STRINGIFY(EAPP_RUNS),
                 STRINGIFY(PERIOD),
                 STRINGIFY(FAULT_RANDOMIZE_SEED),

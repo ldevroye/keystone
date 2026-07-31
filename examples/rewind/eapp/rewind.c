@@ -8,22 +8,6 @@
 
 #define OCALL_PRINT_BUFFER 1
 
-#ifndef EAPP_RUNS
-#define EAPP_RUNS 50
-#endif
-
-#ifndef EAPP_LOGGING
-#define EAPP_LOGGING 1
-#endif
-
-#ifndef ENABLE_TESTING
-#define ENABLE_TESTING 0
-#endif
-
-#ifndef ANALYSIS_RUNS
-#define ANALYSIS_RUNS 20
-#endif
-
 unsigned long ocall_print_buffer(char* data, size_t data_len)
 {
     unsigned long retval;
@@ -44,9 +28,9 @@ void eapp_print(const char* str)
 int main() 
 {
 
-#if ENABLE_TESTING && ANALYSIS_RUNS<2
+#if EAPP_TESTING
     eapp_print("testing mode enabled");
-    EAPP_RETURN(run_eapp_tests);
+    EAPP_RETURN(run_eapp_tests());
 #endif
 
     struct rewind_state state = {0, 1, 0}; // fibonacci sequence init
