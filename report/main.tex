@@ -1239,21 +1239,57 @@ Note that the logs produced can be found in the \verb|build-$PLATFORM$BITS/build
 %%%%%%%%%%%%%%%%%%%%%%%% Experimental setup %%%%%%%%%%%%%%%%%%%%%%%%
 \chapter{Experimental Setup}
 The Rewind encalve is evaluated on its overhead computation time and data cost.
+Moveover, the cyber security assumptions are being tested individualy. 
 \section{Macros}
-In order to drive the tests, and considering 
+The tests are being conducted using different macros.
+There are various ones, three main categories emerge:
+\begin{itemize}
+    \item Logging, to enable/disable output from host/enclave.
+    \item Execution, to control the workflow (the number of computation iterations and tries). 
+    \item Testing, to enable/disable tests from the host/enclave. 
+\end{itemize}
+
+\subsection{Logging}
+\begin{itemize}
+    \item \verb|HOST_LOGGING|: enable host printing
+    \item \verb|EAPP_LOGGING|: enable eapp printing
+\end{itemize}
+
+\subsection{Execution}
+\begin{itemize}
+    \item \verb|EAPP_RUNS|: sets the number of iteration the enclave does
+    \item \verb|HOST_MAX_RUNS|: sets the maximum number of try before stopping
+    \item \verb|FAULT_PERIOD|: sets the inverse of the chances to trigger a fault per call
+    
+\end{itemize}
+\subsection{Testing}
+\begin{itemize}
+    \item \verb|FAULT_RANDOMIZE_SEED|: enable/disable random seed for the fault model
+    \item \verb|FAULT_SEED|: sets the seed to start from for the fault model (if the seed is not set to random)
+    \item \verb|ENABLE_TESTING|: launches the execution in testing mode, reduce outputs and run several itaration to give data to analyze
+    \item \verb|ANALYSIS_RUNS|: sets the number of runs for the analysis
+    \item \verb|TEST_TAMPER_MODE|: set the mode of tampering test to do (none/bitflip/truncate/last-byte)
+\end{itemize}
+
+
+
 
 %%%%%%%%%%%%%%%%%%%%%%%% Results %%%%%%%%%%%%%%%%%%%%%%%%
 \chapter{Results and Discussion}
 
-
-\section{Results}
+\section{Analysis}
 \subsection{Timing overhead}
 \subsection{Data cost}
 \subsection{Timing cost}
 
+\section{Cyber security}
+\subsection{Tampering}
+\subsection{Stalling}
 
 \section{Discussion}
+\TODO{threshold for avrage usefulness}
 
+mitigate tampering but host is not reliable so a malicious can stall.
 
 
 
