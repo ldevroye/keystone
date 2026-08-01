@@ -24,13 +24,13 @@ set(HOST_MAX_RUN "10" CACHE STRING "optional override for host main loop bound b
 set(HOST_LOGGING "1" CACHE STRING "optional override for host logging (0 or 1)")
 set(EAPP_LOGGING "1" CACHE STRING "optional override for enclave logging (0 or 1)")
 
-set(HOST_TESTING "0" CACHE STRING "enable host-side analysis/tamper timing mode (0 or 1)")
+set(HOST_TESTING "1" CACHE STRING "enable host-side analysis/tamper timing mode (0 or 1)")
 set(EAPP_TESTING "0" CACHE STRING "enable enclave self-tests mode (0 or 1)")
-set(ANALYSIS_RUNS "10" CACHE STRING "number of executions to average over in analysis mode")
+set(ANALYSIS_RUNS "1" CACHE STRING "number of executions to average over in analysis mode")
 
 
 # host
-set(TEST_TAMPER_MODE "none" CACHE STRING "tamper mode for checkpoint tests (none/bitflip/truncate/last-byte)")
+set(TEST_TAMPER_MODE "truncate" CACHE STRING "tamper mode for checkpoint tests (none/bitflip/truncate/last-byte)")
 
 
 
