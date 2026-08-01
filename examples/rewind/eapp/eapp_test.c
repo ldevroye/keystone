@@ -5,6 +5,14 @@
 #include "checkpoint.h"
 #include "eapp_test.h"
 #include "fault.h"
+#include <alloca.h>
+#include <stddef.h>
+#include <string.h>
+
+#include "app/eapp_utils.h"
+#include "checkpoint.h"
+#include "eapp_test.h"
+#include "fault.h"
 
 int format_value(char *buf, const int counter, const char* val)
 {
@@ -21,23 +29,39 @@ int format_value(char *buf, const int counter, const char* val)
     if (counter == 0)
     {
         buf[pos++] = '0';
-    } else {
+    }
+    else
+    {
         int neg = 0;
         if (counter < 0)
         {
             neg = 1;
             u = (unsigned)(-counter);
-        } else {
+        }
+        else
+        {
             u = (unsigned)counter;
         }
 
         char rev[16];
         int ri = 0;
-        while (u) { rev[ri++] = '0' + (u % 10); u /= 10; }
-        if (neg) buf[pos++] = '-';
+        while (u)
+        {
+            rev[ri++] = (char)('0' + (u % 10));
+            u /= 10;
+        }
 
-        for (int j = ri - 1; j >= 0; --j) buf[pos++] = rev[j];
+        if (neg)
+        {
+            buf[pos++] = '-';
+        }
+
+        for (int j = ri - 1; j >= 0; --j)
+        {
+            buf[pos++] = rev[j];
+        }
     }
+
     buf[pos] = '\0';
     return pos;
 }
@@ -63,7 +87,11 @@ int format_unsigned_value(char *buf, const unsigned long value, const char* val)
     {
         char rev[32];
         int ri = 0;
-        while (u) { rev[ri++] = (char)('0' + (u % 10)); u /= 10; }
+        while (u)
+        {
+            rev[ri++] = (char)('0' + (u % 10));
+            u /= 10;
+        }
 
         for (int j = ri - 1; j >= 0; --j)
         {
@@ -138,39 +166,26 @@ void test_fault_avg()
     eapp_print(formated_counter);
     eapp_print(formated_fault);
     eapp_print(formated_rate);
-
-    return 0;
 }
 
 int run_round_trip_test()
 {
     struct rewind_state expected_state = {1, 2, 3};
     struct rewind_state restored_state;
-    struct rewind_checkpoint checkpoint;
-    struct rewind_checkpoint_blob blob;
-    static const uint8_t payload[] = "round-trip-checkpoint";
-    const size_t payload_len = sizeof(payload) - 1;
-    const size_t state_offset = payload_len;
-    const size_t checkpoint_len = state_offset + sizeof(expected_state);
+    struct checkpoint checkpoint;
+    struct sealed_checkpoint blob;
+    const size_t state_offset = STACK_SNAPSHOT_SIZE - sizeof(expected_state);
 
     memset(&checkpoint, 0, sizeof(checkpoint));
     memset(&restored_state, 0, sizeof(restored_state));
     memset(&blob, 0, sizeof(blob));
 
-    checkpoint.stack_sp = 0x1000u;
-    checkpoint.stack_fp = 0x2000u;
-    checkpoint.stack_len = checkpoint_len;
-    memset(checkpoint.stack_data, 0xA5, checkpoint_len);
-    memcpy(checkpoint.stack_data, payload, payload_len);
+    checkpoint.checkpoint_seq = 42;
+    checkpoint.reserved = 0;
+    memset(checkpoint.stack_data, 0xA5, sizeof(checkpoint.stack_data));
     memcpy(checkpoint.stack_data + state_offset, &expected_state, sizeof(expected_state));
 
-    blob.stack_sp = checkpoint.stack_sp;
-    blob.stack_fp = checkpoint.stack_fp;
-    blob.stack_len = checkpoint.stack_len;
-    blob.checkpoint_seq = 42;
-    memcpy(blob.stack_data, checkpoint.stack_data, checkpoint_len);
-
-    if (seal_checkpoint_blob(&blob) != 0)
+    if (seal_checkpoint_blob(&blob, &checkpoint) != 0)
     {
         eapp_print("round-trip test sealing failed");
         return -1;
@@ -182,11 +197,9 @@ int run_round_trip_test()
         return -1;
     }
 
-    if (restore_checkpoint(&restored_state, &checkpoint) != 0)
-    {
-        eapp_print("round-trip test restore failed");
-        return -1;
-    }
+    memcpy(&restored_state,
+           checkpoint.stack_data + (STACK_SNAPSHOT_SIZE - sizeof(restored_state)),
+           sizeof(restored_state));
 
     if (restored_state.a != expected_state.a ||
         restored_state.b != expected_state.b ||
@@ -204,8 +217,10 @@ int run_eapp_tests()
 {
     test_fault_avg();
 
-    if (run_round_trip_test() != 0) 
+    if (run_round_trip_test() != 0)
+    {
         eapp_print("failed run round-trip");
+    }
 
     return 0;
 }

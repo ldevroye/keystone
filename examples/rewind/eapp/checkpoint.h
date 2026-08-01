@@ -9,8 +9,10 @@
 #define OCALL_SAVE_CHECKPOINT_BLOB 9
 #define OCALL_LOAD_CHECKPOINT_BLOB 8
 
-#define CHECKPOINT_NONCE_SIZE 16
 #define CHECKPOINT_TAG_SIZE 16
+
+
+extern struct rewind_state *checkpoint_state_anchor;
 
 struct rewind_state 
 {
@@ -19,31 +21,24 @@ struct rewind_state
     int counter;
 };
 
-// "Safe" checkpoint - interface for the sealing blob used by enclave (plain data)
-struct rewind_checkpoint 
+// plaintext checkpoint state kept inside the enclave
+struct checkpoint 
 {
-    uintptr_t stack_sp;
-    uintptr_t stack_fp;
-    size_t stack_len;
+    uint64_t checkpoint_seq;
+    uint64_t reserved;
     uint8_t stack_data[STACK_SNAPSHOT_SIZE];
 };
 
-// Complete struct with blob (opaque data)
-struct rewind_checkpoint_blob 
+// host-facing sealed blob: opaque bytes only
+struct sealed_checkpoint 
 {
-    uintptr_t stack_sp;
-    uintptr_t stack_fp;
-    size_t stack_len;
-    uint64_t checkpoint_seq;
-    uint8_t nonce[CHECKPOINT_NONCE_SIZE];
-    uint8_t reserved[16];
-    uint8_t stack_data[STACK_SNAPSHOT_SIZE];
-    uint8_t tag[CHECKPOINT_TAG_SIZE];
+    uint8_t sealed[sizeof(struct checkpoint) + CHECKPOINT_TAG_SIZE];
 };
 
 void eapp_print(const char* str); // placeholder
-int load_checkpoint(struct rewind_checkpoint *checkpoint);
-int restore_checkpoint(struct rewind_state *state, const struct rewind_checkpoint *checkpoint);
-int save_checkpoint(uintptr_t stack_anchor, size_t anchor_len);
+
+int load_checkpoint();
+int restore_checkpoint();
+int save_checkpoint();
 
 #endif

@@ -1275,7 +1275,7 @@ There are various ones, three main categories emerge:
     \item \verb|FAULT_SEED|: sets the seed to start from for the fault model (if\\ \verb|FAULT_RANDOMIZE_SEED|=0)
 \end{itemize}
 Note that manipulating the macros can get confusing as they are independant. 
-One could launch a full set of host testing with \verb|HOST_TESTING| (to analyze the runtimes for example) while enableing the \verb|EAPP_TESTING| making the enclave only executing tests (and even more, returning failed tests that the host will try to accomplish).
+One could launch a full set of host testing with \verb|HOST_TESTING|=1 and \verb|ANALYSIS_RUNS|=100 (to analyze the average runtimes for example) while enableing the \verb|EAPP_TESTING| making the enclave only executing tests (and even more, returning failed tests that the host will try to accomplish).
 Or trying tests like \verb|TEST_TAMPER_MODE|=bitflip and not setting the \verb|HOST_TESTING| to true.
 In order to better understand what is going on, it is recommended to enable both loggins macros.
 

@@ -34,13 +34,14 @@ int main()
 #endif
 
     struct rewind_state state = {0, 1, 0}; // fibonacci sequence init
-    struct rewind_checkpoint checkpoint; // empty for now as we will try to load the stack into it
     struct fault_model fault_model = get_default_model();
 
+    checkpoint_state_anchor = &state;
+
     // on restart, recover the last sealed checkpoint if the host has one
-    if (load_checkpoint(&checkpoint) == 0) 
+    if (load_checkpoint() == 0) 
     {
-        if (restore_checkpoint(&state, &checkpoint) == 0) 
+        if (restore_checkpoint() == 0) 
         {
             eapp_print("loading stack snapshot"); 
         }
@@ -50,7 +51,6 @@ int main()
 
     for (; state.counter < EAPP_RUNS;)
     {
-
         char formated_counter[32], formated_fib[32];
         format_value(formated_counter, state.counter, "counter");
         format_unsigned_value(formated_fib, state.b, "output");
@@ -74,7 +74,7 @@ int main()
         state.b = next;
         state.counter++;
 
-        if (save_checkpoint((uintptr_t)&state, sizeof(state)) != 0) 
+        if (save_checkpoint() != 0) 
         {
             eapp_print("failed to save stack checkpoint");
             //__builtin_trap();
