@@ -25,7 +25,7 @@ struct rewind_state
 struct checkpoint 
 {
     uint64_t checkpoint_seq;
-    uint64_t reserved;
+    uint64_t reserved;  //placeholder for the checkpoint to be a multiple of 16 (CBC-MAC restriction)
     uint8_t stack_data[STACK_SNAPSHOT_SIZE];
 };
 

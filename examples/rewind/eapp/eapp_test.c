@@ -181,7 +181,6 @@ int run_round_trip_test()
     memset(&blob, 0, sizeof(blob));
 
     checkpoint.checkpoint_seq = 42;
-    checkpoint.reserved = 0;
     memset(checkpoint.stack_data, 0xA5, sizeof(checkpoint.stack_data));
     memcpy(checkpoint.stack_data + state_offset, &expected_state, sizeof(expected_state));
 

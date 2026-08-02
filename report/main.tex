@@ -466,7 +466,7 @@ However, as for every domain (in computer science), there are limitations.
 These inherent limitations are that no system is full proof. 
 
 
-\section{Background work}
+\subsection{Background work}
 \TODO{related work that's already done, that I'm basing myself of.}
 % papers
 \cite{sdrad,ARM-TrustZone-CortexM}
@@ -949,29 +949,64 @@ However, we address this in the future work section \ref{sub:back-complexity}.
 
 % Fault model
 % Tests
-
-
 \section{Threat Model}
+A threat model helps to clarify the hypothesis, the goals and the limitiations compared to the real, unsafe, world.
 
-\TODO{Review + small text}
+\subsection{Trusted}
+\begin{itemize}
+  \item Enclave code, runtime and memmory access (Keystone TEE, RISC-V, PMP isolation)
+  \item Enclave-derived sealing keys (via \texttt{get\_sealing\_key}, bound to enclave measurement)
+\end{itemize}
+
+\subsection{Adversarial}
+\begin{itemize}
+  \item Host / OS / everything outside the enclave
+  \item The channel carrying the sealed blob (host storage, OCALL buffer, any transport)
+  \item Physical access implied by power loss (\cite{sdrad, ARM-TrustZone-CortexM}), attacker can trigger crashes/power-cuts
+\end{itemize}
+
+\subsection{Attacker Capabilities}
+\begin{itemize}
+  \item Can read/write/replay/corrupt any sealed blob stored on the host
+  \item Can trigger enclave stops (or even destroy) when incoming edge calls
+  \item Can crash power/execution at arbitrary points
+  \item Cannot read enclave memory or secrets while the enclave is running (TEE isolation assumed sound)
+  \item Cannot forge a valid tag without the auth key (standard MAC assumption)
+  \item Cannot get fine-grained timing measurements across multiple comparisons within a single enclave session. 
+  This is because each load = one full enclave boot.
+\end{itemize}
+
+\subsection{Security Objectives}
+\begin{enumerate}
+  \item \textbf{Confidentiality}: checkpoint contents unreadable to host
+  \item \textbf{Integrity/authenticity}: tampered blob is detected and rejected
+  \item \textbf{Atomicity}: no undefined state from interrupted checkpoint writes
+  \item \textbf{Unclonability}: can't clone device from checkpoint data alone
+\end{enumerate}
+
+\subsection{Accepted Limitations}
+\begin{itemize}
+  \item Replaying and rollback is out of scope. This is because the host is the only link to the outside world and is not to be trusted. 
+\end{itemize}
 
 \subsection{Assumptions}
-The attacker may obtain arbitrary access to process memory and may trigger run-time attacks (faults) that corrupt application state, but cannot modify code pages under a W\(\oplus\)X policy \cite{sdrad, security-privacy}. 
+The attacker may obtain arbitrary access to process (host) memory and may trigger run-time attacks that corrupt application state, but cannot modify code pages of the enclave under a W\(\oplus\)X policy \cite{sdrad, security-privacy}. 
 The attacker is also assumed to detect or exploit software-level vulnerabilities, while transient execution attacks, hardware-level fault injection, and other hardware or firmware-level attacks are out of scope and assumed to be covered by the Keystone security implementation. 
 In the Keystone setting, we additionally assume the enclave isolation and the underlying secure world mechanisms protect enclave code and secrets against direct software manipulation, and that the host is not trusted with enclave state recovery details.
 \\
 
 We further assume that the checkpointing and rewind mechanism operates securely, thaht is: a state external to the protected domain may be compromised, but the protected recovery boundary must remain trustworthy. 
-For the intermittent-device context, the checkpointed state may be exposed to physical disruption such as power loss or tampering with external storage, so recovery data must be authenticated and protected against rollback or corruption.
+For the intermittent-device context, the checkpointed state may be exposed to physical disruption such as power loss or tampering with external storage, so recovery data must be authenticated and protected against corruption but not roll-back.
+The enclave only restores the checkpoint on restart and does not base its execution on the sealed checkpoint it sent unless there is a fault and thus a, possibly corrupted, rewind.
 
 \subsection{Requirements}
 The system must allow the application to continue operation after a detected fault or attack by restoring a trusted state and resuming execution from a safe point. 
 The recovery mechanism must preserve memory integrity after rewind, and isolation must ensure that faults in one compartment do not compromise other protected compartments or the logic responsible for transitions and recovery.
 \\
 
-An enclave state must remain protected across enclave transitions, that recovery metadata must be authenticated, and that the host must not be able to forge, tamper with, or roll back a checkpoint without detection. 
+An enclave state must remain protected across enclave transitions, that recovery metadata must be authenticated, and that the host must not be able to forge or tamper with a checkpoint without detection. 
 Also, the checkpointed state should also be encrypted; integrity and continuity remain the minimum security target. 
-The design should also preserve the smallest possible trusted computing base and keep the rewind path testable and bounded as given by the Keystone architecture.
+
 
 
 
@@ -991,8 +1026,10 @@ In comparison, the host would be considered a \textit{persistent domain} as it k
 However, the host is \textbf{not} trusted in itself.
 \\
 
-To address this security issue, the checkpoint is sealed (using the sealing key given by the SM) and uses a tag. This ensure that the host can neither read it or tamper with it.
-Upon unsealing a the checkpoint, the enclave checks its tag so see if it fits the data. If not, the  data is discarded and the enclave restarts the computation from the beginning.
+To address this security issue, the checkpoint is sealed (using the sealing key provided by the SM) and uses a tag. 
+This ensure that the host can neither read it or tamper with it.
+Upon unsealing a the checkpoint, the enclave checks its tag so see if it fits the data. 
+If not, the  data is discarded and the enclave restarts the computation from the beginning.
 \\
 
 The discard and rewind is done by asking the SM to destroy the enclave, free the PMP entry and then allocate a new entry on the the same binary to create the rewinded version of the enclave.
