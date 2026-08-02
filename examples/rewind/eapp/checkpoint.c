@@ -10,7 +10,6 @@
 
 static struct checkpoint checkpoint_storage;
 static struct sealed_checkpoint checkpoint_blob;
-static uint64_t checkpoint_sequence;
 
 struct rewind_state *checkpoint_state_anchor;
 
@@ -42,7 +41,7 @@ int load_checkpoint()
         return -1;
     }
 
-    checkpoint_sequence = checkpoint_storage.checkpoint_seq + 1;
+    checkpoint_storage.checkpoint_seq++;
     return 0;
 }
 
@@ -106,7 +105,7 @@ int save_checkpoint()
     }
 
     // snapshot the live stack range and right-align it in a fixed-size buffer
-    to_save.checkpoint_seq = checkpoint_sequence;
+    to_save.checkpoint_seq = checkpoint_storage.checkpoint_seq;
     memset(to_save.stack_data, 0, sizeof(to_save.stack_data));
     memcpy(to_save.stack_data + (STACK_SNAPSHOT_SIZE - snapshot_len), (void *)snapshot_sp, snapshot_len);
 
@@ -123,6 +122,6 @@ int save_checkpoint()
         return -1;
     }
 
-    checkpoint_sequence++;
+    checkpoint_storage.checkpoint_seq++;
     return 0;
 }
