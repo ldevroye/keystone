@@ -245,6 +245,4 @@ Use :
 
 ### Risks - License - MIT
 
-This fork is made as is, building on top of it is at the own risks of the users and any negative consequence is not to be put on the authors. 
-
-(Works on my machine ¯\\\_ツ\_/¯)
+This fork is made as is, building on top of it is at the own risks of the users and any negative consequence is not to be put on the authors.

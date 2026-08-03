@@ -532,6 +532,7 @@ In conclusion, the research should focus on \textit{Fault recovery by rewinding 
 
 %%%%%%%%%%%%%%%%%%%%%%%% Keystone Structure %%%%%%%%%%%%%%%%%%%%%%%%
 \chapter{Keystone Structure}
+\label{chap:Keystone}
 "Keystone is an open framework for architecting trusted execution environments (TEEs) based on hardware enclaves. Keystone aims to provide an easy way of architecting and building a customized TEE for an arbitrary RISC-V platform with a simple workflow. 
 This allows the TEE to be highly optimized for better performance, smaller trusted computing base (TCB), and programmability with a given workload and a threat model." 
 - 2.2. Keystone Basics \cite{keystone-docs}
@@ -1019,10 +1020,10 @@ So far, this thesis has mainly covered concepts \ref{chap:SotA}, ground work \ci
 All of these are used to produce the implementation of the rewind enclave mechanism.
 \\
 
-The files that are implemented and described can be found on the \github and in the Appendix \ref{chap:appendix}
+The files that are implemented and described can be found on the \github.
+Also note that the repository setup is described at the end of the \verb|README.md| (at the root of the repository itself).
+All of these files are also available in the Appendix \ref{chap:appendix}. 
 
-
-\subsection{Rewind}
 Implementing the rewind example is done in two different places, the \verb|eapp/| and \verb|host| subfolders.
 The eapp is, as shown is the Keystone Basics \ref{sub:basics}, the trusted part and would be considered a \textit{transient domain} \cite{sdrad}.
 A transient domain can exit (abnormally or not), it doesn't retain data upon exiting and is closed from the outer world (in both writing and reading).
@@ -1211,7 +1212,7 @@ auto edge_call_wrapper(int argc, char** argv)
     }
 
     //5. Exit
-    return output ? retvall : some_valuue;
+    return (output ? retvall : some_value);
     
 }
 \end{verbatim}
@@ -1219,9 +1220,46 @@ Note that no standard library is used in the enclave as the Keystone tutorial (7
 Considering this, small functions to format numbers into strings (char*) have been implemented.
 
 \subsection{Checkpoint}
+In order to rewind or discard an enclave, there must be a checkpointed state that is saved and loaded on demand (by the enclave, as defined by Keystone \ref{chap:Keystone}).
+as for the overall implementation, the two sides have their own wrapper logic as they have an asymmetric relationship.
+The host supervises the enclave and the latter is, once running, sealed from the former.
+However, as soon as the enclave submit an edge call, the host could (assuming malicious intentions) destroy the enclave or stall it indefinetly.
+This is bounded by Keystone structure and is, as noted in the threat model \ref{sub:threat-model}, not in the scope of this thesis.
+\\
+
+One could implement a direct call from the enclave to the SM to external safe memmory with, for example, table pages protected by outside PMP entry or another "data enclave" that has a direct communication channel with the "runtime" one.
+The problem in our scenario is that the host is the only link to the outside world and is, by definition, also not to be trusted.
+This limitation being addressed, the saved checkpoint must be sealed and must be checked in order to not introduce unsafe data into the enclave's memmory.
+\\
+
+\subsubsection{Host-side}
+\begin{verbatim}
+    WRAPPER EDGE CALL LOAD
+
+    WRAPPER EDGE CALL SAVE
+
+\end{verbatim}
+
+\subsubsection{Enclave-side}
+\begin{verbatim}
+    WRAPPER EDGE CALL LOAD
+
+    WRAPPER EDGE CALL SAVE
+\end{verbatim}
+
 
 \subsection{Data encryption}
 
+\begin{verbatim}
+CBC-MAC 
+CTR
+
+ENC
+AUTH
+
+IV/NONCE
+TAG
+\end{verbatim}
 
 
 \subsection{Fault Modeling}
@@ -1275,6 +1313,8 @@ There are three scripts at the root of the project that can be used in order to 
 \end{itemize}
 
 Note that the logs produced can be found in the \verb|build-$PLATFORM$BITS/build.log| file.
+
+
 
 
 
@@ -1427,10 +1467,10 @@ examples/rewind/
 
 \section*{Scripts}
 \label{file:scripts}
+
 \subsection*{\texttt{make-examples.sh}}
 \label{file:make-examples}
 \srcattach{src/make-examples.sh}{./make-examples.sh}
-
 
 \subsection*{\texttt{run-rewind.exp}}
 \label{file:run-rewind}
@@ -1439,6 +1479,10 @@ examples/rewind/
 \subsection*{\texttt{make-run.sh}}
 \label{file:make-run}
 \srcattach{src/make-run.sh}{./make-run.sh}
+
+\section*{README}
+\label{file:readme}
+\srcattach{src/README.md}{README.md}
 
 
 
