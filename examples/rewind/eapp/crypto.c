@@ -24,17 +24,16 @@ static int checkpoint_keys_ready;
  * 2) The returned material is split into two independent AES-256 keys:
  *    - enc_key for confidentiality (CTR stream encryption)
  *    - auth_key for integrity/authenticity (CBC-MAC)
- * 3) compute_tag() MACs the plaintext checkpoint payload.
- * 4) encrypt_stack() AES-CTR-encrypts the plaintext payload in place using the
- *    MAC as a synthetic IV, so the host only sees opaque sealed bytes.
- * 5) The ciphertext and tag are copied into the host-facing blob.
+ * 3) encrypt_stack() AES-CTR-encrypts the plaintext payload first.
+ * 4) compute_tag() MACs the ciphertext checkpoint payload.
+ * 5) The ciphertext, iv, and tag are copied into the host-facing blob.
  *
  * Load:
  * 1) Derive the same enc_key/auth_key again from the same sealing context.
- * 2) Split the opaque blob into ciphertext and tag.
- * 3) Decrypt the ciphertext with the tag as the synthetic IV.
- * 4) Recompute the expected tag over the recovered plaintext.
- * 5) Compare expected tag with the stored tag; if mismatch, reject.
+ * 2) Split the opaque blob into ciphertext, iv, and tag.
+ * 3) Recompute the expected tag over the ciphertext.
+ * 4) Compare expected tag with the stored tag; if mismatch, reject.
+ * 5) Decrypt the ciphertext only after authentication succeeds.
  * 6) Rebuild the plain checkpoint view from verified/decrypted data.
  */
 
@@ -101,7 +100,7 @@ static int compute_tag(const uint8_t *payload,
     if (payload_len % AES_BLOCK_SIZE != 0) {return -1;}
 
     aes_key_setup(auth_key, auth_schedule, AES_KEY_BITS);
-    // mac the plaintext payload so the tag doubles as a synthetic iv
+    // mac the ciphertext payload so the tag authenticates the encrypted data
     if (aes_encrypt_cbc_mac((const BYTE *)payload, payload_len, tag, auth_schedule, AES_KEY_BITS, zero_iv) == 0) 
     {
         return -1;
@@ -114,24 +113,33 @@ int seal_checkpoint_blob(struct sealed_checkpoint *blob, const struct checkpoint
 {
     uint8_t computed_tag[CHECKPOINT_TAG_SIZE];
     uint8_t payload[sizeof(struct checkpoint)];
+    uint8_t iv[AES_BLOCK_SIZE] = {0};
     uint8_t *ciphertext = blob->sealed;
     uint8_t *tag = blob->sealed + sizeof(payload);
 
     memcpy(payload, checkpoint, sizeof(payload));
 
-    // save path: authenticate the plaintext payload, then encrypt it with the tag as iv
+    // checkpoint_seq must never repeat across the enclave lifetime for iv uniqueness to hold
+    memcpy(iv, &checkpoint->checkpoint_seq, sizeof(checkpoint->checkpoint_seq));
+
+    // removes empty 0s as the checkpoint_seq is AES_BLOCK_SIZE//2 (16//2 -> 8) bytes
+    memcpy(iv + sizeof(checkpoint->checkpoint_seq), &checkpoint->checkpoint_seq, sizeof(checkpoint->checkpoint_seq));
+
+    // save path: encrypt first, then authenticate the ciphertext
     if (derive_checkpoint_material() != 0) {
         eapp_print("failed to derive sealing key");
         return -1;
     }
 
+    encrypt_stack(payload, sizeof(payload), iv);
+
+    // tag is computed over ciphertext here for encrypt-then-mac
     if (compute_tag(payload, sizeof(payload), computed_tag) != 0) {
         eapp_print("failed to authenticate checkpoint");
         return -1;
     }
 
-    encrypt_stack(payload, sizeof(payload), computed_tag);
-
+    memcpy(blob->iv, iv, sizeof(iv));
     memcpy(ciphertext, payload, sizeof(payload));
     memcpy(tag, computed_tag, sizeof(computed_tag));
 
@@ -145,7 +153,7 @@ int open_checkpoint_blob(struct checkpoint *checkpoint, const struct sealed_chec
     const uint8_t *ciphertext = blob->sealed;
     const uint8_t *tag = blob->sealed + sizeof(payload);
 
-    // load path: decrypt with the tag as iv, then verify the recovered plaintext
+    // load path: verify the ciphertext first, then decrypt with the stored iv
     if (derive_checkpoint_material() != 0) 
     {
         eapp_print("failed to derive sealing key");
@@ -153,7 +161,6 @@ int open_checkpoint_blob(struct checkpoint *checkpoint, const struct sealed_chec
     }
 
     memcpy(payload, ciphertext, sizeof(payload));
-    decrypt_stack(payload, sizeof(payload), tag);
 
     if (compute_tag(payload, sizeof(payload), expected_tag) != 0) 
     {
@@ -166,6 +173,8 @@ int open_checkpoint_blob(struct checkpoint *checkpoint, const struct sealed_chec
         eapp_print("checkpoint authentication failed");
         return -1;
     }
+
+    decrypt_stack(payload, sizeof(payload), blob->iv);
 
     memcpy(checkpoint, payload, sizeof(*checkpoint));
     return 0;

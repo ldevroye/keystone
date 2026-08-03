@@ -998,6 +998,10 @@ In the Keystone setting, we additionally assume the enclave isolation and the un
 We further assume that the checkpointing and rewind mechanism operates securely, thaht is: a state external to the protected domain may be compromised, but the protected recovery boundary must remain trustworthy. 
 For the intermittent-device context, the checkpointed state may be exposed to physical disruption such as power loss or tampering with external storage, so recovery data must be authenticated and protected against corruption but not roll-back.
 The enclave only restores the checkpoint on restart and does not base its execution on the sealed checkpoint it sent unless there is a fault and thus a, possibly corrupted, rewind.
+\\
+Enclave execution is assumed deterministic given identical entry state (no host-controlled inputs, per Attacker Capabilities). Under this assumption, IV/seq reuse acrosscrash-and-restart is safe: identical plaintext re-encrypted under the same IV leaks nothing.
+This safety does not hold if the enclave itself introduces non-determinism (uninitializedmemory, internal RNG/timer reads, etc.) before the point of divergence from a prior checkpointseq.
+
 
 \subsection{Requirements}
 The system must allow the application to continue operation after a detected fault or attack by restoring a trusted state and resuming execution from a safe point. 
