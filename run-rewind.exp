@@ -2,6 +2,13 @@
 
 set timeout 120
 
+proc cleanup {} {
+	catch {exec pkill -f qemu-system-riscv64}
+	exit 130
+}
+
+trap {cleanup} {SIGINT SIGTERM SIGHUP}
+
 spawn make run
 
 expect "buildroot login:"

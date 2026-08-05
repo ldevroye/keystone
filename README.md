@@ -207,7 +207,7 @@ each step in order is :
 \*wait for the emulation to fully stop (so that the process is terminated)\*
 
 This is contained in the [run-rewind.exp](run-rewind.exp) script.
-In case of a CTRL+C inside the emulation. The process can't be terminated sucessfuly and we can't invoque *make run*. To terminate it use :
+If you stop the emulation with CTRL+C, the run scripts now clean up the QEMU process automatically. If a stale instance is still left behind for any reason, use:
 - \$```pkill -f qemu-system-riscv64```
 
 
@@ -221,7 +221,7 @@ Use :
 - \$```./make-examples.sh``` to rebuild the examples (**compile**)   
 - \$```./run-rewind.exp``` to run the automatic qemu emulation, example launching and power off (**run**)   
 - \$```./make-run.sh``` to **compile** and **run**   
-- \$```pkill -f qemu-system-riscv64``` to kill the process if the emulation is exited early
+- \$```pkill -f qemu-system-riscv64``` only as a fallback if a stale emulator is still running
 
 **Logs**: Little reminder that logs (when compiling) can be found in the '[build-generic64/build.log](build-generic64/build.log)' (**build-\$PLATFORM$BITS/build.log**) file!
 

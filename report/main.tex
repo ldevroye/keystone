@@ -1486,16 +1486,17 @@ aes_encrypt_cbc_mac(payload, payload_len,
                     auth_schedule, AES_KEY_BITS, 
                     zero_iv);
 
-// 1e. Copy ciphertext payload, iv, and tag into the host-facing blob
+// 1e. Copy ciphertext payload, iv, and tag into the blob
 memcpy(blob->iv, iv, sizeof(iv));
 memcpy(blob->sealed, payload, sizeof(payload));
 memcpy(blob->sealed + sizeof(payload), tag, sizeof(tag));
 
-// the blob is then sent to the host using the, previously described,
-// OCALL_SAVE_CHECKPOINT_BLOB edge call
+// the blob is then sent to the host using the 
+// previously described OCALL_SAVE_CHECKPOINT_BLOB edge call
 
 /* 2. Load */
-// 2a. Derive the same enc_key/auth_key again from the same context
+// 2a. Derive the same enc_key/auth_key 
+// again from the same context
 if (derive_checkpoint_material() != 0) { return -1; }
 
 // 2b. Split the opaque blob into ciphertext, iv, and tag
@@ -1508,7 +1509,8 @@ compute_tag(ciphertext, sizeof(ciphertext), expected_tag);
 
 // 2d. Compare expected tag with the stored tag; 
 // reject on mismatch
-if (memcmp(expected_tag, tag, sizeof(expected_tag)) != 0) {
+if (memcmp(expected_tag, tag, 
+            sizeof(expected_tag)) != 0) {
     eapp_print("checkpoint authentication failed");
     return -1;
 }
@@ -1526,40 +1528,73 @@ memcpy(checkpoint, payload, sizeof(*checkpoint));
 \end{verbatim}
 
 \subsubsection{Data structures}
+Three data structures separate three distinct roles in the checkpoint/rewind
+pipeline:
+
 \begin{verbatim}
 struct checkpoint checkpoint_storage
 struct sealed_checkpoint checkpoint_blob
 struct rewind_state *state_anchor
 \end{verbatim}
 
-\begin{verbatim}
-CBC-MAC 
-CTR
 
-ENC
-AUTH
 
-IV/NONCE
-TAG
-\end{verbatim}
+\begin{itemize}
+    \item \texttt{struct checkpoint checkpoint\_storage}: the
+    \textit{plaintext} in-enclave representation of the saved state
+    (e.g. register file, stack snapshot, sequence number). This is the
+    object produced right before sealing and the object reconstructed
+    right after unsealing. It never leaves the enclave in this form.
 
-\subsubsection{Data structures}
-\begin{verbatim}
-struct checkpoint checkpoint_storage
-struct sealed_checkpoint checkpoint_blob
-struct rewind_state *state_anchor
-\end{verbatim}
+    \item \texttt{struct sealed\_checkpoint checkpoint\_blob}: the
+    \textit{host-facing, opaque} container holding the encrypted payload,
+    the IV, and the authentication tag. This is the only representation
+    of the checkpoint that is allowed to cross the enclave boundary and
+    be stored/transmitted by the untrusted host.
 
-\begin{verbatim}
-CBC-MAC 
-CTR
+    \item \texttt{struct rewind\_state *state\_anchor}: the
+    \textit{runtime pointer/metadata} used by the rewind mechanism to
+    locate and validate which checkpoint(s) are eligible for restoration
+    (e.g. current sequence number, pointer to active checkpoint, rewind
+    policy state). It is not itself sealed; it governs \textit{which}
+    \texttt{checkpoint\_blob} may be opened and \textit{when}.
+\end{itemize}
 
-ENC
-AUTH
+\paragraph{Cryptographic primitives and concepts.}
+\begin{itemize}
+    \item \textbf{CBC-MAC}: a Message Authentication Code built by
+    running block-cipher CBC encryption over the message and keeping
+    only the final block as the tag. Provides integrity/authenticity,
+    \textit{not} confidentiality. Secure only for fixed-length messages
+    unless additional length-binding is used.
 
-IV/NONCE
-TAG
-\end{verbatim}
+    \item \textbf{CTR (Counter mode)}: a block-cipher mode that turns
+    AES into a stream cipher by encrypting successive counter values
+    and XOR-ing the result with plaintext/ciphertext. Provides
+    confidentiality only; requires a unique \texttt{(IV, key)} pair per
+    encryption to remain secure.
+
+    \item \textbf{ENC / AUTH}: shorthand for the two independent
+    purpose-bound keys derived from the sealing key material:
+    \texttt{enc\_key} (used only for CTR confidentiality) and
+    \texttt{auth\_key} (used only for CBC-MAC integrity). Key
+    separation prevents cross-purpose attacks between encryption and
+    authentication.
+
+    \item \textbf{IV / Nonce / Seq}: the Initialization Vector
+    (or \textit{nonce}, "number used once") is the per-encryption input
+    that randomizes/varies the keystream so identical plaintexts don't
+    produce identical ciphertexts. Here it is derived deterministically
+    from \texttt{checkpoint\_seq}, a monotonically-assigned sequence
+    number identifying each checkpoint instance. Its uniqueness across
+    all encryptions under the same key is the core security
+    requirement of CTR mode.
+
+    \item \textbf{TAG}: the output of the CBC-MAC over the ciphertext;
+    a fixed-size value that the verifier recomputes and compares
+    against the stored value to detect any tampering with the sealed
+    payload.
+\end{itemize}
 
 
 \subsection{Fault Modeling}
