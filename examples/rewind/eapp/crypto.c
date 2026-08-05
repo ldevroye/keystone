@@ -19,23 +19,24 @@ static int checkpoint_keys_ready;
  * Workflow:
  *
  * Save:
- * 1) derive_checkpoint_material() asks the platform sealing API for key
- *    material bound to scheme label (key_id[]).
- * 2) The returned material is split into two independent AES-256 keys:
+ * a) derive_checkpoint_material() asks the SM sealing API for key
+ *    material bound to scheme label (identifiers[]).
+ * b) The returned material is two independent AES-256 keys:
  *    - enc_key for confidentiality (CTR stream encryption)
  *    - auth_key for integrity/authenticity (CBC-MAC)
- * 3) encrypt_stack() AES-CTR-encrypts the plaintext payload first.
- * 4) compute_tag() MACs the ciphertext checkpoint payload.
- * 5) The ciphertext, iv, and tag are copied into the host-facing blob.
+ * c) encrypt_stack(payload) AES-CTR-encrypts the plaintext payload
+    and the iv.
+ * d) compute_tag() MACs the ciphertext checkpoint payload.
+ * e) The payload and tag are copied into the host-facing blob.
  *
  * Load:
- * 1) Derive the same enc_key/auth_key again from the same sealing context.
- * 2) Split the opaque blob into ciphertext, iv, and tag.
- * 3) Recompute the expected tag over the ciphertext.
- * 4) Compare expected tag with the stored tag; if mismatch, reject.
- * 5) Decrypt the ciphertext only after authentication succeeds.
- * 6) Rebuild the plain checkpoint view from verified/decrypted data.
- */
+ * a) Derive the same enc_key/auth_key again from the same context.
+ * b) Split the opaque blob into ciphertext, iv, and tag.
+ * c) Recompute the expected tag over the ciphertext.
+ * d) Compare expected tag with the stored tag; if mismatch, reject.
+ * e) Decrypt the ciphertext.
+ * f) Rebuild the plain checkpoint.
+*/
 
 
 // 'static' for interal usage only

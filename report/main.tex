@@ -1235,7 +1235,7 @@ EAPP_RETURN(0);
 \subsection{Checkpoint}
 In order to rewind or discard an enclave, there must be a checkpointed state that is saved and loaded on demand (by the enclave, as defined by Keystone \ref{chap:Keystone}).
 as for the overall implementation, the two sides have their own wrapper logic as they have an asymmetric relationship.
-The host supervises the enclave and the latter is, once running, sealed from the former.
+The host supervises the enclave and the latter is, once running, sealed from the former \ref{file:checkpoint}.
 However, as soon as the enclave submit an edge call, the host could (assuming malicious intentions) destroy the enclave or stall it indefinetly.
 This is bounded by Keystone structure and is, as noted in the threat model \ref{sub:threat-model}, not in the scope of this thesis.
 \\
@@ -1340,7 +1340,12 @@ int load_checkpoint()
     }
 
     // 1c. increment sequence and exit
-    checkpoint_storage.checkpoint_seq++;
+    /* 
+    the sequence is incremented to mimic what would happend
+    if the the enclave was at this iteration and just saved
+    (the increment is done after the save).
+    */ 
+    checkpoint_storage.checkpoint_seq++; 
     return 0;
 }
 
@@ -1424,16 +1429,110 @@ int save_checkpoint()
 }
 \end{verbatim}
 
-
 \subsection{Data encryption}
+To preserve the security objectives, the enclave implements a cryptographic protocol Appendix \ref{file:crypto}.
+\\
+
+The authentificaction and encryption keys are both derived using the function\\
+\verb|derive_checkpoint_material()| usging Keystone \verb|get_sealing_key()| \ref{sub:data-sealing}.
+This function is cached after the first usage as the keys will never be changed afterwards. The worklow can be described as such:
+\begin{verbatim}
+/*
+ * Save:
+ * a) derive_checkpoint_material() asks the SM sealing API for key
+ *    material bound to scheme label (identifiers[]).
+ * b) The returned material is two independent AES-256 keys:
+ *    - enc_key for confidentiality (CTR stream encryption)
+ *    - auth_key for integrity/authenticity (CBC-MAC)
+ * c) encrypt_stack(payload) AES-CTR-encrypts the plaintext payload
+    and the iv.
+ * d) compute_tag() MACs the ciphertext checkpoint payload.
+ * e) The payload and tag are copied into the host-facing blob.
+ *
+ * Load:
+ * a) Derive the same enc_key/auth_key again from the same context.
+ * b) Split the opaque blob into ciphertext, iv, and tag.
+ * c) Recompute the expected tag over the ciphertext.
+ * d) Compare expected tag with the stored tag; if mismatch, reject.
+ * e) Decrypt the ciphertext.
+ * f) Rebuild the plain checkpoint.
+*/
+
+/* 1. Save */
+// 1a-b . Derive checkpoint key material
+if (derive_checkpoint_material() != 0) { return -1; }
+
+// 1c. encrypt_stack(payload): 
+// AES-CTR-encrypt payload, build iv from checkpoint_seq
+uint8_t iv[AES_BLOCK_SIZE] = {0};
+memcpy(iv, 
+    &checkpoint->checkpoint_seq, 
+    sizeof(checkpoint->checkpoint_seq));
+memcpy(iv + sizeof(checkpoint->checkpoint_seq), 
+    &checkpoint->checkpoint_seq, 
+    sizeof(checkpoint->checkpoint_seq));
+aes_key_setup(enc_key, enc_schedule, AES_KEY_BITS);
+aes_encrypt_ctr(payload, payload_len, 
+            payload, 
+            enc_schedule, 
+            AES_KEY_BITS, 
+            iv);
+
+// 1d. compute_tag(): AES-256-CBC-MAC over the ciphertext
+uint8_t zero_iv[AES_BLOCK_SIZE] = {0};
+aes_key_setup(auth_key, auth_schedule, AES_KEY_BITS);
+aes_encrypt_cbc_mac(payload, payload_len, 
+                    tag, 
+                    auth_schedule, AES_KEY_BITS, 
+                    zero_iv);
+
+// 1e. Copy ciphertext payload, iv, and tag into the host-facing blob
+memcpy(blob->iv, iv, sizeof(iv));
+memcpy(blob->sealed, payload, sizeof(payload));
+memcpy(blob->sealed + sizeof(payload), tag, sizeof(tag));
+
+// the blob is then sent to the host using the, previously described,
+// OCALL_SAVE_CHECKPOINT_BLOB edge call
+
+/* 2. Load */
+// 2a. Derive the same enc_key/auth_key again from the same context
+if (derive_checkpoint_material() != 0) { return -1; }
+
+// 2b. Split the opaque blob into ciphertext, iv, and tag
+memcpy(iv, blob->iv, sizeof(iv));
+memcpy(ciphertext, blob->sealed, sizeof(ciphertext));
+memcpy(tag, blob->sealed + sizeof(ciphertext), sizeof(tag));
+
+// 2c. Recompute the expected tag over the ciphertext
+compute_tag(ciphertext, sizeof(ciphertext), expected_tag);
+
+// 2d. Compare expected tag with the stored tag; 
+// reject on mismatch
+if (memcmp(expected_tag, tag, sizeof(expected_tag)) != 0) {
+    eapp_print("checkpoint authentication failed");
+    return -1;
+}
+
+// 2e. Decrypt the ciphertext,
+// same iv derived from checkpoint_seq
+aes_key_setup(enc_key, enc_schedule, AES_KEY_BITS);
+aes_decrypt_ctr(ciphertext, sizeof(ciphertext),  
+                payload, 
+                enc_schedule, AES_KEY_BITS, 
+                iv);
+
+// 2f. Copy the plain decrypted checkpoint 
+memcpy(checkpoint, payload, sizeof(*checkpoint));
+\end{verbatim}
+
+\subsubsection{Data structures}
+\begin{verbatim}
+struct checkpoint checkpoint_storage
+struct sealed_checkpoint checkpoint_blob
+struct rewind_state *state_anchor
+\end{verbatim}
 
 \begin{verbatim}
-
-save structs:
-static struct checkpoint checkpoint_storage;
-static struct sealed_checkpoint checkpoint_blob;
-struct rewind_state *state_anchor;
-
 CBC-MAC 
 CTR
 
@@ -1443,6 +1542,33 @@ AUTH
 IV/NONCE
 TAG
 \end{verbatim}
+
+\subsubsection{Data structures}
+\begin{verbatim}
+struct checkpoint checkpoint_storage
+struct sealed_checkpoint checkpoint_blob
+struct rewind_state *state_anchor
+\end{verbatim}
+
+\begin{verbatim}
+CBC-MAC 
+CTR
+
+ENC
+AUTH
+
+IV/NONCE
+TAG
+\end{verbatim}
+
+
+\subsection{Fault Modeling}
+Advanced fault detection and correction is not in the scope of this thesis.
+Thus, a small fault model is implemented : Appendix \ref{file:fault}. it is based of of the the SplitMix \cite{splitmix,splitmix1} algorithm. 
+It is a small, object-oriented, non-cryptographic, Pseudo-Random Number Generator (PRNG) and is based on Linear Congruential Generators (LCG) followed by bit-mixing (XOR-shifts) operations. 
+It produces good enough results while being lightweight. 
+\\\\
+We maintain a 64-bit (SplitMix
 
 
 \subsection{Fault Modeling}
