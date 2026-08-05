@@ -46,15 +46,13 @@ void save_checkpoint_blob_dispatch(void* buffer)
   saved_blob.resize(arg_size);
   memcpy(saved_blob.data(), (void*)arg_ptr, arg_size);
 
-#if !HOST_TESTING && HOST_LOGGING
   char to_prt[80];
   sprintf(to_prt, "saved checkpoint blob size = %zu", arg_size);
   host_print(to_prt);
-#endif
-
+  
+#if HOST_TESTING
   auto end = chrono::steady_clock::now();
   const auto elapsed_us = chrono::duration_cast<chrono::microseconds>(end - start).count();
-#if HOST_TESTING
   update_timing_stats(save_stats, static_cast<uint64_t>(elapsed_us));
 #endif
   

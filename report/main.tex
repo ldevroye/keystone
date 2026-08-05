@@ -1248,54 +1248,192 @@ This limitation being addressed, the saved checkpoint must be sealed and must be
 \subsubsection{Host-side}
 \label{subsub:checkpoint-host}
 The print buffer will not be detailed as it is already implemented in the Keystone basic examples and is thus already explained in the documentation \cite{keystone-web}.
-Furthermore, the host keeps the last saved checkpoint blob in a variable: \verb|inline vector<uint8_t> saved_blob;|.
-This variable will be used for both loading and saving.
+Furthermore, the host keeps the last saved checkpoint blob in the \verb|inline vector<uint8_t> saved_blob| variable.
+This will be used for both loading and saving.
+\\
+
+Notice that this variable, is one of the possible attack vectors for a malicious program that would corrupt the host (in both reading and writing).
+The edge calls are, by definition and because they are linked to a specific function, another attack vector.
 
 \begin{verbatim}
-/* WRAPPER EDGE CALL LOAD */
+/* 1. WRAPPER EDGE CALL LOAD */
 void load_checkpoint_blob_dispatch(void* buffer)
-{
-    // checks if there is a saved checkpoint
+{   
+    // 1a. gather OCLL parameters
+    struct edge_call* ecall = (struct edge_call*)buffer;
+
+    // 1b. checks if there is a saved checkpoint
     if (saved_blob.empty()) 
     {
-        edge_call->return_data.call_status = CALL_STATUS_ERROR;
+        ecall->return_data.call_status = CALL_STATUS_ERROR;
         return;
     }
 
-    // looks into shared memory
-    void* return_buffer = (void*)edge_call_data_ptr();
+    // 1c. looks into shared memory
+    void* ret_buffer = (void*)edge_call_data_ptr();
 
-    // save it
-    memcpy(return_buffer, saved_blob.data(), saved_blob.size());
-    
-    // return and exit with ok status
-    edge_call_setup_ret(edge_call, return_buffer, saved_blob.size());
-    edge_call->return_data.call_status = CALL_STATUS_OK;
-    
+    // 1d. save it
+    memcpy(ret_buffer, saved_blob.data(), saved_blob.size());
+
+    /* 1e. if TESTING enabled -> tamper */
+    if (HOST_TESTING)
+    {    
+        tamper_checkpoint_blob(saved_blob);
+    }
+
+    // 1f. return and exit with ok status
+    edge_call_setup_ret(ecall, ret_buffer, saved_blob.size());
+    ecall->return_data.call_status = CALL_STATUS_OK;
 }
 
 
-/* WRAPPER EDGE CALL SAVE */
+/* 2. WRAPPER EDGE CALL SAVE */
 void save_checkpoint_blob_dispatch(void* buffer)
 {
-    struct edge_call* edge_call = (struct edge_call*)buffer;
+    // 2a. gather OCLL parameters
+    struct edge_call* ecall = (struct edge_call*)buffer;
+    uintptr_t arg_ptr;
+    size_t arg_size;
 
-    
+
+    // 2b. check parameters sanity
+    if (edge_call_args_ptr(ecall, &arg_ptr, &arg_size) != 0 ||
+        arg_size == 0) 
+    {
+        ecall->return_data.call_status = CALL_STATUS_ERROR;
+        return;
+    }
+
+    // 2c. save (sealed) checkpoint
+    saved_blob.resize(arg_size);
+    memcpy(saved_blob.data(), (void*)arg_ptr, arg_size);
+
+    // 2d. exit
+    ecall->return_data.call_status = CALL_STATUS_OK;
 }
-
 \end{verbatim}
 
 \subsubsection{Enclave-side}
-\begin{verbatim}
-/* WRAPPER EDGE CALL LOAD */
+As for the host, the enclave must keep an anchor in order to be able to save/load a checkpoint.
+This is \verb|extern struct rewind_state *state_anchor|.
 
-/* WRAPPER EDGE CALL SAVE */ 
+\begin{verbatim}
+/* 1. WRAPPER EDGE CALL LOAD */
+int load_checkpoint() 
+{   
+    // 1a. sends an OCALL to the SM
+    if (ocall(OCALL_LOAD_CHECKPOINT_BLOB, 
+            NULL,               // data to send
+            0,                  // size of this NULL data
+            &checkpoint_blob,   // data to retrieve
+            sizeof(checkpoint_blob)) != 0)
+    {
+        eapp_print("No saved checkpoint");
+        return -1;
+    }
+
+    // 1b. try to unseal the retrieved data
+    if (open_checkpoint_blob(&checkpoint_storage, 
+                        &checkpoint_blob) != 0)
+    {
+        return -1;
+    }
+
+    // 1c. increment sequence and exit
+    checkpoint_storage.checkpoint_seq++;
+    return 0;
+}
+
+// Note: The enclave must then use
+// restore_checkpoint() 
+// to restore the decrypted checkpoint into the state_anchor
+
+/* 2. WRAPPER EDGE CALL SAVE */ 
+int save_checkpoint()
+{
+    // 2a. setup parameters
+    uintptr_t stack_sp;
+    uintptr_t stack_anchor;
+    uintptr_t snapshot_sp;
+    uintptr_t snapshot_end;
+    size_t snapshot_len;
+    struct checkpoint to_save;  // temporary built checkpoint
+
+    // 2b. load and check the parameters
+    if (state_anchor == NULL)
+    {
+        eapp_print("Invalid checkpoint anchor");
+        return -1;
+    }
+
+    memset(&to_save, 0, sizeof(to_save));
+    stack_sp = read_stack_pointer();
+    stack_anchor = (uintptr_t)state_anchor;
+    snapshot_end = stack_anchor + sizeof(*state_anchor);
+
+    snapshot_sp = snapshot_end > STACK_SNAPSHOT_SIZE
+        ? snapshot_end - STACK_SNAPSHOT_SIZE
+        : stack_sp;
+
+    // keep the snapshot aligned to the current stack
+    if (snapshot_sp < stack_sp) {snapshot_sp = stack_sp;}
+
+    if (snapshot_end < snapshot_sp)
+    {
+        eapp_print("Invalid snapshot anchor");
+        return -1;
+    }
+
+    snapshot_len = snapshot_end - snapshot_sp;
+
+    if (snapshot_len > STACK_SNAPSHOT_SIZE)
+    {
+        eapp_print("Stack snapshot too large");
+        return -1;
+    }
+
+    // 2c. save the current data into the tmp variable
+    to_save.checkpoint_seq = checkpoint_storage.checkpoint_seq;
+    memset(to_save.stack_data, 0, sizeof(to_save.stack_data));
+    memcpy(to_save.stack_data+(STACK_SNAPSHOT_SIZE-snapshot_len),
+            (void *)snapshot_sp,
+            snapshot_len);
+
+    memset(&checkpoint_blob, 0, sizeof(checkpoint_blob));
+
+
+    // 2d. seal blob
+    if (seal_checkpoint_blob(&checkpoint_blob, &to_save) != 0)
+    {
+        return -1;
+    }
+
+    // 2e. output OCALL
+    if (ocall(OCALL_SAVE_CHECKPOINT_BLOB, 
+            &checkpoint_blob,   // data to save
+            sizeof(checkpoint_blob), 
+            NULL, 0) != 0)  // no data to wait from the host
+    {
+        eapp_print("failed to save checkpoint");
+        return -1;
+    }
+
+    // 2f. increment checkpoint_seq and exit
+    checkpoint_storage.checkpoint_seq++;
+    return 0;
+}
 \end{verbatim}
 
 
 \subsection{Data encryption}
 
 \begin{verbatim}
+
+save structs:
+static struct checkpoint checkpoint_storage;
+static struct sealed_checkpoint checkpoint_blob;
+struct rewind_state *state_anchor;
+
 CBC-MAC 
 CTR
 

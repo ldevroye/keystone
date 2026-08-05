@@ -10,8 +10,7 @@
 
 static struct checkpoint checkpoint_storage;
 static struct sealed_checkpoint checkpoint_blob;
-
-struct rewind_state *checkpoint_state_anchor;
+struct rewind_state *state_anchor;
 
 static uintptr_t read_stack_pointer(void)
 {
@@ -47,15 +46,15 @@ int load_checkpoint()
 
 int restore_checkpoint()
 {
-    if (checkpoint_state_anchor == NULL)
+    if (state_anchor == NULL)
     {
         eapp_print("Invalid checkpoint anchor");
         return -1;
     }
 
-    memcpy(checkpoint_state_anchor,
-           checkpoint_storage.stack_data + (STACK_SNAPSHOT_SIZE - sizeof(*checkpoint_state_anchor)),
-           sizeof(*checkpoint_state_anchor));
+    memcpy(state_anchor,
+           checkpoint_storage.stack_data + (STACK_SNAPSHOT_SIZE - sizeof(*state_anchor)),
+           sizeof(*state_anchor));
 
     return 0;
 }
@@ -69,7 +68,7 @@ int save_checkpoint()
     size_t snapshot_len;
     struct checkpoint to_save;
 
-    if (checkpoint_state_anchor == NULL)
+    if (state_anchor == NULL)
     {
         eapp_print("Invalid checkpoint anchor");
         return -1;
@@ -78,17 +77,14 @@ int save_checkpoint()
     memset(&to_save, 0, sizeof(to_save));
 
     stack_sp = read_stack_pointer();
-    stack_anchor = (uintptr_t)checkpoint_state_anchor;
-    snapshot_end = stack_anchor + sizeof(*checkpoint_state_anchor);
+    stack_anchor = (uintptr_t)state_anchor;
+    snapshot_end = stack_anchor + sizeof(*state_anchor);
     snapshot_sp = snapshot_end > STACK_SNAPSHOT_SIZE
         ? snapshot_end - STACK_SNAPSHOT_SIZE
         : stack_sp;
 
     // keep the snapshot aligned to the current stack so we never copy below sp
-    if (snapshot_sp < stack_sp)
-    {
-        snapshot_sp = stack_sp;
-    }
+    if (snapshot_sp < stack_sp) {snapshot_sp = stack_sp;}
 
     if (snapshot_end < snapshot_sp)
     {

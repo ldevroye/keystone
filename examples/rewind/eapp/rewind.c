@@ -36,7 +36,7 @@ int main()
     struct rewind_state state = {0, 1, 0}; // fibonacci sequence init
     struct fault_model fault_model = get_default_model();
 
-    checkpoint_state_anchor = &state;
+    state_anchor = &state;
 
     // on restart, recover the last sealed checkpoint if the host has one
     if (load_checkpoint() == 0) 

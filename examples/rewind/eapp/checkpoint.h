@@ -17,7 +17,7 @@
 #define CHECKPOINT_BLOB_SIZE (CHECKPOINT_IV_SIZE + CHECKPOINT_SEALED_SIZE)
 
 
-extern struct rewind_state *checkpoint_state_anchor;
+extern struct rewind_state *state_anchor;
 
 struct rewind_state 
 {
