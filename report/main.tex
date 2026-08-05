@@ -1467,14 +1467,23 @@ memcpy(iv,
 memcpy(iv + sizeof(checkpoint->checkpoint_seq), 
     &checkpoint->checkpoint_seq, 
     sizeof(checkpoint->checkpoint_seq));
+
+uint8_t mac_input[AES_BLOCK_SIZE + 
+                sizeof(struct checkpoint)];
+size_t mac_len = AES_BLOCK_SIZE + payload_len;
+memcpy(mac_input, iv, AES_BLOCK_SIZE);
+memcpy(mac_input + AES_BLOCK_SIZE, payload, 
+    payload_len);
+
+                
 aes_key_setup(enc_key, enc_schedule, AES_KEY_BITS);
-aes_encrypt_ctr(payload, payload_len, 
-            payload, 
+aes_encrypt_ctr(mac_input, mac_len, 
+            mac_input, 
             enc_schedule, 
             AES_KEY_BITS, 
             iv);
 
-// 1d. compute_tag(): AES-256-CBC-MAC over the ciphertext
+// 1d. compute_tag(): AES-256-CBC-MAC over the ciphertext and iv
 uint8_t zero_iv[AES_BLOCK_SIZE] = {0};
 aes_key_setup(auth_key, auth_schedule, AES_KEY_BITS);
 aes_encrypt_cbc_mac(payload, payload_len, 
@@ -1497,7 +1506,7 @@ memcpy(blob->sealed + sizeof(payload), tag, sizeof(tag));
     \item[a)] Derive the same \texttt{enc\_key}/\texttt{auth\_key} again from
     the same context.
     \item[b)] Split the opaque blob into ciphertext, iv, and tag.
-    \item[c)] Recompute the expected tag over the ciphertext.
+    \item[c)] Recompute the expected tag over the ciphertext and given iv.
     \item[d)] Compare expected tag with the stored tag; if mismatch, reject.
     \item[e)] Decrypt the ciphertext.
     \item[f)] Rebuild the plain checkpoint.
@@ -1695,7 +1704,7 @@ These macros enables (or disables) the tests in a branching way.
 
 \subsubsection{Host-side}
 \begin{itemize}
-    \item \verb|HOST_TESTING|: launches the host in testing mode, reduce outputs and run\\ \verb|ANALYSIS_RUNS| iterations to make averages
+    \item \verb|HOST_TESTING|: launches the host in testing mode, reduce outputs and run\\ \verb|ANALYSIS_RUNS| iterations to compute averages
     \item \verb|ANALYSIS_RUNS|: sets the number of runs for the analysis (host side)
     \item \verb|TEST_TAMPER_MODE|: set the mode of tampering test to do (none/bitflip/truncate/last-byte)
 \end{itemize}
@@ -1712,6 +1721,34 @@ Or trying tests like \verb|TEST_TAMPER_MODE|=bitflip and not setting the \verb|H
 In order to better understand what is going on, it is recommended to enable both loggins macros.
 
 
+\section{Test cases}
+This section defines the test cases used to evaluate the checkpoint and rewind
+mechanism and explains their relevance.
+There are two parts: the \textit{Analysis} (Section \ref{sub:test-analysis}),
+where we quantify execution costs and overhead, and the \textit{Cyber security}
+(Section \ref{sub:test-cyber}), where we validate the threat model assumptions
+and security objectives from Section \ref{sub:threat-model}.
+
+\subsection{Analysis}
+\label{sub:test-analysis}
+Each test specifies:
+\begin{itemize}
+    \item the enclave workload and macros used setup
+    \item the fault scenario (e.g., forced enclave stop, host crash, power cut)
+    \item the metrics recorded (latency, CPU cycles, memory overhead, final success rate)
+\end{itemize}
+
+\subsection{Cyber security}
+\label{sub:test-cyber}
+Each test focuses on:
+\begin{itemize}
+    \item attacker goal (e.g., replaying or corrupting sealed blobs)
+    \item the specific security objective under evaluation (confidentiality,
+          integrity, atomicity, unclonability)
+    \item the expected behavior of the enclave (e.g., detection and rejection of
+          tampered checkpoints)
+\end{itemize}
+
 
 %%%%%%%%%%%%%%%%%%%%%%%% Results %%%%%%%%%%%%%%%%%%%%%%%%
 \chapter{Results and Discussion}
@@ -1723,7 +1760,6 @@ In order to better understand what is going on, it is recommended to enable both
 
 \section{Cyber security}
 \subsection{Tampering}
-\subsection{Stalling}
 
 \section{Discussion}
 \TODO{threshold for avrage usefulness}

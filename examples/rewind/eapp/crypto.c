@@ -25,16 +25,16 @@ static int checkpoint_keys_ready;
  *    - enc_key for confidentiality (CTR stream encryption)
  *    - auth_key for integrity/authenticity (CBC-MAC)
  * c) encrypt_stack(payload) AES-CTR-encrypts the plaintext payload
-    and the iv.
- * d) compute_tag() MACs the ciphertext checkpoint payload.
- * e) The payload and tag are copied into the host-facing blob.
+ *    with the checkpoint iv.
+ * d) compute_tag() MACs the iv and ciphertext together.
+ * e) The iv, payload, and tag are copied into the host-facing blob.
  *
  * Load:
  * a) Derive the same enc_key/auth_key again from the same context.
  * b) Split the opaque blob into ciphertext, iv, and tag.
- * c) Recompute the expected tag over the ciphertext.
+ * c) Recompute the expected tag over the iv and ciphertext.
  * d) Compare expected tag with the stored tag; if mismatch, reject.
- * e) Decrypt the ciphertext.
+ * e) Decrypt the ciphertext with the authenticated iv.
  * f) Rebuild the plain checkpoint.
 */
 
@@ -91,18 +91,24 @@ static int decrypt_stack(uint8_t *stack_data,
     return 0;
 }
 
-static int compute_tag(const uint8_t *payload,
+static int compute_tag(const uint8_t iv[AES_BLOCK_SIZE],
+                        const uint8_t *payload,
                         size_t payload_len,
                         uint8_t tag[CHECKPOINT_TAG_SIZE])
 {
     WORD auth_schedule[AES_SCHEDULE_WORDS];
     uint8_t zero_iv[AES_BLOCK_SIZE] = {0};
+    uint8_t mac_input[AES_BLOCK_SIZE + sizeof(struct checkpoint)];
+    size_t mac_len = AES_BLOCK_SIZE + payload_len;
 
     if (payload_len % AES_BLOCK_SIZE != 0) {return -1;}
 
     aes_key_setup(auth_key, auth_schedule, AES_KEY_BITS);
-    // mac the ciphertext payload so the tag authenticates the encrypted data
-    if (aes_encrypt_cbc_mac((const BYTE *)payload, payload_len, tag, auth_schedule, AES_KEY_BITS, zero_iv) == 0) 
+    memcpy(mac_input, iv, AES_BLOCK_SIZE);
+    memcpy(mac_input + AES_BLOCK_SIZE, payload, payload_len);
+
+    // mac the iv and ciphertext together so the decrypt nonce is authenticated too
+    if (aes_encrypt_cbc_mac((const BYTE *)mac_input, mac_len, tag, auth_schedule, AES_KEY_BITS, zero_iv) == 0) 
     {
         return -1;
     }
@@ -126,7 +132,7 @@ int seal_checkpoint_blob(struct sealed_checkpoint *blob, const struct checkpoint
     // removes empty 0s as the checkpoint_seq is AES_BLOCK_SIZE//2 (16//2 -> 8) bytes
     memcpy(iv + sizeof(checkpoint->checkpoint_seq), &checkpoint->checkpoint_seq, sizeof(checkpoint->checkpoint_seq));
 
-    // save path: encrypt first, then authenticate the ciphertext
+    // save path: encrypt first, then authenticate the iv and ciphertext
     if (derive_checkpoint_material() != 0) {
         eapp_print("failed to derive sealing key");
         return -1;
@@ -134,8 +140,7 @@ int seal_checkpoint_blob(struct sealed_checkpoint *blob, const struct checkpoint
 
     encrypt_stack(payload, sizeof(payload), iv);
 
-    // tag is computed over ciphertext here for encrypt-then-mac
-    if (compute_tag(payload, sizeof(payload), computed_tag) != 0) {
+    if (compute_tag(iv, payload, sizeof(payload), computed_tag) != 0) {
         eapp_print("failed to authenticate checkpoint");
         return -1;
     }
@@ -154,7 +159,7 @@ int open_checkpoint_blob(struct checkpoint *checkpoint, const struct sealed_chec
     const uint8_t *ciphertext = blob->sealed;
     const uint8_t *tag = blob->sealed + sizeof(payload);
 
-    // load path: verify the ciphertext first, then decrypt with the stored iv
+    // load path: verify the iv and ciphertext first, then decrypt
     if (derive_checkpoint_material() != 0) 
     {
         eapp_print("failed to derive sealing key");
@@ -163,7 +168,7 @@ int open_checkpoint_blob(struct checkpoint *checkpoint, const struct sealed_chec
 
     memcpy(payload, ciphertext, sizeof(payload));
 
-    if (compute_tag(payload, sizeof(payload), expected_tag) != 0) 
+    if (compute_tag(blob->iv, payload, sizeof(payload), expected_tag) != 0) 
     {
         eapp_print("failed to verify checkpoint");
         return -1;
