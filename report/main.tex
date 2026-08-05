@@ -15,7 +15,7 @@
 \usepackage{float}
 \usepackage[a4paper,top=18mm,bottom=26mm,left=30mm,right=30mm,headheight=14pt,footskip=14mm]{geometry}
 \usepackage{titlesec}
-\usepackage{hyperref} 
+\usepackage{hyperref}  
 \usepackage{xurl}
 \Urlmuskip=0mu plus 1mu
             \hypersetup{backref=true,       
@@ -333,7 +333,8 @@ Now, we need to categorize faults \cite{future-research, other-goal}
     \end{itemize}
     
     \item \textbf{Checkpoint}: A checkpoint saves the state of the system at a certain time. 
-    If a failure happens later, the system can roll back to this saved state and continue from there without starting over from scratch. It is often used in High Performance Computing (HPC) for long running tasks and in the industry in general as it is effective.
+    If a failure happens later, the system can roll back to this saved state and continue from there without starting over from scratch. 
+    It is often used in High Performance Computing (HPC) for long running tasks and in the industry in general as it is effective.
     
     \item \textbf{Recovery blocks}: This method runs a primary version of a task and checks the result. 
     If the result fails, it runs another version (possibly degraded) to try again. 
@@ -728,8 +729,8 @@ A visual representation is that it is at the \textit{edge} of it, meaning that t
 \\
 
 In Keystone, it is used to communicate between the host (unsafe) and the enclave (safe). 
-This is accomplished using shared memmory between the two. 
-More precisely using Outbound CALLs (\texttt{OCALL}). However, this is done by using offsets in memmory region, using solely offsets (neglecting virtual address pointers)
+This is accomplished using shared memory between the two. 
+More precisely using Outbound CALLs (\texttt{OCALL}). However, this is done by using offsets in memory region, using solely offsets (neglecting virtual address pointers)
 \cite{keystone-docs, review-keystone}.
 
 \subsection{OCALL lifecycle}
@@ -745,7 +746,7 @@ If we want to print something from inside the enclave, we need to :
     \texttt{\&ret, sizeof(ret))}
 \end{itemize}
 
-Now the runtime part allocates an \texttt{edge\_call\_t} structure in shared memmory. 
+Now the runtime part allocates an \texttt{edge\_call\_t} structure in shared memory. 
 Then fills the call type and copies the value in the another part of the shared memory using an offset.
 The last part for the enclave now is for the runtime to exit the enclave without destroying it. 
 This is done with an \texttt{SBI\_CALL} expressing an ocall.
@@ -764,6 +765,105 @@ If so, it then uses the offset to put the data in \texttt{ret} and then resumes 
 \\
 
 Note that this can also be used to provide networking operations \cite{review-keystone}.
+\\
+
+Since the implementation is assymetric, the host will have to map the edge calls that it could receive to wrapper functions and be able to handle them while running the main loop.
+The enclave with just send the \verb|OCALLs| and wait for a possible response from the host.
+
+\subsubsection{Host-side}
+\label{subsub:edge-call-host}
+The edge call wrappers are working in parallel to the main loop.
+These wrappers are implemented as such:
+\begin{verbatim}
+// 1. Linking the edge calls to the functions
+// this is done in configure_enclave()
+
+// binds ocalls to the enclave 
+enclave.registerOcallDispatch(incoming_call_dispatch); 
+register_call(OCALL_PRINT_BUFFER, 
+            print_buffer_dispatch); // input
+register_call(OCALL_SAVE_CHECKPOINT_BLOB, 
+            save_checkpoint_blob_dispatch); // input
+register_call(OCALL_LOAD_CHECKPOINT_BLOB, 
+            load_checkpoint_blob_dispatch); // output
+
+// 2. Basic edge call structure
+void edge_call_wrapper(void *buffer) 
+{
+
+    // 3. Checks the call sanity  
+    if (edge_call_args_ptr(edge_call, &arg_ptr, &arg_size) != 0 
+        || arg_size == 0) 
+    {
+        edge_call->return_data.call_status = CALL_STATUS_ERROR;
+        return;
+    }
+
+    /* 4. Wrapper logic */ 
+
+    // 5. Setup return data
+    ret_val = /* some logic */
+    uintptr_t data_section = edge_call_data_ptr();
+    memcpy((void*)data_section, 
+            &ret_val, 
+            sizeof(type_to_return));
+            
+    if (edge_call_setup_ret(edge_call, 
+                            (void*)data_section, 
+                            sizeof(type_to_return))) 
+    {
+        call_status = CALL_STATUS_BAD_PTR;
+    }
+
+    // 6. Exiting
+    edge_call->return_data.call_status = call_status;
+    return;
+
+}
+\end{verbatim}
+
+\subsubsection{Enclave-side}
+\label{subsub:edge-call-eapp}
+In contrast to the host, the edge calls in the enclave are sequential and in the main loop.
+\begin{verbatim}
+// The edge functions are :
+// output
+int save_checkpoint(uintptr_t stack_anchor, size_t anchor_len);
+unsigned long ocall_print_buffer(char* data, size_t data_len);
+
+// input
+int load_checkpoint(struct rewind_checkpoint *checkpoint);
+
+
+// 1. Basic edge call wrapper structure
+auto edge_call_wrapper(int argc, char** argv) 
+{   
+    // 2. OUTPUT functions
+    {    
+        /* output wrapper logic */
+    }
+
+    // 3. OCALL
+    auto retval;
+    ocall(OCALL_ENUM_NUMBER, 
+            data, 
+            data_len, 
+            &retval, 
+            sizeof(retval));
+
+    // 4. INPUT functions
+    {
+        /* input wrapper logic */
+    }
+
+    //5. Exit
+    return (output ? retvall : some_value);
+    
+}
+\end{verbatim}
+Note that no standard library is used in the enclave as the Keystone tutorial (7.1.1 \cite{keystone-web}) explicitly states that printf is not a secure I/O interface.
+Considering this, small functions to format numbers into strings (char*) have been implemented.
+
 
 \section{Data sealing}
 \label{sub:data-sealing}
@@ -921,8 +1021,8 @@ This chapter describes the concrete implementation, the choices and the assumpti
 The first step is to have a strong, yet modular, idea of the concept to be implemented.
 The goal is to obtain domains that can be checkpointed and the data that has been sealed needes to be accessible in another one.
 The domains discussed here are the ones from the "Rewind $\&$ Discard: Improving Software Resilience using Isolated Domains" \cite{sdrad}.
-We can make an easy parallel between enclaves and domains as they are executed in an isolated execution context with controlled memmory (\ref{sub:pmp}) from the outer, untrusted, world.
-The SM (\ref{sub:sm}) is an enclave factory and provides them with, as previously mentionned, controlled memmory.
+We can make an easy parallel between enclaves and domains as they are executed in an isolated execution context with controlled memory (\ref{sub:pmp}) from the outer, untrusted, world.
+The SM (\ref{sub:sm}) is an enclave factory and provides them with, as previously mentionned, controlled memory.
 \\
 
 % data sealing
@@ -935,7 +1035,7 @@ This is true if we consider the identifier to be the same for both, as it is imp
 
 % data sealing & edge calls
 For the checkpointing scheme, the enclave use the edge calls (\ref{sub:edge-calls}) already implemented in keystone. 
-The checkpointed data is sent and retrieved (to and from the host's memmory space) using the enclave's key (\ref{sub:data-sealing}) using two custom edge calls, one for sending and one for retrieving. 
+The checkpointed data is sent and retrieved (to and from the host's memory space) using the enclave's key (\ref{sub:data-sealing}) using two custom edge calls, one for sending and one for retrieving. 
 To ensure that the data isn't tampered, there is a layer on top of Keystone's encryption scheme.
 The layer adds a tag for the enclave to check if the unsealed data corresponds to the sealed one.
 Only the last checkpoint is saved.
@@ -951,11 +1051,12 @@ However, we address this in the future work section \ref{sub:back-complexity}.
 % Fault model
 % Tests
 \section{Threat Model}
+\label{sub:threat-model}
 A threat model helps to clarify the hypothesis, the goals and the limitiations compared to the real, unsafe, world.
 
 \subsection{Trusted}
 \begin{itemize}
-  \item Enclave code, runtime and memmory access (Keystone TEE, RISC-V, PMP isolation)
+  \item Enclave code, runtime and memory access (Keystone TEE, RISC-V, PMP isolation)
   \item Enclave-derived sealing keys (via \texttt{get\_sealing\_key}, bound to enclave measurement)
 \end{itemize}
 
@@ -1000,18 +1101,16 @@ We further assume that the checkpointing and rewind mechanism operates securely,
 For the intermittent-device context, the checkpointed state may be exposed to physical disruption such as power loss or tampering with external storage, so recovery data must be authenticated and protected against corruption but not roll-back.
 The enclave only restores the checkpoint on restart and does not base its execution on the sealed checkpoint it sent unless there is a fault and thus a, possibly corrupted, rewind.
 \\
-Enclave execution is assumed deterministic given identical entry state (no host-controlled inputs, per Attacker Capabilities). Under this assumption, IV/seq reuse acrosscrash-and-restart is safe: identical plaintext re-encrypted under the same IV leaks nothing.
-This safety does not hold if the enclave itself introduces non-determinism (uninitializedmemory, internal RNG/timer reads, etc.) before the point of divergence from a prior checkpointseq.
 
+Enclave execution is assumed deterministic given identical entry state (no host-controlled inputs, per Attacker Capabilities). Under this assumption, IV/seq reuse acrosscrash-and-restart is safe: identical plaintext re-encrypted under the same IV leaks nothing.
+This safety does not hold if the enclave itself introduces non-determinism (uninitializedmemory, internal RNG/timer reads, etc.) before the point of divergence from a prior checkpoint\_seq.
 
 \subsection{Requirements}
 The system must allow the application to continue operation after a detected fault or attack by restoring a trusted state and resuming execution from a safe point. 
 The recovery mechanism must preserve memory integrity after rewind, and isolation must ensure that faults in one compartment do not compromise other protected compartments or the logic responsible for transitions and recovery.
 \\
 
-An enclave state must remain protected across enclave transitions, that recovery metadata must be authenticated, and that the host must not be able to forge or tamper with a checkpoint without detection. 
-Also, the checkpointed state should also be encrypted; integrity and continuity remain the minimum security target. 
-
+An enclave state must remain protected across enclave transitions, that recovery metadata must be authenticated, and that the host must not be able to forge or tamper with a checkpoint without detection.
 
 
 
@@ -1070,62 +1169,15 @@ while (ret != 0  && retry_counter < MAX_RUNS)
     // enclave.init() && linking edge calls to 
     configure_enclave(enclave, params, argv); 
 
-    //SM destroy the encalve upon completion
+    //SM destroy the enclave upon completion
     enclave.run(&ret); 
 }
 
 // 4. Exiting
 return ret;
 \end{verbatim}
-The edge call wrappers are working in parallel to the main loop.
-These wrappers are implemented as such:
-\begin{verbatim}
-// 1. Linking the edge calls to the functions
-// this is done in configure_enclave()
-
-// binds ocalls to the enclave 
-enclave.registerOcallDispatch(incoming_call_dispatch); 
-register_call(OCALL_PRINT_BUFFER, 
-            print_buffer_dispatch); // input
-register_call(OCALL_SAVE_CHECKPOINT_BLOB, 
-            save_checkpoint_blob_dispatch); // input
-register_call(OCALL_LOAD_CHECKPOINT_BLOB, 
-            load_checkpoint_blob_dispatch); // output
-
-// 2. Basic edge call structure
-void edge_call_wrapper(void *buffer) 
-{
-
-    // 3. Checks the call sanity  
-    if (edge_call_args_ptr(edge_call, &arg_ptr, &arg_size) != 0 
-        || arg_size == 0) 
-    {
-        edge_call->return_data.call_status = CALL_STATUS_ERROR;
-        return;
-    }
-
-    /* 4. Wrapper logic */ 
-
-    // 5. Setup return data
-    ret_val = /* some logic */
-    uintptr_t data_section = edge_call_data_ptr();
-    memcpy((void*)data_section, 
-            &ret_val, 
-            sizeof(type_to_return));
-            
-    if (edge_call_setup_ret(edge_call, 
-                            (void*)data_section, 
-                            sizeof(type_to_return))) 
-    {
-        call_status = CALL_STATUS_BAD_PTR;
-    }
-
-    // 6. Exiting
-    edge_call->return_data.call_status = call_status;
-    return;
-
-}
-\end{verbatim}
+The basic edge call wrapper structure is explained in the edge call section of the keystone architecture \ref{subsub:edge-call-host}.
+The actual implementation of each wrapper is detailed in \ref{subsub:checkpoint-host}.
 
 \subsubsection{Enclave-side (EAPP)}
 As for the host, there is only execution changing macro, other setups are the (same) edge calls.
@@ -1179,45 +1231,6 @@ for (; state.counter < EAPP_RUNS;)
 // 4. Exiting
 EAPP_RETURN(0);
 \end{verbatim}
-As shown above, the edge calls in the enclave are sequential in the main loop.
-\begin{verbatim}
-// The edge functions are :
-// output
-int save_checkpoint(uintptr_t stack_anchor, size_t anchor_len);
-unsigned long ocall_print_buffer(char* data, size_t data_len);
-
-// input
-int load_checkpoint(struct rewind_checkpoint *checkpoint);
-
-
-// 1. Basic edge call wrapper structure
-auto edge_call_wrapper(int argc, char** argv) 
-{   
-    // 2. OUTPUT functions
-    {    
-        /* output wrapper logic */
-    }
-
-    // 3. OCALL
-    auto retval;
-    ocall(OCALL_ENUM_NUMBER, 
-            data, 
-            data_len, 
-            &retval, 
-            sizeof(retval));
-
-    // 4. INPUT functions
-    {
-        /* input wrapper logic */
-    }
-
-    //5. Exit
-    return (output ? retvall : some_value);
-    
-}
-\end{verbatim}
-Note that no standard library is used in the enclave as the Keystone tutorial (7.1.1 \cite{keystone-web}) explicitly states that printf is not a secure I/O interface.
-Considering this, small functions to format numbers into strings (char*) have been implemented.
 
 \subsection{Checkpoint}
 In order to rewind or discard an enclave, there must be a checkpointed state that is saved and loaded on demand (by the enclave, as defined by Keystone \ref{chap:Keystone}).
@@ -1227,24 +1240,56 @@ However, as soon as the enclave submit an edge call, the host could (assuming ma
 This is bounded by Keystone structure and is, as noted in the threat model \ref{sub:threat-model}, not in the scope of this thesis.
 \\
 
-One could implement a direct call from the enclave to the SM to external safe memmory with, for example, table pages protected by outside PMP entry or another "data enclave" that has a direct communication channel with the "runtime" one.
+One could implement a direct call from the enclave to the SM to external safe memory with, for example, table pages protected by outside PMP entry or another "data enclave" that has a direct communication channel with the "runtime" one.
 The problem in our scenario is that the host is the only link to the outside world and is, by definition, also not to be trusted.
-This limitation being addressed, the saved checkpoint must be sealed and must be checked in order to not introduce unsafe data into the enclave's memmory.
+This limitation being addressed, the saved checkpoint must be sealed and must be checked in order to not introduce unsafe data into the enclave's memory.
 \\
 
 \subsubsection{Host-side}
-\begin{verbatim}
-    WRAPPER EDGE CALL LOAD
+\label{subsub:checkpoint-host}
+The print buffer will not be detailed as it is already implemented in the Keystone basic examples and is thus already explained in the documentation \cite{keystone-web}.
+Furthermore, the host keeps the last saved checkpoint blob in a variable: \verb|inline vector<uint8_t> saved_blob;|.
+This variable will be used for both loading and saving.
 
-    WRAPPER EDGE CALL SAVE
+\begin{verbatim}
+/* WRAPPER EDGE CALL LOAD */
+void load_checkpoint_blob_dispatch(void* buffer)
+{
+    // checks if there is a saved checkpoint
+    if (saved_blob.empty()) 
+    {
+        edge_call->return_data.call_status = CALL_STATUS_ERROR;
+        return;
+    }
+
+    // looks into shared memory
+    void* return_buffer = (void*)edge_call_data_ptr();
+
+    // save it
+    memcpy(return_buffer, saved_blob.data(), saved_blob.size());
+    
+    // return and exit with ok status
+    edge_call_setup_ret(edge_call, return_buffer, saved_blob.size());
+    edge_call->return_data.call_status = CALL_STATUS_OK;
+    
+}
+
+
+/* WRAPPER EDGE CALL SAVE */
+void save_checkpoint_blob_dispatch(void* buffer)
+{
+    struct edge_call* edge_call = (struct edge_call*)buffer;
+
+    
+}
 
 \end{verbatim}
 
 \subsubsection{Enclave-side}
 \begin{verbatim}
-    WRAPPER EDGE CALL LOAD
+/* WRAPPER EDGE CALL LOAD */
 
-    WRAPPER EDGE CALL SAVE
+/* WRAPPER EDGE CALL SAVE */ 
 \end{verbatim}
 
 
@@ -1292,7 +1337,7 @@ struct fault_model f_m = get_default_model();
 // chances are 1/PERIOD
 if (fault_should_trigger(&f_m)) 
 {
-    // 4. Exit then encalve with abnormal code
+    // 4. Exit then enclave with abnormal code
     // Keystone::Error::EnclaveInterrupted = 16, the enum
     EAPP_RETURN(16);
 }
@@ -1321,7 +1366,7 @@ Note that the logs produced can be found in the \verb|build-$PLATFORM$BITS/build
 
 %%%%%%%%%%%%%%%%%%%%%%%% Experimental setup %%%%%%%%%%%%%%%%%%%%%%%%
 \chapter{Experimental Setup}
-The Rewind encalve is evaluated on its overhead computation time and data cost.
+The Rewind enclave is evaluated on its overhead computation time and data cost.
 Moveover, the cyber security assumptions are being tested individualy. 
 \section{Macros}
 The tests are being conducted using different macros.
@@ -1333,6 +1378,8 @@ There are various ones, three main categories emerge:
 \end{itemize}
 
 \subsection{Logging}
+These macros are not to be confused with testing macros as they are independant from them.
+One could run the tests of the side with the logging of the enclave or all the tests with no logging (which wouldn't be very interesting). 
 \begin{itemize}
     \item \verb|HOST_LOGGING|: enable host printing
     \item \verb|EAPP_LOGGING|: enable eapp printing
@@ -1346,11 +1393,20 @@ There are various ones, three main categories emerge:
     
 \end{itemize}
 \subsection{Testing}
+Because the two parts are opaque to each others, tests must be implemented on both sides. 
+These macros enables (or disables) the tests in a branching way. 
+For example, if the \verb|HOST_TESTING| is set to false, none of the host-side tests will be launched.
+Also note that if the \verb|EAPP_TESTING| and the \verb|HOST_TESTING| are true, the host results could be useless or could even tamper with the enclave tests.
+
+\subsubsection{Host-side}
 \begin{itemize}
     \item \verb|HOST_TESTING|: launches the host in testing mode, reduce outputs and run\\ \verb|ANALYSIS_RUNS| iterations to make averages
     \item \verb|ANALYSIS_RUNS|: sets the number of runs for the analysis (host side)
     \item \verb|TEST_TAMPER_MODE|: set the mode of tampering test to do (none/bitflip/truncate/last-byte)
+\end{itemize}
 
+\subsubsection{Enclave-side}
+\begin{itemize}
     \item \verb|EAPP_TESTING|: launches the execution in testing mode, starts the test sequence
     \item \verb|FAULT_RANDOMIZE_SEED|: enable/disable random seed for the fault model
     \item \verb|FAULT_SEED|: sets the seed to start from for the fault model (if\\ \verb|FAULT_RANDOMIZE_SEED|=0)

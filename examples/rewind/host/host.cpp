@@ -43,8 +43,8 @@ void save_checkpoint_blob_dispatch(void* buffer)
     return;
   }
 
-  saved_checkpoint_blob.resize(arg_size);
-  memcpy(saved_checkpoint_blob.data(), (void*)arg_ptr, arg_size);
+  saved_blob.resize(arg_size);
+  memcpy(saved_blob.data(), (void*)arg_ptr, arg_size);
 
 #if !HOST_TESTING && HOST_LOGGING
   char to_prt[80];
@@ -66,10 +66,9 @@ void save_checkpoint_blob_dispatch(void* buffer)
 void load_checkpoint_blob_dispatch(void* buffer)
 {
   struct edge_call* edge_call = (struct edge_call*)buffer;
-
   auto start = chrono::steady_clock::now();
   
-  if (saved_checkpoint_blob.empty()) 
+  if (saved_blob.empty()) 
   {
     edge_call->return_data.call_status = CALL_STATUS_ERROR;
     return;
@@ -78,7 +77,7 @@ void load_checkpoint_blob_dispatch(void* buffer)
 #if HOST_TESTING 
   if (!test_done && strcmp(TEST_TAMPER_MODE, "none") != 0)
   {
-    tamper_checkpoint_blob(saved_checkpoint_blob);
+    tamper_checkpoint_blob(saved_blob);
     char tamper_log[96];
     snprintf(tamper_log, sizeof(tamper_log), "tampering checkpoint blob with mode=%s", TEST_TAMPER_MODE);
     host_print(tamper_log);
@@ -90,8 +89,8 @@ void load_checkpoint_blob_dispatch(void* buffer)
 
   // copy the opaque blob back through the shared return buffer, not a host pointer
   void* return_buffer = (void*)edge_call_data_ptr();
-  memcpy(return_buffer, saved_checkpoint_blob.data(), saved_checkpoint_blob.size());
-  edge_call_setup_ret(edge_call, return_buffer, saved_checkpoint_blob.size());
+  memcpy(return_buffer, saved_blob.data(), saved_blob.size());
+  edge_call_setup_ret(edge_call, return_buffer, saved_blob.size());
   edge_call->return_data.call_status = CALL_STATUS_OK;
 
   auto end = chrono::steady_clock::now();
@@ -161,7 +160,7 @@ int main(int argc, char** argv)
   while (analysis_counter < analysis_iteration_limit)
   {
     analysis_counter++;
-    saved_checkpoint_blob.clear(); // clear checkpoint
+    saved_blob.clear(); // clear checkpoint
     run_stats = {};
     auto retry_counter = 0;
 
