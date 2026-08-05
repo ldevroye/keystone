@@ -1255,8 +1255,8 @@ This will be used for both loading and saving.
 Notice that this variable, is one of the possible attack vectors for a malicious program that would corrupt the host (in both reading and writing).
 The edge calls are, by definition and because they are linked to a specific function, another attack vector.
 
+\paragraph{1. load wrapper}
 \begin{verbatim}
-/* 1. WRAPPER EDGE CALL LOAD */
 void load_checkpoint_blob_dispatch(void* buffer)
 {   
     // 1a. gather OCLL parameters
@@ -1287,7 +1287,10 @@ void load_checkpoint_blob_dispatch(void* buffer)
 }
 
 
-/* 2. WRAPPER EDGE CALL SAVE */
+\end{verbatim}
+
+\paragraph{2. save wrapper}
+\begin{verbatim}
 void save_checkpoint_blob_dispatch(void* buffer)
 {
     // 2a. gather OCLL parameters
@@ -1317,8 +1320,8 @@ void save_checkpoint_blob_dispatch(void* buffer)
 As for the host, the enclave must keep an anchor in order to be able to save/load a checkpoint.
 This is \verb|extern struct rewind_state *state_anchor|.
 
+\paragraph{1. load wrapper}
 \begin{verbatim}
-/* 1. WRAPPER EDGE CALL LOAD */
 int load_checkpoint() 
 {   
     // 1a. sends an OCALL to the SM
@@ -1352,8 +1355,10 @@ int load_checkpoint()
 // Note: The enclave must then use
 // restore_checkpoint() 
 // to restore the decrypted checkpoint into the state_anchor
+\end{verbatim}
 
-/* 2. WRAPPER EDGE CALL SAVE */ 
+\paragraph{2. save wrapper}
+\begin{verbatim}
 int save_checkpoint()
 {
     // 2a. setup parameters
@@ -1436,29 +1441,20 @@ To preserve the security objectives, the enclave implements a cryptographic prot
 The authentificaction and encryption keys are both derived using the function\\
 \verb|derive_checkpoint_material()| usging Keystone \verb|get_sealing_key()| \ref{sub:data-sealing}.
 This function is cached after the first usage as the keys will never be changed afterwards. The worklow can be described as such:
-\begin{verbatim}
-/*
- * Save:
- * a) derive_checkpoint_material() asks the SM sealing API for key
- *    material bound to scheme label (identifiers[]).
- * b) The returned material is two independent AES-256 keys:
- *    - enc_key for confidentiality (CTR stream encryption)
- *    - auth_key for integrity/authenticity (CBC-MAC)
- * c) encrypt_stack(payload) AES-CTR-encrypts the plaintext payload
-    and the iv.
- * d) compute_tag() MACs the ciphertext checkpoint payload.
- * e) The payload and tag are copied into the host-facing blob.
- *
- * Load:
- * a) Derive the same enc_key/auth_key again from the same context.
- * b) Split the opaque blob into ciphertext, iv, and tag.
- * c) Recompute the expected tag over the ciphertext.
- * d) Compare expected tag with the stored tag; if mismatch, reject.
- * e) Decrypt the ciphertext.
- * f) Rebuild the plain checkpoint.
-*/
+\paragraph{1. Save}
+\begin{itemize}
+    \item[a)] \texttt{derive\_checkpoint\_material()} asks the SM sealing API
+    for key material bound to scheme label (\texttt{identifiers[]}).
+    \item[b)] The returned material is two independent AES-256 keys:\\
+        - \texttt{enc\_key} for confidentiality (CTR stream encryption)\\
+        - \texttt{auth\_key} for integrity/authenticity (CBC-MAC)
+    \item[c)] \texttt{encrypt\_stack(payload)} AES-CTR-encrypts the plaintext
+    payload and the iv.
+    \item[d)] \texttt{compute\_tag()} MACs the ciphertext checkpoint payload.
+    \item[e)] The payload and tag are copied into the host-facing blob.
+\end{itemize}
 
-/* 1. Save */
+\begin{verbatim}
 // 1a-b . Derive checkpoint key material
 if (derive_checkpoint_material() != 0) { return -1; }
 
@@ -1493,8 +1489,21 @@ memcpy(blob->sealed + sizeof(payload), tag, sizeof(tag));
 
 // the blob is then sent to the host using the 
 // previously described OCALL_SAVE_CHECKPOINT_BLOB edge call
+\end{verbatim}
 
-/* 2. Load */
+
+\paragraph{2. Load}
+\begin{itemize}
+    \item[a)] Derive the same \texttt{enc\_key}/\texttt{auth\_key} again from
+    the same context.
+    \item[b)] Split the opaque blob into ciphertext, iv, and tag.
+    \item[c)] Recompute the expected tag over the ciphertext.
+    \item[d)] Compare expected tag with the stored tag; if mismatch, reject.
+    \item[e)] Decrypt the ciphertext.
+    \item[f)] Rebuild the plain checkpoint.
+\end{itemize}
+
+\begin{verbatim}
 // 2a. Derive the same enc_key/auth_key 
 // again from the same context
 if (derive_checkpoint_material() != 0) { return -1; }
@@ -1547,7 +1556,7 @@ struct rewind_state *state_anchor
     right after unsealing. It never leaves the enclave in this form.
 
     \item \texttt{struct sealed\_checkpoint checkpoint\_blob}: the
-    \textit{host-facing, opaque} container holding the encrypted payload,
+    \textit{host-oriented, opaque} container holding the encrypted payload,
     the IV, and the authentication tag. This is the only representation
     of the checkpoint that is allowed to cross the enclave boundary and
     be stored/transmitted by the untrusted host.
@@ -1562,13 +1571,13 @@ struct rewind_state *state_anchor
 
 \paragraph{Cryptographic primitives and concepts.}
 \begin{itemize}
-    \item \textbf{CBC-MAC}: a Message Authentication Code built by
+    \item \textbf{CBC-MAC}: Message Authentication Code built by
     running block-cipher CBC encryption over the message and keeping
     only the final block as the tag. Provides integrity/authenticity,
     \textit{not} confidentiality. Secure only for fixed-length messages
     unless additional length-binding is used.
 
-    \item \textbf{CTR (Counter mode)}: a block-cipher mode that turns
+    \item \textbf{CTR (Counter mode)}: block-cipher mode that turns
     AES into a stream cipher by encrypting successive counter values
     and XOR-ing the result with plaintext/ciphertext. Provides
     confidentiality only; requires a unique \texttt{(IV, key)} pair per
@@ -1581,7 +1590,7 @@ struct rewind_state *state_anchor
     separation prevents cross-purpose attacks between encryption and
     authentication.
 
-    \item \textbf{IV / Nonce / Seq}: the Initialization Vector
+    \item \textbf{IV / Nonce / Seq}: Initialization Vector
     (or \textit{nonce}, "number used once") is the per-encryption input
     that randomizes/varies the keystream so identical plaintexts don't
     produce identical ciphertexts. Here it is derived deterministically
@@ -1590,25 +1599,15 @@ struct rewind_state *state_anchor
     all encryptions under the same key is the core security
     requirement of CTR mode.
 
-    \item \textbf{TAG}: the output of the CBC-MAC over the ciphertext;
-    a fixed-size value that the verifier recomputes and compares
+    \item \textbf{TAG}: the output of the CBC-MAC over the ciphertext.
+    ie. a fixed-size value that the verifier recomputes and compares
     against the stored value to detect any tampering with the sealed
     payload.
 \end{itemize}
 
-
 \subsection{Fault Modeling}
 Advanced fault detection and correction is not in the scope of this thesis.
-Thus, a small fault model is implemented : Appendix \ref{file:fault}. it is based of of the the SplitMix \cite{splitmix,splitmix1} algorithm. 
-It is a small, object-oriented, non-cryptographic, Pseudo-Random Number Generator (PRNG) and is based on Linear Congruential Generators (LCG) followed by bit-mixing (XOR-shifts) operations. 
-It produces good enough results while being lightweight. 
-\\\\
-We maintain a 64-bit (SplitMix
-
-
-\subsection{Fault Modeling}
-Advanced fault detection and correction is not in the scope of this thesis.
-Thus, a small fault model is implemented : Appendix \ref{file:fault}. it is based of of the the SplitMix \cite{splitmix,splitmix1} algorithm. 
+Thus, a simple fault model is implemented : Appendix \ref{file:fault}. it is based of of the the SplitMix \cite{splitmix,splitmix1} algorithm. 
 It is a small, object-oriented, non-cryptographic, Pseudo-Random Number Generator (PRNG) and is based on Linear Congruential Generators (LCG) followed by bit-mixing (XOR-shifts) operations. 
 It produces good enough results while being lightweight. 
 \\\\
@@ -1642,7 +1641,7 @@ if (fault_should_trigger(&f_m))
 }
 \end{verbatim}
 Note that we treat a fault as an error. 
-That is because the goal is to checkpoint and not to catch, SEUs, bursts or even permanently damaged (worn out) hardware.
+That is because the goal is to checkpoint and not to catch (or to directly correct) SEUs, bursts or even permanently damaged (worn out) hardware.
 Malicious data tampering in the enclave is not discussed as Keystone supposedly guarantees data isolation using PMP \ref{sub:pmp}, the SM \ref{sub:sm} (and thus a RoT).   
 Moreover, other possible fault modeling approaches are discussed in \ref{sub:fault-model}.
 
@@ -1655,8 +1654,7 @@ There are three scripts at the root of the project that can be used in order to 
     Thus, a \verb|.exp| (expect) script is perfectly suited.
     \item \verb|make-run.sh|: A simple concatenation of the other two.
 \end{itemize}
-
-Note that the logs produced can be found in the \verb|build-$PLATFORM$BITS/build.log| file.
+The \textbf{logs} produced can be found in the \verb|build-$PLATFORM$BITS/build.log| file.
 
 
 
@@ -1694,8 +1692,6 @@ One could run the tests of the side with the logging of the enclave or all the t
 \subsection{Testing}
 Because the two parts are opaque to each others, tests must be implemented on both sides. 
 These macros enables (or disables) the tests in a branching way. 
-For example, if the \verb|HOST_TESTING| is set to false, none of the host-side tests will be launched.
-Also note that if the \verb|EAPP_TESTING| and the \verb|HOST_TESTING| are true, the host results could be useless or could even tamper with the enclave tests.
 
 \subsubsection{Host-side}
 \begin{itemize}
@@ -1710,11 +1706,10 @@ Also note that if the \verb|EAPP_TESTING| and the \verb|HOST_TESTING| are true, 
     \item \verb|FAULT_RANDOMIZE_SEED|: enable/disable random seed for the fault model
     \item \verb|FAULT_SEED|: sets the seed to start from for the fault model (if\\ \verb|FAULT_RANDOMIZE_SEED|=0)
 \end{itemize}
-Note that manipulating the macros can get confusing as they are independant. 
+Manipulating the macros can get confusing as they are independant. 
 One could launch a full set of host testing with \verb|HOST_TESTING|=1 and \verb|ANALYSIS_RUNS|=100 (to analyze the average runtimes for example) while enableing the \verb|EAPP_TESTING| making the enclave only executing tests (and even more, returning failed tests that the host will try to accomplish).
 Or trying tests like \verb|TEST_TAMPER_MODE|=bitflip and not setting the \verb|HOST_TESTING| to true.
 In order to better understand what is going on, it is recommended to enable both loggins macros.
-
 
 
 
