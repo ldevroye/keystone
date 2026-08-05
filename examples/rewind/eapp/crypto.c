@@ -91,6 +91,20 @@ static int decrypt_stack(uint8_t *stack_data,
     return 0;
 }
 
+static int constant_time_equal(const uint8_t *left,
+                               const uint8_t *right,
+                               size_t len)
+{
+    uint8_t diff = 0;
+
+    for (size_t idx = 0; idx < len; idx++)
+    {
+        diff |= left[idx] ^ right[idx];
+    }
+
+    return diff == 0;
+}
+
 static int compute_tag(const uint8_t iv[AES_BLOCK_SIZE],
                         const uint8_t *payload,
                         size_t payload_len,
@@ -174,7 +188,7 @@ int open_checkpoint_blob(struct checkpoint *checkpoint, const struct sealed_chec
         return -1;
     }
 
-    if (memcmp(expected_tag, tag, sizeof(expected_tag)) != 0) 
+    if (!constant_time_equal(expected_tag, tag, sizeof(expected_tag))) 
     {
         eapp_print("checkpoint authentication failed");
         return -1;
