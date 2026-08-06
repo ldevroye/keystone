@@ -57,7 +57,37 @@ static int measure_checkpoint_cycle_breakdown(uint64_t* save_cycles, uint64_t* l
     return 0;
 }
 
-void test_fault_avg()
+int run_blob_size_test()
+{
+    struct checkpoint checkpoint;
+    struct sealed_checkpoint blob;
+    uint64_t plain_checkpoint_size;
+    uint64_t sealed_blob_size;
+
+    memset(&checkpoint, 0, sizeof(checkpoint));
+    memset(&blob, 0, sizeof(blob));
+
+    checkpoint.checkpoint_seq = 7;
+    state_anchor = (struct rewind_state *)&checkpoint.stack_data[STACK_SNAPSHOT_SIZE - sizeof(struct rewind_state)];
+    memcpy(state_anchor, &(struct rewind_state){1, 2, 3}, sizeof(struct rewind_state));
+
+    if (seal_checkpoint_blob(&blob, &checkpoint) != 0)
+    {
+        eapp_print("blob size test sealing failed");
+        return -1;
+    }
+
+    plain_checkpoint_size = (uint64_t)sizeof(struct checkpoint);
+    sealed_blob_size = (uint64_t)sizeof(struct sealed_checkpoint);
+
+    print_cycle_metric("checkpoint_plain_bytes", plain_checkpoint_size);
+    print_cycle_metric("checkpoint_sealed_bytes", sealed_blob_size);
+    print_cycle_metric("checkpoint_tag_bytes", (uint64_t)CHECKPOINT_TAG_SIZE);
+
+    return 0;
+}
+
+void avg_fault_test()
 {
     struct fault_model fault_model = MODEL_DEFAULT;
     int counter = 0;
@@ -207,12 +237,26 @@ int run_break_even_test()
 
 int run_eapp_tests()
 {
-    test_fault_avg();
+    
+#if EAPP_AVG_FAULT_TESTING
+    avg_fault_test();
+#endif
 
+
+#if EAPP_ROUND_TRIP_TESTING
     if (run_round_trip_test() != 0)
     {
         eapp_print("failed run round-trip");
     }
+#endif
+
+#if EAPP_BLOB_SIZE_TESTING
+    if (run_blob_size_test() != 0)
+    {
+        eapp_print("failed blob size test");
+    }
+#endif
+    
 
 #if EAPP_BREAK_EVEN_TESTING
     if (run_break_even_test() != 0)

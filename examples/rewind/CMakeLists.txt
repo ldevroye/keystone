@@ -29,6 +29,8 @@ set(HOST_TESTING "0" CACHE STRING "enable host-side analysis/tamper timing mode 
 set(EAPP_TESTING "0" CACHE STRING "enable enclave self-tests mode (0 or 1)")
 set(ANALYSIS_RUNS "10" CACHE STRING "number of executions to average over in analysis mode")
 set(EAPP_BLOB_SIZE_TESTING "1" CACHE STRING "enable the blob size benchmark (0 or 1)")
+set(EAPP_AVG_FAULT_TESTING "1" CACHE STRING "enable the average fault test (0 or 1)")
+set(EAPP_ROUND_TRIP_TESTING "1" CACHE STRING "enable the round-trip test (0 or 1)")
 set(EAPP_CYCLE_BREAKDOWN_TESTING "1" CACHE STRING "enable the cycle breakdown benchmark (0 or 1)")
 set(EAPP_BREAK_EVEN_TESTING "1" CACHE STRING "enable the break-even benchmark (0 or 1)")
 
@@ -112,6 +114,14 @@ if(NOT "${EAPP_BLOB_SIZE_TESTING}" STREQUAL "")
 endif()
 if(NOT "${EAPP_BLOB_SIZE_TESTING}" STREQUAL "")
   target_compile_definitions(${host_bin} PRIVATE EAPP_BLOB_SIZE_TESTING=${EAPP_BLOB_SIZE_TESTING})
+endif()
+
+if(NOT "${EAPP_AVG_FAULT_TESTING}" STREQUAL "")
+  target_compile_definitions(${eapp_bin} PRIVATE EAPP_AVG_FAULT_TESTING=${EAPP_AVG_FAULT_TESTING})
+endif()
+
+if(NOT "${EAPP_ROUND_TRIP_TESTING}" STREQUAL "")
+  target_compile_definitions(${eapp_bin} PRIVATE EAPP_ROUND_TRIP_TESTING=${EAPP_ROUND_TRIP_TESTING})
 endif()
 
 if(NOT "${EAPP_CYCLE_BREAKDOWN_TESTING}" STREQUAL "")

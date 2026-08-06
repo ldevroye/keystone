@@ -15,9 +15,18 @@
 #define EAPP_LOGGING 1
 #endif
 
+#ifndef EAPP_AVG_FAULT_TESTING
+#define EAPP_AVG_FAULT_TESTING 0
+#endif
+
+#ifndef EAPP_ROUND_TRIP_TESTING
+#define EAPP_ROUND_TRIP_TESTING 0
+#endif
+
 
 // tests
-void test_fault_avg();
+void avg_fault_test();
+int run_blob_size_test();
 int run_round_trip_test();
 int run_cycle_breakdown_test();
 int run_break_even_test();
