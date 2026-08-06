@@ -4,6 +4,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include "common.h"
 #include "crypto.h"
 
 // fixed upper bound for the live stack window, independent of rewind_state size
@@ -40,8 +41,6 @@ struct sealed_checkpoint
     uint8_t iv[CHECKPOINT_IV_SIZE];
     uint8_t sealed[CHECKPOINT_SEALED_SIZE];
 };
-
-void eapp_print(const char* str); // placeholder
 
 int load_checkpoint();
 int restore_checkpoint();

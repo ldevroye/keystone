@@ -3,6 +3,8 @@
 
 #include <stdint.h>
 
+#include "common.h"
+
 // deterministic seed for repeatable fault schedules
 #ifndef SEED
 #define SEED 0x6b656973746f6e68ULL
@@ -50,6 +52,5 @@ struct fault_model
 uint64_t fault_default_seed(void);
 struct fault_model get_default_model();
 int fault_should_trigger(struct fault_model *model);
-void eapp_print(const char* str); /// placeholder
 
 #endif

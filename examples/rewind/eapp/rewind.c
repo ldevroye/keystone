@@ -1,29 +1,11 @@
 #include <string.h>
 
+#include "common.h"
 #include "app/syscall.h"
 #include "app/eapp_utils.h"
 #include "checkpoint.h"
 #include "eapp_test.h"
 #include "fault.h"
-
-#define OCALL_PRINT_BUFFER 1
-
-unsigned long ocall_print_buffer(char* data, size_t data_len)
-{
-    unsigned long retval;
-    ocall(OCALL_PRINT_BUFFER, data, data_len, &retval, sizeof(unsigned long));
-    return retval;
-}
-
-void eapp_print(const char* str)
-{   
-#if EAPP_LOGGING
-    ocall_print_buffer("[EAPP] ", 7);
-    ocall_print_buffer(str, strlen(str));
-    ocall_print_buffer("\n", 1);
-#endif
-}
-
 
 void computation()
 {   

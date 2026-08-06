@@ -11,18 +11,7 @@ static uint64_t fault_splitmix64(uint64_t value)
 uint64_t fault_default_seed(void)
 {
 #if FAULT_RANDOMIZE_SEED
-    uint64_t seed;
-
-    /*
-     * __volatile__ - tells the compiler not to remove or reorder the instruction.
-     * "rdcycle" - reads the current cycle counter into the output operand.
-     * %0 -  first output operand listed after the colon.
-     * "=r"(seed) - stores the result in any general-purpose register
-     *   & copies that value into the C variable `seed`.
-     */
-    __asm__ __volatile__("rdcycle %0" : "=r"(seed));
-    seed ^= (uint64_t)(uintptr_t)&seed;
-    return seed;
+    return read_cycle_counter();
 #else
     return SEED;
 #endif

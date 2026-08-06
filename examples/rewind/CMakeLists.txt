@@ -1,5 +1,6 @@
 set(eapp_bin rewind)
 set(eapp_src
+  eapp/common.c
   eapp/rewind.c
   eapp/checkpoint.c
   eapp/crypto.c

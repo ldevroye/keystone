@@ -3,28 +3,14 @@
 #include <stddef.h>
 #include <string.h>
 
-#include "app/eapp_utils.h"
 #include "edge/edge_common.h"
 
+#include "common.h"
 #include "crypto.h"
 
 static struct checkpoint checkpoint_storage;
 static struct sealed_checkpoint checkpoint_blob;
 struct rewind_state *state_anchor;
-
-static uintptr_t read_stack_pointer(void)
-{
-    uintptr_t sp;
-
-    /* mv - register move instruction
-     * %0 - output placeholder for the C variable sp
-     * sp - the RISC-V Stack-Pointer register
-     * "=r" - a constraint for GCC (compiler) so that the output is placed in a general-
-     * -purpose register and store that register's value into sp
-    */
-    __asm__ volatile("mv %0, sp" : "=r"(sp));
-    return sp;
-}
 
 int load_checkpoint()
 {
