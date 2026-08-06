@@ -25,16 +25,18 @@ void eapp_print(const char* str)
 }
 
 
-int main() 
+void computation()
+{   
+    struct rewind_state* state = state_anchor;
+    unsigned long next = state->a + state->b;
+    state->a = state->b;
+    state->b = next;
+    state->counter++;
+};
+
+int run_enclave(unsigned long runs, struct fault_model fault_model, int return_on_fault)
 {
-
-#if EAPP_TESTING
-    eapp_print("testing mode enabled");
-    EAPP_RETURN(run_eapp_tests());
-#endif
-
     struct rewind_state state = {0, 1, 0}; // fibonacci sequence init
-    struct fault_model fault_model = get_default_model();
 
     state_anchor = &state;
 
@@ -49,7 +51,7 @@ int main()
     
     eapp_print("Rewind enclave start");
 
-    for (; state.counter < EAPP_RUNS;)
+    for (; state.counter < runs;)
     {
         char formated_counter[32], formated_fib[32];
         format_value(formated_counter, state.counter, "counter");
@@ -63,16 +65,17 @@ int main()
         if (fault_should_trigger(&fault_model)) 
         {
             eapp_print("Simulated fault");
-            //asm volatile("unimp"); // returns illegal RISC-V instruction
-            //__builtin_trap();
-            EAPP_RETURN(16);
-            //return 16; // Keystone::Error::EnclaveInterrupted
+            if (return_on_fault)
+            {
+                // benchmark mode can keep running when the fault is only recorded
+                EAPP_RETURN(16);
+            }
+
+            break;
         }
 
-        unsigned long next = state.a + state.b;
-        state.a = state.b;
-        state.b = next;
-        state.counter++;
+        computation();
+        
 
         if (save_checkpoint() != 0) 
         {
@@ -83,4 +86,16 @@ int main()
     }
 
     EAPP_RETURN(0);
+}
+
+
+int main() 
+{
+
+#if EAPP_TESTING
+    eapp_print("testing mode enabled");
+    EAPP_RETURN(run_eapp_tests());
+#else
+    run_enclave(EAPP_RUNS, get_default_model(), 1);
+#endif
 } 

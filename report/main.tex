@@ -1035,9 +1035,9 @@ This is true if we consider the identifier to be the same for both, as it is imp
 
 % data sealing & edge calls
 For the checkpointing scheme, the enclave use the edge calls (\ref{sub:edge-calls}) already implemented in keystone. 
-The checkpointed data is sent and retrieved (to and from the host's memory space) using the enclave's key (\ref{sub:data-sealing}) using two custom edge calls, one for sending and one for retrieving. 
+The checkpointed data is sent and retrieved (to and from the host's memory space) using the enclave's key trough two custom edge calls. 
 To ensure that the data isn't tampered, there is a layer on top of Keystone's encryption scheme.
-The layer adds a tag for the enclave to check if the unsealed data corresponds to the sealed one.
+The layer adds a tag and an Initialisation Vector (IV) for the enclave to check if the unsealed data corresponds to the sealed one.
 Only the last checkpoint is saved.
 \\
 
@@ -1769,12 +1769,12 @@ mitigate tampering but host is not reliable so a malicious can stall.
 
 
 %%%%%%%%%%%%%%%%%%%%%%%% Future Work %%%%%%%%%%%%%%%%%%%%%%%%
-\chapter{Future Work}
+\section{Future Work}
 
-\section{Mixed criticality}
-\section{More complex fault model}
+\subsection{Mixed criticality}
+\subsection{More complex fault model}
 \label{sub:fault-model}
-\section{Enclave Complexity on backup}
+\subsection{Enclave Complexity on backup}
 \label{sub:back-complexity}
 
 \TODO{More?}

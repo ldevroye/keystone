@@ -26,7 +26,10 @@ set(EAPP_LOGGING "1" CACHE STRING "optional override for enclave logging (0 or 1
 
 set(HOST_TESTING "0" CACHE STRING "enable host-side analysis/tamper timing mode (0 or 1)")
 set(EAPP_TESTING "0" CACHE STRING "enable enclave self-tests mode (0 or 1)")
-set(ANALYSIS_RUNS "1" CACHE STRING "number of executions to average over in analysis mode")
+set(ANALYSIS_RUNS "10" CACHE STRING "number of executions to average over in analysis mode")
+set(EAPP_BLOB_SIZE_TESTING "1" CACHE STRING "enable the blob size benchmark (0 or 1)")
+set(EAPP_CYCLE_BREAKDOWN_TESTING "1" CACHE STRING "enable the cycle breakdown benchmark (0 or 1)")
+set(EAPP_BREAK_EVEN_TESTING "1" CACHE STRING "enable the break-even benchmark (0 or 1)")
 
 
 # host
@@ -101,6 +104,27 @@ endif()
 
 if(NOT "${ANALYSIS_RUNS}" STREQUAL "")
   target_compile_definitions(${host_bin} PRIVATE ANALYSIS_RUNS=${ANALYSIS_RUNS})
+endif()
+
+if(NOT "${EAPP_BLOB_SIZE_TESTING}" STREQUAL "")
+  target_compile_definitions(${eapp_bin} PRIVATE EAPP_BLOB_SIZE_TESTING=${EAPP_BLOB_SIZE_TESTING})
+endif()
+if(NOT "${EAPP_BLOB_SIZE_TESTING}" STREQUAL "")
+  target_compile_definitions(${host_bin} PRIVATE EAPP_BLOB_SIZE_TESTING=${EAPP_BLOB_SIZE_TESTING})
+endif()
+
+if(NOT "${EAPP_CYCLE_BREAKDOWN_TESTING}" STREQUAL "")
+  target_compile_definitions(${eapp_bin} PRIVATE EAPP_CYCLE_BREAKDOWN_TESTING=${EAPP_CYCLE_BREAKDOWN_TESTING})
+endif()
+if(NOT "${EAPP_CYCLE_BREAKDOWN_TESTING}" STREQUAL "")
+  target_compile_definitions(${host_bin} PRIVATE EAPP_CYCLE_BREAKDOWN_TESTING=${EAPP_CYCLE_BREAKDOWN_TESTING})
+endif()
+
+if(NOT "${EAPP_BREAK_EVEN_TESTING}" STREQUAL "")
+  target_compile_definitions(${eapp_bin} PRIVATE EAPP_BREAK_EVEN_TESTING=${EAPP_BREAK_EVEN_TESTING})
+endif()
+if(NOT "${EAPP_BREAK_EVEN_TESTING}" STREQUAL "")
+  target_compile_definitions(${host_bin} PRIVATE EAPP_BREAK_EVEN_TESTING=${EAPP_BREAK_EVEN_TESTING})
 endif()
 
 if(NOT "${FAULT_RANDOMIZE_SEED}" STREQUAL "")

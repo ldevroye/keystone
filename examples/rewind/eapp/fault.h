@@ -18,6 +18,11 @@
 #define PERIOD 30ULL
 #endif
 
+// set to 1 to stop the enclave immediately when a modeled fault fires
+#ifndef FAULT_RETURN_ON_TRIGGER
+#define FAULT_RETURN_ON_TRIGGER 1
+#endif
+
 // splitmix64 constants are the standard mixer parameters used by the algorithm
 // https://rosettacode.org/wiki/Pseudo-random_numbers/Splitmix64
 // https://en.wikipedia.org/wiki/Linear_congruential_generator
