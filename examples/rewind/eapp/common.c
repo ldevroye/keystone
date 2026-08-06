@@ -165,15 +165,8 @@ uint64_t read_cycle_counter()
 {
     uint64_t counter;
 
-    /*
-     * __volatile__ - tells the compiler not to remove or reorder the instruction.
-     * "rdcycle" - reads the current cycle counter into the output operand.
-     * %0 -  first output operand listed after the colon.
-     * "=r"(seed) - stores the result in any general-purpose register
-     *   & copies that value into the C variable `seed`.
-     */
+    // read the raw hardware cycle counter for runtime measurements
     __asm__ __volatile__("rdcycle %0" : "=r"(counter));
-    counter ^= (uint64_t)(uintptr_t)&counter;
     return counter;
 }
 
@@ -186,14 +179,14 @@ void computation()
     state->counter++;
 };
 
-int run_enclave(unsigned long runs, struct fault_model fault_model, int return_on_fault)
+int test_run_enclave(unsigned long runs, struct fault_model fault_model, int return_on_fault, int checkpoint_enabled, int resume_enabled, int fault_enabled)
 {
     struct rewind_state state = {0, 1, 0}; // fibonacci sequence init
 
     state_anchor = &state;
 
     // on restart, recover the last sealed checkpoint if the host has one
-    if (load_checkpoint() == 0) 
+    if (resume_enabled && load_checkpoint() == 0) 
     {
         if (restore_checkpoint() == 0) 
         {
@@ -214,7 +207,7 @@ int run_enclave(unsigned long runs, struct fault_model fault_model, int return_o
 
         // inject one modeled fault point using a simple pseudo-random splitex function
         // fault happens before so that the "computation" can fail
-        if (fault_should_trigger(&fault_model)) 
+        if (fault_enabled && fault_should_trigger(&fault_model)) 
         {
             eapp_print("Simulated fault");
             if (return_on_fault)
@@ -229,7 +222,7 @@ int run_enclave(unsigned long runs, struct fault_model fault_model, int return_o
         computation();
         
 
-        if (save_checkpoint() != 0) 
+        if (checkpoint_enabled && save_checkpoint() != 0) 
         {
             eapp_print("failed to save stack checkpoint");
             //__builtin_trap();
@@ -238,4 +231,9 @@ int run_enclave(unsigned long runs, struct fault_model fault_model, int return_o
     }
 
     EAPP_RETURN(0);
+}
+
+int run_enclave(unsigned long runs, struct fault_model fault_model)
+{
+    return test_run_enclave(runs, fault_model, 1, 1, 1, 1);
 }

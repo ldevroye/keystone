@@ -45,6 +45,7 @@ void save_checkpoint_blob_dispatch(void* buffer)
 
   saved_blob.resize(arg_size);
   memcpy(saved_blob.data(), (void*)arg_ptr, arg_size);
+  update_timing_stats(blob_size_stats, static_cast<uint64_t>(arg_size));
 
   char to_prt[80];
   sprintf(to_prt, "saved checkpoint blob size = %zu", arg_size);
@@ -160,6 +161,7 @@ int main(int argc, char** argv)
     analysis_counter++;
     saved_blob.clear(); // clear checkpoint
     run_stats = {};
+    retry_stats = {};
     auto retry_counter = 0;
 
     while ((ret != 0 || retry_counter == 0) && // retry_counter = 0 => initial enclave => result is null
@@ -193,6 +195,13 @@ int main(int argc, char** argv)
       }
     }
 
+  #if HOST_TESTING
+    if (retry_counter > 0)
+    {
+      update_timing_stats(retry_stats, static_cast<uint64_t>(retry_counter - 1));
+    }
+  #endif
+
 #if HOST_TESTING
     print_analysis_run_summary(analysis_counter);
 #endif
@@ -201,6 +210,8 @@ int main(int argc, char** argv)
 #if HOST_TESTING
   print_timing_stats("save_checkpoint", save_stats);
   print_timing_stats("load_checkpoint", load_stats);
+  print_timing_stats("checkpoint_blob_bytes", blob_size_stats);
+  print_timing_stats("analysis_errors", retry_stats);
 #else
   if (ret != 0)
   {

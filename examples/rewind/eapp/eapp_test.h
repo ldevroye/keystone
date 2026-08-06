@@ -19,6 +19,8 @@
 // tests
 void test_fault_avg();
 int run_round_trip_test();
+int run_cycle_breakdown_test();
+int run_break_even_test();
 int run_eapp_tests();
 
 #endif

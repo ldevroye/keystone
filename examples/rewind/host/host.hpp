@@ -80,6 +80,8 @@ enum
 inline timing_stats save_stats;
 inline timing_stats load_stats;
 inline timing_stats run_stats;
+inline timing_stats blob_size_stats;
+inline timing_stats retry_stats;
 inline vector<uint8_t> saved_blob;
 
 const auto success = Error::Success;
