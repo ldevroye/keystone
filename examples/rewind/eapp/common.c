@@ -5,7 +5,6 @@
 #include "app/eapp_utils.h"
 #include "app/syscall.h"
 
-#define OCALL_PRINT_BUFFER 1
 
 unsigned long ocall_print_buffer(char* data, size_t data_len)
 {
@@ -176,4 +175,67 @@ uint64_t read_cycle_counter()
     __asm__ __volatile__("rdcycle %0" : "=r"(counter));
     counter ^= (uint64_t)(uintptr_t)&counter;
     return counter;
+}
+
+void computation()
+{   
+    struct rewind_state* state = state_anchor;
+    unsigned long next = state->a + state->b;
+    state->a = state->b;
+    state->b = next;
+    state->counter++;
+};
+
+int run_enclave(unsigned long runs, struct fault_model fault_model, int return_on_fault)
+{
+    struct rewind_state state = {0, 1, 0}; // fibonacci sequence init
+
+    state_anchor = &state;
+
+    // on restart, recover the last sealed checkpoint if the host has one
+    if (load_checkpoint() == 0) 
+    {
+        if (restore_checkpoint() == 0) 
+        {
+            eapp_print("loading stack snapshot"); 
+        }
+    }
+    
+    eapp_print("Rewind enclave start");
+
+    for (; state.counter < runs;)
+    {
+        char formated_counter[32], formated_fib[32];
+        format_value(formated_counter, state.counter, "counter");
+        format_unsigned_value(formated_fib, state.b, "output");
+        
+        eapp_print(formated_counter);
+        eapp_print(formated_fib);
+
+        // inject one modeled fault point using a simple pseudo-random splitex function
+        // fault happens before so that the "computation" can fail
+        if (fault_should_trigger(&fault_model)) 
+        {
+            eapp_print("Simulated fault");
+            if (return_on_fault)
+            {
+                // benchmark mode can keep running when the fault is only recorded
+                EAPP_RETURN(16);
+            }
+
+            break;
+        }
+
+        computation();
+        
+
+        if (save_checkpoint() != 0) 
+        {
+            eapp_print("failed to save stack checkpoint");
+            //__builtin_trap();
+            EAPP_RETURN(16);
+        }       
+    }
+
+    EAPP_RETURN(0);
 }
