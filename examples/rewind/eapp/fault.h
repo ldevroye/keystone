@@ -40,6 +40,7 @@
     .seed = fault_default_seed(), \
     .step = 0, \
     .period = PERIOD, \
+    .count = 0, \
 }
 
 struct fault_model 
@@ -47,6 +48,7 @@ struct fault_model
     uint64_t seed;
     uint64_t step;
     uint64_t period;
+    uint64_t count;
 };
 
 uint64_t fault_default_seed(void);

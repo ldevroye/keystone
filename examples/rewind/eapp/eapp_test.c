@@ -176,7 +176,7 @@ static int run_benchmark_pass(unsigned long runs,
 {
     struct fault_model fault_model = get_default_model();
     const uint64_t start_cycles = read_cycle_counter();
-    if (test_run_enclave(runs, fault_model, 1, checkpoint_enabled, 0, 0) != 0)
+    if (test_run_enclave(runs, &fault_model, 1, checkpoint_enabled, 0, 0) != 0)
     {
         eapp_print("benchmark pass failed");
         return -1;
@@ -197,12 +197,14 @@ int run_break_even_test()
     uint64_t two_error_save = 0;
     uint64_t threshold_errors = 0;
 
-    if (run_benchmark_pass(EAPP_RUNS, 0, &no_save_cycles) != 0)
+    int disable_checkpoint = 0;
+    int enable_checkpoint = 1;
+    if (run_benchmark_pass(EAPP_RUNS, disable_checkpoint, &no_save_cycles) != 0)
     {
         return -1;
     }
 
-    if (run_benchmark_pass(EAPP_RUNS, 1, &save_run_cycles) != 0)
+    if (run_benchmark_pass(EAPP_RUNS, enable_checkpoint, &save_run_cycles) != 0)
     {
         return -1;
     }
@@ -239,38 +241,58 @@ int run_eapp_tests()
 {
     
 #if EAPP_AVG_FAULT_TESTING
+    eapp_print("[START] fault rate");
     avg_fault_test();
+    eapp_print("[end] fault rate");
+
 #endif
 
 
 #if EAPP_ROUND_TRIP_TESTING
+    eapp_print("[START] round trip");
+
     if (run_round_trip_test() != 0)
     {
         eapp_print("failed run round-trip");
     }
+    eapp_print("[END] round trip");
+
 #endif
 
 #if EAPP_BLOB_SIZE_TESTING
+    eapp_print("[START] blob size");
+
     if (run_blob_size_test() != 0)
     {
         eapp_print("failed blob size test");
     }
+    eapp_print("[END] blob size");
+
 #endif
     
 
 #if EAPP_BREAK_EVEN_TESTING
+    eapp_print("[START] break even");
+
     if (run_break_even_test() != 0)
     {
         eapp_print("failed break-even test");
     }
+    eapp_print("[END] break even");
+
 #endif
 
 #if EAPP_CYCLE_BREAKDOWN_TESTING
+    eapp_print("[START] cycle breakdown");
+
     if (run_cycle_breakdown_test() != 0)
     {
         eapp_print("failed cycle breakdown test");
     }
-#endif
 
+    eapp_print("[END] cycle breakdown");
+
+#endif
+    
     return 0;
 }

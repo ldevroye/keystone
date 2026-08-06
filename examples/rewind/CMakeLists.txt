@@ -25,9 +25,10 @@ set(HOST_MAX_RUN "10" CACHE STRING "optional override for host main loop bound b
 set(HOST_LOGGING "1" CACHE STRING "optional override for host logging (0 or 1)")
 set(EAPP_LOGGING "1" CACHE STRING "optional override for enclave logging (0 or 1)")
 
-set(HOST_TESTING "0" CACHE STRING "enable host-side analysis/tamper timing mode (0 or 1)")
+
+#################### testing macros ####################
+# eapp
 set(EAPP_TESTING "0" CACHE STRING "enable enclave self-tests mode (0 or 1)")
-set(ANALYSIS_RUNS "10" CACHE STRING "number of executions to average over in analysis mode")
 set(EAPP_BLOB_SIZE_TESTING "1" CACHE STRING "enable the blob size benchmark (0 or 1)")
 set(EAPP_AVG_FAULT_TESTING "1" CACHE STRING "enable the average fault test (0 or 1)")
 set(EAPP_ROUND_TRIP_TESTING "1" CACHE STRING "enable the round-trip test (0 or 1)")
@@ -36,7 +37,9 @@ set(EAPP_BREAK_EVEN_TESTING "1" CACHE STRING "enable the break-even benchmark (0
 
 
 # host
-set(TEST_TAMPER_MODE "truncate" CACHE STRING "tamper mode for checkpoint tests (none/bitflip/truncate/last-byte)")
+set(HOST_TESTING "0" CACHE STRING "enable host-side analysis/tamper timing mode (0 or 1)")
+set(ANALYSIS_RUNS "10" CACHE STRING "number of executions to average over in analysis mode")
+set(TEST_TAMPER_MODE "bitflip" CACHE STRING "tamper mode for checkpoint tests (none/bitflip/truncate/last-byte)")
 
 
 
@@ -88,6 +91,10 @@ target_include_directories(${eapp_bin}
 add_executable(${host_bin} ${host_src})
 target_link_libraries(${host_bin} ${KEYSTONE_LIB_HOST} ${KEYSTONE_LIB_EDGE})
 
+if(NOT "${EAPP_TESTING}" STREQUAL "")
+  target_compile_definitions(${host_bin} PRIVATE EAPP_TESTING=${EAPP_TESTING})
+endif()
+
 if(NOT "${HOST_MAX_RUN}" STREQUAL "")
   target_compile_definitions(${host_bin} PRIVATE MAX_RUNS=${HOST_MAX_RUN})
 endif()
@@ -119,9 +126,15 @@ endif()
 if(NOT "${EAPP_AVG_FAULT_TESTING}" STREQUAL "")
   target_compile_definitions(${eapp_bin} PRIVATE EAPP_AVG_FAULT_TESTING=${EAPP_AVG_FAULT_TESTING})
 endif()
+if(NOT "${EAPP_AVG_FAULT_TESTING}" STREQUAL "")
+  target_compile_definitions(${host_bin} PRIVATE EAPP_AVG_FAULT_TESTING=${EAPP_AVG_FAULT_TESTING})
+endif()
 
 if(NOT "${EAPP_ROUND_TRIP_TESTING}" STREQUAL "")
   target_compile_definitions(${eapp_bin} PRIVATE EAPP_ROUND_TRIP_TESTING=${EAPP_ROUND_TRIP_TESTING})
+endif()
+if(NOT "${EAPP_ROUND_TRIP_TESTING}" STREQUAL "")
+  target_compile_definitions(${host_bin} PRIVATE EAPP_ROUND_TRIP_TESTING=${EAPP_ROUND_TRIP_TESTING})
 endif()
 
 if(NOT "${EAPP_CYCLE_BREAKDOWN_TESTING}" STREQUAL "")

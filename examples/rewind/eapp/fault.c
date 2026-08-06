@@ -17,7 +17,7 @@ uint64_t fault_default_seed(void)
 #endif
 }
 
-int fault_should_trigger(struct fault_model *model)
+int fault_should_trigger(struct fault_model* model)
 {
     if (model == 0) 
     {

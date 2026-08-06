@@ -14,6 +14,7 @@ int main()
     eapp_print("testing mode enabled");
     EAPP_RETURN(run_eapp_tests());
 #else
-    run_enclave(EAPP_RUNS, get_default_model());
+    struct fault_model fault_model=get_default_model();
+    EAPP_RETURN(run_enclave(EAPP_RUNS, &fault_model));
 #endif
 } 

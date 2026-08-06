@@ -23,6 +23,19 @@
 #define EAPP_ROUND_TRIP_TESTING 0
 #endif
 
+#ifndef EAPP_BREAK_EVEN_TESTING
+#define EAPP_BREAK_EVEN_TESTING 0
+#endif
+
+#ifndef EAPP_BLOB_SIZE_TESTING
+#define EAPP_BLOB_SIZE_TESTING 0
+#endif
+
+
+#ifndef EAPP_CYCLE_BREAKDOWN_TESTING
+#define EAPP_CYCLE_BREAKDOWN_TESTING 0
+#endif
+
 
 // tests
 void avg_fault_test();

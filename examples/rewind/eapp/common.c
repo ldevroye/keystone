@@ -179,61 +179,70 @@ void computation()
     state->counter++;
 };
 
-int test_run_enclave(unsigned long runs, struct fault_model fault_model, int return_on_fault, int checkpoint_enabled, int resume_enabled, int fault_enabled)
+int test_run_enclave(unsigned long runs, struct fault_model* fault_model, int return_on_fault, int checkpoint_enabled, int resume_enabled, int fault_enabled)
 {
     struct rewind_state state = {0, 1, 0}; // fibonacci sequence init
 
     state_anchor = &state;
 
     // on restart, recover the last sealed checkpoint if the host has one
-    if (resume_enabled && load_checkpoint() == 0) 
+    if (resume_enabled)
     {
-        if (restore_checkpoint() == 0) 
+        if (load_checkpoint() == 0)
         {
-            eapp_print("loading stack snapshot"); 
+            if (restore_checkpoint() == 0)
+            {
+                eapp_print("loading stack snapshot");
+            }
         }
     }
-    
+
     eapp_print("Rewind enclave start");
 
     for (; state.counter < runs;)
     {
+
+#if !EAPP_BREAK_EVEN_TESTING || (!EAPP_TESTING && EAPP_BREAK_EVEN_TESTING)
         char formated_counter[32], formated_fib[32];
         format_value(formated_counter, state.counter, "counter");
         format_unsigned_value(formated_fib, state.b, "output");
-        
+
         eapp_print(formated_counter);
         eapp_print(formated_fib);
-
+#endif
         // inject one modeled fault point using a simple pseudo-random splitex function
         // fault happens before so that the "computation" can fail
-        if (fault_enabled && fault_should_trigger(&fault_model)) 
+        if (fault_enabled && fault_should_trigger(fault_model))
         {
             eapp_print("Simulated fault");
             if (return_on_fault)
             {
                 // benchmark mode can keep running when the fault is only recorded
-                EAPP_RETURN(16);
+                return 16;
             }
-
-            break;
         }
 
         computation();
-        
 
-        if (checkpoint_enabled && save_checkpoint() != 0) 
+        if (checkpoint_enabled)
         {
-            eapp_print("failed to save stack checkpoint");
-            //__builtin_trap();
-            EAPP_RETURN(16);
-        }       
+            if (save_checkpoint() != 0)
+            {
+                eapp_print("failed to save stack checkpoint");
+                //__builtin_trap();
+                return 16;
+            }
+        }
     }
 
-    EAPP_RETURN(0);
+    return 0;
 }
 
-int run_enclave(unsigned long runs, struct fault_model fault_model)
-{
-    return test_run_enclave(runs, fault_model, 1, 1, 1, 1);
+int run_enclave(unsigned long runs, struct fault_model* fault_model)
+{   
+    int return_on_fault=1;
+    int checkpoint_enabled=1;
+    int resume_enabled=1;
+    int fault_enabled=1;
+    return test_run_enclave(runs, fault_model, return_on_fault, checkpoint_enabled, resume_enabled, fault_enabled);
 }

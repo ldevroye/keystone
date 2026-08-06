@@ -53,6 +53,14 @@ using namespace std;
 #define EAPP_BLOB_SIZE_TESTING 0
 #endif
 
+#ifndef EAPP_AVG_FAULT_TESTING
+#define EAPP_AVG_FAULT_TESTING 0
+#endif
+
+#ifndef EAPP_ROUND_TRIP_TESTING
+#define EAPP_ROUND_TRIP_TESTING 0
+#endif
+
 #ifndef EAPP_CYCLE_BREAKDOWN_TESTING
 #define EAPP_CYCLE_BREAKDOWN_TESTING 0
 #endif
@@ -96,7 +104,7 @@ Error configure_enclave(Enclave& enclave, Params& params, char** argv);
 inline void print_test_parameters()
 {
 #if HOST_TESTING || HOST_LOGGING
-  char buffer[320];
+  char buffer[1024];
 
   snprintf(buffer, sizeof(buffer), "test params:\n"
          "\thost_logging=%d\n"
@@ -109,9 +117,11 @@ inline void print_test_parameters()
          "\tfault_period=%s\n"
          "\tfault_randomize_seed=%s\n"
          "\tfault_seed=%s\n"
-          "\teapp_blob_size_testing=%d\n"
-          "\teapp_cycle_breakdown_testing=%d\n"
-          "\teapp_break_even_testing=%d\n"
+         "\teapp_blob_size_testing=%d\n"
+         "\teapp_avg_fault_testing=%d\n"
+         "\teapp_round_trip_testing=%d\n"
+         "\teapp_cycle_breakdown_testing=%d\n"
+         "\teapp_break_even_testing=%d\n"
          "\ttamper_mode=%s",
                 HOST_LOGGING,
 #ifdef EAPP_LOGGING
@@ -128,6 +138,8 @@ inline void print_test_parameters()
                 STRINGIFY(FAULT_RANDOMIZE_SEED),
                 STRINGIFY(SEED),
                 EAPP_BLOB_SIZE_TESTING,
+                EAPP_AVG_FAULT_TESTING,
+                EAPP_ROUND_TRIP_TESTING,
                 EAPP_CYCLE_BREAKDOWN_TESTING,
                 EAPP_BREAK_EVEN_TESTING,
                 TEST_TAMPER_MODE);
