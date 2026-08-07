@@ -1,36 +1,6 @@
 #include "eapp_test.h"
 
 
-static void print_cycle_metric(const char* label, uint64_t cycles)
-{
-    char buffer[96];
-    format_unsigned_value(buffer, cycles, label);
-    eapp_print(buffer);
-}
-
-static void print_indexed_cycle_metric(const char* prefix, int index, uint64_t cycles)
-{
-    char label[96];
-    size_t prefix_len = 0;
-
-    while (prefix[prefix_len] != '\0' && prefix_len + 3 < sizeof(label))
-    {
-        label[prefix_len] = prefix[prefix_len];
-        prefix_len++;
-    }
-
-    if (prefix_len + 2 >= sizeof(label))
-    {
-        return;
-    }
-
-    label[prefix_len++] = '_';
-    label[prefix_len++] = (char)('0' + index);
-    label[prefix_len] = '\0';
-
-    print_cycle_metric(label, cycles);
-}
-
 static int measure_scenario(unsigned long runs,
                             int checkpoint_enabled,
                             const unsigned long* fault_positions,
@@ -43,26 +13,21 @@ static int measure_scenario(unsigned long runs,
         return 0;
     }
 
-    int current_position = fault_positions[0];
-    struct rewind_state state = {0, 1, 0};
-    uint64_t count=0;
-
-    while (state.counter < runs)
+    if (checkpoint_enabled) 
     {
-        count++;
-        if (state.counter = fault_positions[current_position])
-        {
-            if (!checkpoint_enabled)
-            {
-                state = (struct rewind_state) {0, 1, 0};
-            }
-
-            current_position++;
-            continue;
-        }
+        *total_iterations=runs+len_fault_positions;
+        return 0;
+    }
+    
+    uint64_t total_count=0;
+    for (auto i; i<len_fault_positions; i++)
+    {
+        total_count += fault_positions[i];
     }
 
-    *total_iterations = count;
+    total_count += runs;
+
+    *total_iterations = total_count;
     return 0;
 }
 
@@ -143,10 +108,10 @@ int run_blob_size_test()
     sealed_blob_size = (uint64_t)sizeof(struct sealed_checkpoint);
     iv_size = AES_BLOCK_SIZE;
 
-    print_cycle_metric("checkpoint_iv_bytes", iv_size);
-    print_cycle_metric("checkpoint_plain_bytes", plain_checkpoint_size);
-    print_cycle_metric("checkpoint_tag_bytes", (uint64_t)CHECKPOINT_TAG_SIZE);
-    print_cycle_metric("checkpoint_sealed_bytes", sealed_blob_size);
+    print_metric("checkpoint_iv_bytes", iv_size);
+    print_metric("checkpoint_plain_bytes", plain_checkpoint_size);
+    print_metric("checkpoint_tag_bytes", (uint64_t)CHECKPOINT_TAG_SIZE);
+    print_metric("checkpoint_sealed_bytes", sealed_blob_size);
 
 
     return 0;
@@ -231,9 +196,9 @@ int run_cycle_breakdown_test()
         return -1;
     }
 
-    print_cycle_metric("checkpoint_seal_cycles", seal_cycles);
-    print_cycle_metric("checkpoint_unseal_cycles", unseal_cycles);
-    print_cycle_metric("checkpoint_compute_cycles", compute_cycles);
+    print_metric("checkpoint_seal_cycles", seal_cycles);
+    print_metric("checkpoint_unseal_cycles", unseal_cycles);
+    print_metric("checkpoint_compute_cycles", compute_cycles);
     return 0;
 }
 
@@ -249,41 +214,38 @@ int run_break_even_test()
 
     // Use a fixed run budget so each K value is comparable.
     const unsigned long runs = 1000;
+    const unsigned long avg_runs = 10;
     unsigned long fault_positions_save[MAX_DETERMINISTIC_FAULTS];
     unsigned long fault_positions_no_save[MAX_DETERMINISTIC_FAULTS];
-    uint64_t cost_no_save[MAX_DETERMINISTIC_FAULTS + 1] = {0};
-    uint64_t cost_save[MAX_DETERMINISTIC_FAULTS + 1] = {0};
     uint64_t threshold_errors = MAX_DETERMINISTIC_FAULTS + 1;
 
     for (int k = 0; k <= MAX_DETERMINISTIC_FAULTS; k++)
-    {
-        struct fault_model fault_model = MODEL_DEFAULT;
-
-        // Build a deterministic fault schedule with exactly k faults.
-        uint64_t period_save = find_optimal_period(k, runs, 1);
-        fault_model.period = period_save;   
-        find_fault_positions(&fault_model, runs, k, fault_positions_save);
-
-        // Baseline: execute the run without checkpointing.
-        measure_scenario(runs, 0, fault_positions_no_save, k, &cost_no_save[k]);
-
-
-        uint64_t period_no_save = find_optimal_period(k, runs, 0);
-        fault_model.period = period_save;   
-        find_fault_positions(&fault_model, runs, k, fault_positions_no_save);
+    {   
         
-        // Checkpointed path: restart from the last saved state after each fault.
-        measure_scenario(runs, 1, fault_positions_save, k, &cost_save[k]);
+        uint64_t k_cost_save = 0;
+        uint64_t k_cost_no_save = 0;
 
-        // Record both costs so the break-even point can be compared.
-        print_indexed_cycle_metric("cost_no_save", k, cost_no_save[k]);
-        print_indexed_cycle_metric("cost_save", k, cost_save[k]);
-        // First K where checkpointing becomes cheaper than running through faults.
-        threshold_errors = (uint64_t)k;
-        
+        for (int i=0; i< avg_runs; i++)
+        {
+            uint64_t current_save;
+            uint64_t current_no_save;
+            
+            fill_range(fault_positions_save, k, runs, 1);
+            measure_scenario(runs, 1, fault_positions_save, k, &current_save);
+
+            fill_range(fault_positions_no_save, k, runs, 0);
+            measure_scenario(runs, 0, fault_positions_no_save, k, &current_no_save); 
+            
+            k_cost_save += current_save;
+            k_cost_no_save += current_no_save;
+        }
+
+        k_cost_save /= avg_runs;
+        k_cost_no_save /= avg_runs;
+
+        print_indexed_metric("cost_save", k, k_cost_save);
+        print_indexed_metric("cost_no_save", k, k_cost_no_save);
     }
-
-    print_cycle_metric("break_even_threshold_errors", threshold_errors);
 
     return 0;
 }

@@ -20,7 +20,7 @@ set(FAULT_PERIOD "30" CACHE STRING "optional override for PERIOD macro (example:
 set(FAULT_RANDOMIZE_SEED "1" CACHE STRING "optional override for FAULT_RANDOMIZE_SEED macro (0 or 1)")
 set(FAULT_SEED "" CACHE STRING "optional override for SEED macro (example: 0x6b656973746f6e68ULL)")
 set(EAPP_RUNS "50" CACHE STRING "optional override for the eapp main loop bound (example: 50)")
-set(HOST_MAX_RUN "1" CACHE STRING "optional override for host main loop bound before stopping execution (example: 10)")
+set(HOST_MAX_RUN "10" CACHE STRING "optional override for host main loop bound before stopping execution (example: 10)")
 
 set(HOST_LOGGING "1" CACHE STRING "optional override for host logging (0 or 1)")
 set(EAPP_LOGGING "1" CACHE STRING "optional override for enclave logging (0 or 1)")
@@ -28,7 +28,7 @@ set(EAPP_LOGGING "1" CACHE STRING "optional override for enclave logging (0 or 1
 
 #################### testing macros ####################
 # eapp
-set(EAPP_TESTING "1" CACHE STRING "enable enclave self-tests mode (0 or 1)")
+set(EAPP_TESTING "0" CACHE STRING "enable enclave self-tests mode (0 or 1)")
 set(EAPP_BLOB_SIZE_TESTING "1" CACHE STRING "enable the blob size benchmark (0 or 1)")
 set(EAPP_AVG_FAULT_TESTING "1" CACHE STRING "enable the average fault test (0 or 1)")
 set(EAPP_ROUND_TRIP_TESTING "1" CACHE STRING "enable the round-trip test (0 or 1)")

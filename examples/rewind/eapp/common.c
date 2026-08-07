@@ -22,6 +22,37 @@ void eapp_print(const char* str)
 #endif
 }
 
+void print_metric(const char* label, uint64_t cycles)
+{
+    char buffer[96];
+    format_unsigned_value(buffer, cycles, label);
+    eapp_print(buffer);
+}
+
+void print_indexed_metric(const char* prefix, int index, uint64_t cycles)
+{
+    char label[96];
+    size_t prefix_len = 0;
+
+    while (prefix[prefix_len] != '\0' && prefix_len + 3 < sizeof(label))
+    {
+        label[prefix_len] = prefix[prefix_len];
+        prefix_len++;
+    }
+
+    if (prefix_len + 2 >= sizeof(label))
+    {
+        return;
+    }
+
+    label[prefix_len++] = '_';
+    label[prefix_len++] = (char)('0' + index);
+    label[prefix_len] = '\0';
+
+    print_metric(label, cycles);
+}
+
+
 
 unsigned long increment_ulong_wrapped(unsigned long value)
 {
