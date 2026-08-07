@@ -23,12 +23,12 @@ void eapp_print(const char* str)
 }
 
 
-unsigned long advance_ulong_wrapped(unsigned long value)
+unsigned long increment_ulong_wrapped(unsigned long value)
 {
     return value == ULONG_MAX ? 0UL : value + 1;
 }
 
-uint64_t advance_uint_wrapped(uint64_t value)
+uint64_t increment_uint_wrapped(uint64_t value)
 {
     return value == UINT64_MAX ? 0 : value + 1;
 }

@@ -17,7 +17,7 @@ uint64_t fault_default_seed(void)
 #endif
 }
 
-int generate_fault_positions(struct fault_model* model,
+int find_fault_positions(struct fault_model* model,
                                     unsigned long runs,
                                     int K,
                                     unsigned long* positions_out)
@@ -40,7 +40,7 @@ int generate_fault_positions(struct fault_model* model,
             counter++;
         }
 
-        offset = advance_uint_wrapped(offset);
+        offset = increment_uint_wrapped(offset);
     }
 
     if (counter >= K) {return 0;}
@@ -62,8 +62,8 @@ int generate_fault_positions(struct fault_model* model,
         // if wrap around stop
         if (window_start == search_origin) {return -1;}
 
-        window_start = advance_ulong_wrapped(window_start);
-        window_end = advance_ulong_wrapped(window_end);
+        window_start = increment_ulong_wrapped(window_start);
+        window_end = increment_ulong_wrapped(window_end);
 
         // add last
         if (will_fault_trigger(model, (uint64_t)window_end))
@@ -117,7 +117,7 @@ int should_fault_trigger(struct fault_model* model)
 
     
     // simple bound to make sure across long runs
-    model->step = advance_uint_wrapped(model->step);
+    model->step = increment_uint_wrapped(model->step);
 
     uint64_t current_step = model->seed + model->step;
     uint64_t error = fault_splitmix64(current_step);
@@ -133,7 +133,7 @@ struct fault_model get_default_model()
     return ret;
 }
 
-int compute_fault_rate(uint64_t fault_number, uint64_t run_number, int saving)
+uint64_t find_optimal_period(uint64_t fault_number, uint64_t run_number, int saving)
 {
     if (fault_number == 0 || run_number == 0)
     {
@@ -150,13 +150,8 @@ int compute_fault_rate(uint64_t fault_number, uint64_t run_number, int saving)
     uint64_t period = total_runs / fault_number;
     if (total_runs % fault_number != 0)
     {
-        period++;
+        period = increment_uint_wrapped(period);
     }
 
-    if (period > (uint64_t)INT_MAX)
-    {
-        return INT_MAX;
-    }
-
-    return (int)period;
+    return period;
 }

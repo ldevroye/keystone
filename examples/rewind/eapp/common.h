@@ -22,7 +22,7 @@ int format_unsigned_value(char *buf, const unsigned long value, const char* val)
 int format_float_value(char *buf, double value, const char *val);
 uintptr_t read_stack_pointer(void);
 uint64_t read_cycle_counter(void);
-unsigned long advance_wrapped(unsigned long value);
-uint64_t advance_wrapped(uint64_t value);
+unsigned long increment_ulong_wrapped(unsigned long value);
+uint64_t increment_uint_wrapped(uint64_t value);
 
 #endif

@@ -55,8 +55,8 @@ uint64_t fault_default_seed(void);
 struct fault_model get_default_model();
 int should_fault_trigger(struct fault_model *model);
 int will_fault_trigger(struct fault_model *model, uint64_t step);
-int compute_fault_rate(uint64_t fault_number, uint64_t run_number, int saving);
-int generate_fault_positions(struct fault_model* model, unsigned long runs, int K, unsigned long* positions_out);
+uint64_t find_optimal_period(uint64_t fault_number, uint64_t run_number, int saving);
+int find_fault_positions(struct fault_model* model, unsigned long runs, int K, unsigned long* positions_out);
 
 
 #endif
