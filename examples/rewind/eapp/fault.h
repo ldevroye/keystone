@@ -2,6 +2,7 @@
 #define FAULT_H
 
 #include <stdint.h>
+#include <limits.h>
 
 #include "common.h"
 
@@ -53,6 +54,11 @@ struct fault_model
 
 uint64_t fault_default_seed(void);
 struct fault_model get_default_model();
-int fault_should_trigger(struct fault_model *model);
+int should_fault_trigger(struct fault_model *model);
+unsigned long advance_wrapped(unsigned long value);
+int will_fault_trigger(struct fault_model *model, uint64_t step);
+int compute_fault_rate(uint64_t fault_number, uint64_t run_number, int saving);
+int generate_fault_positions(struct fault_model* model, unsigned long runs, int K, unsigned long* positions_out);
+
 
 #endif

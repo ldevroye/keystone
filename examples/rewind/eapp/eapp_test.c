@@ -1,4 +1,5 @@
 #include <stddef.h>
+#include <limits.h>
 #include <string.h>
 
 #include "common.h"
@@ -11,6 +12,89 @@ static void print_cycle_metric(const char* label, uint64_t cycles)
     char buffer[96];
     format_unsigned_value(buffer, cycles, label);
     eapp_print(buffer);
+}
+
+static void print_indexed_cycle_metric(const char* prefix, int index, uint64_t cycles)
+{
+    char label[96];
+    size_t prefix_len = 0;
+
+    while (prefix[prefix_len] != '\0' && prefix_len + 3 < sizeof(label))
+    {
+        label[prefix_len] = prefix[prefix_len];
+        prefix_len++;
+    }
+
+    if (prefix_len + 2 >= sizeof(label))
+    {
+        return;
+    }
+
+    label[prefix_len++] = '_';
+    label[prefix_len++] = (char)('0' + index);
+    label[prefix_len] = '\0';
+
+    print_cycle_metric(label, cycles);
+}
+
+static int measure_scenario(unsigned long runs,
+                            int checkpoint_enabled,
+                            const unsigned long* fault_positions,
+                            int K,
+                            uint64_t* elapsed_cycles)
+{
+    struct rewind_state state = {0, 1, 0};
+    unsigned long fault_index = 0;
+    uint64_t start_cycles;
+    uint64_t end_cycles;
+
+    state_anchor = &state;
+    start_cycles = read_cycle_counter();
+
+    while (state.counter < runs)
+    {
+        if (fault_index < (unsigned long)K && state.counter == fault_positions[fault_index])
+        {
+            if (checkpoint_enabled)
+            {
+                if (load_checkpoint() != 0)
+                {
+                    eapp_print("deterministic break-even load failed");
+                    return -1;
+                }
+
+                if (restore_checkpoint() != 0)
+                {
+                    eapp_print("deterministic break-even restore failed");
+                    return -1;
+                }
+            }
+            else
+            {
+                state.a = 0;
+                state.b = 1;
+                state.counter = 0;
+            }
+
+            fault_index++;
+            continue;
+        }
+
+        computation();
+
+        if (checkpoint_enabled)
+        {
+            if (save_checkpoint() != 0)
+            {
+                eapp_print("deterministic break-even save failed");
+                return -1;
+            }
+        }
+    }
+
+    end_cycles = read_cycle_counter();
+    *elapsed_cycles = end_cycles - start_cycles;
+    return 0;
 }
 
 static int measure_checkpoint_cycle_breakdown(uint64_t* save_cycles, uint64_t* load_cycles)
@@ -95,7 +179,7 @@ void avg_fault_test()
 
     for (; counter < 10000; counter++)
     {
-        if (fault_should_trigger(&fault_model))
+        if (should_fault_trigger(&fault_model))
         {
             nb_faults++;
         }
@@ -170,68 +254,50 @@ int run_cycle_breakdown_test()
     return 0;
 }
 
-static int run_benchmark_pass(unsigned long runs,
-                              int checkpoint_enabled,
-                              uint64_t* elapsed_cycles)
-{
-    struct fault_model fault_model = get_default_model();
-    const uint64_t start_cycles = read_cycle_counter();
-    if (test_run_enclave(runs, &fault_model, 1, checkpoint_enabled, 0, 0) != 0)
-    {
-        eapp_print("benchmark pass failed");
-        return -1;
-    }
-    *elapsed_cycles = read_cycle_counter() - start_cycles;
-    return 0;
-}
-
 int run_break_even_test()
 {
-    uint64_t no_save_cycles = 0;
-    uint64_t save_run_cycles = 0;
-    uint64_t save_breakdown_cycles = 0;
-    uint64_t load_cycles = 0;
-    uint64_t one_error_no_save = 0;
-    uint64_t two_error_no_save = 0;
-    uint64_t one_error_save = 0;
-    uint64_t two_error_save = 0;
-    uint64_t threshold_errors = 0;
-
-    int disable_checkpoint = 0;
-    int enable_checkpoint = 1;
-    if (run_benchmark_pass(EAPP_RUNS, disable_checkpoint, &no_save_cycles) != 0)
+    enum
     {
-        return -1;
+        MAX_DETERMINISTIC_FAULTS = 3
+    };
+
+    const unsigned long deterministic_runs = EAPP_RUNS * 4;
+    unsigned long fault_positions[MAX_DETERMINISTIC_FAULTS];
+    uint64_t cost_no_save[MAX_DETERMINISTIC_FAULTS + 1] = {0};
+    uint64_t cost_save[MAX_DETERMINISTIC_FAULTS + 1] = {0};
+    uint64_t threshold_errors = MAX_DETERMINISTIC_FAULTS + 1;
+
+    for (int k = 0; k <= MAX_DETERMINISTIC_FAULTS; k++)
+    {
+        struct fault_model fault_model = MODEL_DEFAULT;
+
+        auto ret = generate_fault_positions(&fault_model, deterministic_runs, k, fault_positions);
+        while (ret != 0)
+        {   
+            ret = generate_fault_positions(&fault_model, deterministic_runs, k, fault_positions);
+        }
+
+        if (measure_scenario(deterministic_runs, 0, fault_positions, k, &cost_no_save[k]) != 0)
+        {
+            eapp_print("deterministic break-even no-save scenario failed");
+            return -1;
+        }
+
+        if (measure_scenario(deterministic_runs, 1, fault_positions, k, &cost_save[k]) != 0)
+        {
+            eapp_print("deterministic break-even save scenario failed");
+            return -1;
+        }
+
+        print_indexed_cycle_metric("cost_no_save", k, cost_no_save[k]);
+        print_indexed_cycle_metric("cost_save", k, cost_save[k]);
+
+        if (threshold_errors == MAX_DETERMINISTIC_FAULTS + 1 && cost_save[k] < cost_no_save[k])
+        {
+            threshold_errors = (uint64_t)k;
+        }
     }
 
-    if (run_benchmark_pass(EAPP_RUNS, enable_checkpoint, &save_run_cycles) != 0)
-    {
-        return -1;
-    }
-
-    if (measure_checkpoint_cycle_breakdown(&save_breakdown_cycles, &load_cycles) != 0)
-    {
-        return -1;
-    }
-
-    one_error_no_save = no_save_cycles * 2;
-    two_error_no_save = no_save_cycles * 3;
-    one_error_save = save_run_cycles + load_cycles;
-    two_error_save = save_run_cycles + (2 * load_cycles);
-
-    if (no_save_cycles > load_cycles && save_run_cycles > no_save_cycles)
-    {
-        threshold_errors = ((save_run_cycles - no_save_cycles) / (no_save_cycles - load_cycles)) + 1;
-    }
-
-    print_cycle_metric("no_save_cycles", no_save_cycles);
-    print_cycle_metric("save_cycles", save_run_cycles);
-    print_cycle_metric("checkpoint_save_cycles", save_breakdown_cycles);
-    print_cycle_metric("load_cycles", load_cycles);
-    print_cycle_metric("no_save_cost_one_error", one_error_no_save);
-    print_cycle_metric("no_save_cost_two_errors", two_error_no_save);
-    print_cycle_metric("save_cost_one_error", one_error_save);
-    print_cycle_metric("save_cost_two_errors", two_error_save);
     print_cycle_metric("break_even_threshold_errors", threshold_errors);
 
     return 0;

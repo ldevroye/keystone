@@ -212,7 +212,7 @@ int test_run_enclave(unsigned long runs, struct fault_model* fault_model, int re
 #endif
         // inject one modeled fault point using a simple pseudo-random splitex function
         // fault happens before so that the "computation" can fail
-        if (fault_enabled && fault_should_trigger(fault_model))
+        if (fault_enabled && should_fault_trigger(fault_model))
         {
             eapp_print("Simulated fault");
             if (return_on_fault)
