@@ -243,8 +243,48 @@ int run_break_even_test()
         cost_save[k] /= avg_runs;
         cost_no_save[k] /= avg_runs;
 
-        //print_indexed_metric("cost_save", k, cost_no_save[k]);
-        print_indexed_metric("cost_no_save_", k, cost_no_save[k]);
+        print_indexed_metric("cost_save", k, cost_no_save[k]);
+        print_indexed_metric("iterations of cost_no_save_", k, cost_no_save[k]);
+    }
+
+    // compute and print break-even thresholds using per-iteration cost model:
+    // per-iteration cost when saving: saving_cost = save_cycles + load_cycles + compute
+    // per-iteration cost when not saving: no_saving_cost = compute
+    // total_saving = saving_iterations * saving_cost
+    // total_no_saving = no_saving_iterations * no_saving_cost
+    // threshold happens when total_saving <= total_no_saving:
+
+    // compute = saving_iterations * (save+load) / (no_saving_iterations - saving_iterations)
+    const uint64_t CPU_FREQ_HZ = 4370000000ULL; // my computa mean
+    for (int k = 0; k <= MAX_DETERMINISTIC_FAULTS; k++)
+    {
+        uint64_t saving_iter = cost_save[k];
+        uint64_t no_saving_iter = cost_no_save[k];
+
+        uint64_t threshold_compute_cycles = 0;
+        if (no_saving_iter > saving_iter)
+        {
+            uint64_t numer = saving_iter * (save_cycles + load_cycles);
+            uint64_t denom = no_saving_iter - saving_iter;
+            threshold_compute_cycles = numer / denom;
+        }
+        else
+        {
+            threshold_compute_cycles = UINT64_MAX; // not meaningful
+        }
+
+        uint64_t threshold_time_us = 0;
+        if (threshold_compute_cycles == UINT64_MAX)
+        {
+            threshold_time_us = UINT64_MAX;
+        }
+        else
+        {
+            threshold_time_us = (threshold_compute_cycles * 1000000ULL + (CPU_FREQ_HZ / 2)) / CPU_FREQ_HZ;
+        }
+
+        print_indexed_metric("break_even_compute_cycles_per_iter_", k, threshold_compute_cycles);
+        print_indexed_metric("break_even_compute_time_us_per_iter_", k, threshold_time_us);
     }
 
     return 0;
