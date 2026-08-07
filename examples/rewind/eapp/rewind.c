@@ -17,4 +17,4 @@ int main()
     struct fault_model fault_model=get_default_model();
     EAPP_RETURN(run_enclave(EAPP_RUNS, &fault_model));
 #endif
-} 
+}

@@ -28,7 +28,7 @@ set(EAPP_LOGGING "1" CACHE STRING "optional override for enclave logging (0 or 1
 
 #################### testing macros ####################
 # eapp
-set(EAPP_TESTING "1" CACHE STRING "enable enclave self-tests mode (0 or 1)")
+set(EAPP_TESTING "0" CACHE STRING "enable enclave self-tests mode (0 or 1)")
 set(EAPP_BLOB_SIZE_TESTING "1" CACHE STRING "enable the blob size benchmark (0 or 1)")
 set(EAPP_AVG_FAULT_TESTING "1" CACHE STRING "enable the average fault test (0 or 1)")
 set(EAPP_ROUND_TRIP_TESTING "1" CACHE STRING "enable the round-trip test (0 or 1)")

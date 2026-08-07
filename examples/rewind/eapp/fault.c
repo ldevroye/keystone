@@ -17,12 +17,6 @@ uint64_t fault_default_seed(void)
 #endif
 }
 
-
-unsigned long advance_wrapped(unsigned long value)
-{
-    return value == ULONG_MAX ? 0UL : value + 1UL;
-}
-
 int generate_fault_positions(struct fault_model* model,
                                     unsigned long runs,
                                     int K,
@@ -46,7 +40,7 @@ int generate_fault_positions(struct fault_model* model,
             counter++;
         }
 
-        offset = advance_wrapped(offset);
+        offset = advance_uint_wrapped(offset);
     }
 
     if (counter >= K) {return 0;}
@@ -68,8 +62,8 @@ int generate_fault_positions(struct fault_model* model,
         // if wrap around stop
         if (window_start == search_origin) {return -1;}
 
-        window_start = advance_wrapped(window_start);
-        window_end = advance_wrapped(window_end);
+        window_start = advance_ulong_wrapped(window_start);
+        window_end = advance_ulong_wrapped(window_end);
 
         // add last
         if (will_fault_trigger(model, (uint64_t)window_end))
@@ -123,12 +117,7 @@ int should_fault_trigger(struct fault_model* model)
 
     
     // simple bound to make sure across long runs
-    if (model->step == UINT64_MAX) 
-    { 
-        model->step = 0;
-    }
-    model->step++;
-    
+    model->step = advance_uint_wrapped(model->step);
 
     uint64_t current_step = model->seed + model->step;
     uint64_t error = fault_splitmix64(current_step);

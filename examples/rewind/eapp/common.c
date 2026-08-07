@@ -22,6 +22,17 @@ void eapp_print(const char* str)
 #endif
 }
 
+
+unsigned long advance_ulong_wrapped(unsigned long value)
+{
+    return value == ULONG_MAX ? 0UL : value + 1;
+}
+
+uint64_t advance_uint_wrapped(uint64_t value)
+{
+    return value == UINT64_MAX ? 0 : value + 1;
+}
+
 int format_value(char *buf, const int counter, const char* val)
 {
     const char* equal = " = ";
