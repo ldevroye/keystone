@@ -210,81 +210,119 @@ int run_break_even_test()
     };
 
     uint64_t save_cycles, load_cycles, compute_cycles;
-    measure_checkpoint_cycle_breakdown(&save_cycles, &load_cycles, &compute_cycles);
+    if (measure_checkpoint_cycle_breakdown(&save_cycles, &load_cycles, &compute_cycles) != 0)
+        return -1;
 
-    // Use a fixed run budget so each K value is comparable.
-    const unsigned long runs = 100000;
-    const unsigned long avg_runs = 10000;
+    const unsigned long runs_values[] = {1000UL, 10000UL, 100000UL, 1000000UL, 10000000UL, 100000000UL};
+    const int runs_count = sizeof(runs_values) / sizeof(runs_values[0]);
+    const unsigned long avg_runs = 1000; // lowered for practicality across many run values
+
     unsigned long fault_positions_save[MAX_DETERMINISTIC_FAULTS];
     unsigned long fault_positions_no_save[MAX_DETERMINISTIC_FAULTS];
-    uint64_t threshold_errors = MAX_DETERMINISTIC_FAULTS + 1;
-    uint64_t cost_save[MAX_DETERMINISTIC_FAULTS] = {0};
-    uint64_t cost_no_save[MAX_DETERMINISTIC_FAULTS] = {0};
 
-    for (int k = 0; k <= MAX_DETERMINISTIC_FAULTS; k++)
-    {   
-        
-        uint64_t current_save;
-        uint64_t current_no_save;
-        
-        for (int i=0; i< avg_runs; i++)
-        {
-                
-            fill_range(fault_positions_save, k, runs, 1);
-            measure_scenario(runs, 1, fault_positions_save, k, &current_save);
-
-            fill_range(fault_positions_no_save, k, runs, 0);
-            measure_scenario(runs, 0, fault_positions_no_save, k, &current_no_save); 
-            
-            cost_save[k] += current_save;
-            cost_no_save[k] += current_no_save;
-        }
-
-        cost_save[k] /= avg_runs;
-        cost_no_save[k] /= avg_runs;
-
-        print_indexed_metric("cost_save", k, cost_no_save[k]);
-        print_indexed_metric("iterations of cost_no_save_", k, cost_no_save[k]);
-    }
-
-    // compute and print break-even thresholds using per-iteration cost model:
-    // per-iteration cost when saving: saving_cost = save_cycles + load_cycles + compute
-    // per-iteration cost when not saving: no_saving_cost = compute
-    // total_saving = saving_iterations * saving_cost
-    // total_no_saving = no_saving_iterations * no_saving_cost
-    // threshold happens when total_saving <= total_no_saving:
-
-    // compute = saving_iterations * (save+load) / (no_saving_iterations - saving_iterations)
-    const uint64_t CPU_FREQ_HZ = 4370000000ULL; // my computa mean
-    for (int k = 0; k <= MAX_DETERMINISTIC_FAULTS; k++)
+    for (int rv = 0; rv < runs_count; rv++)
     {
-        uint64_t saving_iter = cost_save[k];
-        uint64_t no_saving_iter = cost_no_save[k];
+        unsigned long runs = runs_values[rv];
+        print_indexed_metric("break_even_runs ", rv, (uint64_t)runs);
 
-        uint64_t threshold_compute_cycles = 0;
-        if (no_saving_iter > saving_iter)
+        uint64_t cost_save[MAX_DETERMINISTIC_FAULTS];
+        uint64_t cost_no_save[MAX_DETERMINISTIC_FAULTS];
+        for (int k = 0; k <= MAX_DETERMINISTIC_FAULTS; k++)
         {
-            uint64_t numer = saving_iter * (save_cycles + load_cycles);
-            uint64_t denom = no_saving_iter - saving_iter;
-            threshold_compute_cycles = numer / denom;
-        }
-        else
-        {
-            threshold_compute_cycles = UINT64_MAX; // not meaningful
+            cost_save[k] = 0;
+            cost_no_save[k] = 0;
         }
 
-        uint64_t threshold_time_us = 0;
-        if (threshold_compute_cycles == UINT64_MAX)
+        for (int k = 0; k <= MAX_DETERMINISTIC_FAULTS; k++)
         {
-            threshold_time_us = UINT64_MAX;
-        }
-        else
-        {
-            threshold_time_us = (threshold_compute_cycles * 1000000ULL + (CPU_FREQ_HZ / 2)) / CPU_FREQ_HZ;
+            uint64_t current_save = 0;
+            uint64_t current_no_save = 0;
+
+            for (unsigned long i = 0; i < avg_runs; i++)
+            {
+                fill_range(fault_positions_save, k, runs, 1);
+                measure_scenario(runs, 1, fault_positions_save, k, &current_save);
+
+                fill_range(fault_positions_no_save, k, runs, 0);
+                measure_scenario(runs, 0, fault_positions_no_save, k, &current_no_save);
+
+                cost_save[k] += current_save;
+                cost_no_save[k] += current_no_save;
+            }
+
+            cost_save[k] /= avg_runs;
+            cost_no_save[k] /= avg_runs;
+
+            print_indexed_metric("cost_save_iterations_", k, cost_save[k]);
+            print_indexed_metric("cost_no_save_iterations_", k, cost_no_save[k]);
         }
 
-        print_indexed_metric("break_even_compute_cycles_per_iter_", k, threshold_compute_cycles);
-        print_indexed_metric("break_even_compute_time_us_per_iter_", k, threshold_time_us);
+
+        const uint64_t CPU_FREQ_HZ = 4370000000ULL; // // my computa 
+        for (int k = 0; k <= MAX_DETERMINISTIC_FAULTS; k++)
+        {
+            uint64_t saving_iter = cost_save[k];
+            uint64_t no_saving_iter = cost_no_save[k];
+
+            uint64_t threshold_compute_cycles = UINT64_MAX;
+            if (no_saving_iter > saving_iter)
+            {
+                uint64_t numer = saving_iter * (save_cycles + load_cycles);
+                uint64_t denom = no_saving_iter - saving_iter;
+                threshold_compute_cycles = numer / denom;
+            }
+
+            uint64_t threshold_time_us = UINT64_MAX;
+            if (threshold_compute_cycles != UINT64_MAX)
+            {
+                threshold_time_us = (threshold_compute_cycles * 1000000ULL + (CPU_FREQ_HZ / 2)) / CPU_FREQ_HZ;
+            }
+
+            print_indexed_metric("break_even_compute_cycles_per_iter_", k, threshold_compute_cycles);
+            print_indexed_metric("break_even_compute_time_us_per_iter_", k, threshold_time_us);
+
+            // compute absolute totals using the measured compute_cycles
+            uint64_t measured_compute = compute_cycles*1000000ULL;
+            uint64_t saving_cycle_cost = (save_cycles + load_cycles + measured_compute);
+            uint64_t no_saving_cycle_cost = measured_compute;
+
+            uint64_t total_saving_cycles = saving_iter * saving_cycle_cost;
+            uint64_t total_no_save_cycles = no_saving_iter * no_saving_cycle_cost;
+
+            print_metric("cost saving_cycle ", saving_cycle_cost);
+            print_metric("cost no_save_cycle ", no_saving_cycle_cost);
+            uint64_t ratio = total_no_save_cycles/total_saving_cycles;
+
+            if (total_no_save_cycles >= total_saving_cycles)
+            {
+                print_indexed_metric("delta_cycles_positive_", k, ratio);
+            }
+            else
+            {
+                print_indexed_metric("delta_cycles_negative_", k, ratio);
+            }
+
+            // also print deltas in microseconds
+            if (total_saving_cycles == UINT64_MAX || total_no_save_cycles == UINT64_MAX)
+            {
+                print_indexed_metric("delta_time_us_positive_", k, UINT64_MAX);
+                print_indexed_metric("delta_time_us_negative_", k, UINT64_MAX);
+            }
+            else
+            {
+                uint64_t total_saving_time_us = (total_saving_cycles * 1000000ULL + (CPU_FREQ_HZ / 2)) / CPU_FREQ_HZ;
+                uint64_t total_no_save_time_us = (total_no_save_cycles * 1000000ULL + (CPU_FREQ_HZ / 2)) / CPU_FREQ_HZ;
+                
+                if (total_no_save_time_us >= total_saving_time_us)
+                {
+                    print_indexed_metric("delta_time_us_positive_", k, total_no_save_time_us - total_saving_time_us);
+                }
+                else
+                {
+                    print_indexed_metric("delta_time_us_negative_", k, total_saving_time_us - total_no_save_time_us);
+                }
+            }
+        }
     }
 
     return 0;
@@ -292,62 +330,48 @@ int run_break_even_test()
 
 int run_eapp_tests()
 {
-    
+
 #if EAPP_AVG_FAULT_TESTING
     eapp_print("[START] fault rate");
     avg_fault_test();
-    eapp_print("[end] fault rate");
-
+    eapp_print("[END] fault rate");
 #endif
-
 
 #if EAPP_ROUND_TRIP_TESTING
     eapp_print("[START] round trip");
-
     if (run_round_trip_test() != 0)
     {
         eapp_print("failed run round-trip");
     }
     eapp_print("[END] round trip");
-
 #endif
 
 #if EAPP_BLOB_SIZE_TESTING
     eapp_print("[START] blob size");
-
     if (run_blob_size_test() != 0)
     {
         eapp_print("failed blob size test");
     }
     eapp_print("[END] blob size");
-
 #endif
 
 #if EAPP_CYCLE_BREAKDOWN_TESTING
     eapp_print("[START] cycle breakdown");
-
     if (run_cycle_breakdown_test() != 0)
     {
         eapp_print("failed cycle breakdown test");
     }
-
     eapp_print("[END] cycle breakdown");
-
 #endif
 
-
 #if EAPP_BREAK_EVEN_TESTING
-    // Break-even test workflow: generate a fault schedule, compare the
-    // checkpointed and non-checkpointed runs, then report the threshold.
     eapp_print("[START] break even");
-
     if (run_break_even_test() != 0)
     {
         eapp_print("failed break-even test");
     }
     eapp_print("[END] break even");
-
 #endif
-    
+
     return 0;
 }

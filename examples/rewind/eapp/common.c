@@ -24,14 +24,14 @@ void eapp_print(const char* str)
 
 void print_metric(const char* label, uint64_t metric)
 {
-    char buffer[96];
+    char buffer[96] = "";
     format_unsigned_value(buffer, metric, label);
     eapp_print(buffer);
 }
 
 void print_indexed_metric(const char* prefix, int index, uint64_t metric)
 {
-    char label[1024];
+    char label[1024] = "";
     format_value(label, index, prefix);
 
     const char* splitter = ": ";
