@@ -1,11 +1,5 @@
-#include <stddef.h>
-#include <limits.h>
-#include <string.h>
-
-#include "common.h"
-#include "checkpoint.h"
 #include "eapp_test.h"
-#include "fault.h"
+
 
 static void print_cycle_metric(const char* label, uint64_t cycles)
 {
@@ -147,6 +141,7 @@ int run_blob_size_test()
     struct sealed_checkpoint blob;
     uint64_t plain_checkpoint_size;
     uint64_t sealed_blob_size;
+    uint64_t iv_size;
 
     memset(&checkpoint, 0, sizeof(checkpoint));
     memset(&blob, 0, sizeof(blob));
@@ -163,10 +158,13 @@ int run_blob_size_test()
 
     plain_checkpoint_size = (uint64_t)sizeof(struct checkpoint);
     sealed_blob_size = (uint64_t)sizeof(struct sealed_checkpoint);
+    iv_size = AES_BLOCK_SIZE;
 
+    print_cycle_metric("checkpoint_iv_bytes", iv_size);
     print_cycle_metric("checkpoint_plain_bytes", plain_checkpoint_size);
-    print_cycle_metric("checkpoint_sealed_bytes", sealed_blob_size);
     print_cycle_metric("checkpoint_tag_bytes", (uint64_t)CHECKPOINT_TAG_SIZE);
+    print_cycle_metric("checkpoint_sealed_bytes", sealed_blob_size);
+
 
     return 0;
 }

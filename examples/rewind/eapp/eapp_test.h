@@ -2,6 +2,14 @@
 #define EAPP_TEST_H
 
 #include "common.h"
+#include "checkpoint.h"
+#include "fault.h"
+#include "crypto.h"
+
+#include <stddef.h>
+#include <limits.h>
+#include <string.h>
+
 
 #ifndef EAPP_TESTING
 #define EAPP_TESTING 0
