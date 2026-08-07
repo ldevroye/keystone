@@ -44,7 +44,7 @@ static int measure_checkpoint_cycle_breakdown(uint64_t* seal_cycles, uint64_t* u
     state_anchor = &state;
 
     seal_start = read_cycle_counter();
-    if (save_checkpoint() != 0)
+    if (save_checkpoint(0) != 0)
     {
         eapp_print("cycle breakdown save failed");
         return -1;
@@ -54,7 +54,7 @@ static int measure_checkpoint_cycle_breakdown(uint64_t* seal_cycles, uint64_t* u
     memset(&state, 0, sizeof(state));
 
     unseal_start = read_cycle_counter();
-    if (load_checkpoint() != 0)
+    if (load_checkpoint(0) != 0)
     {
         eapp_print("cycle breakdown load failed");
         return -1;
@@ -108,10 +108,10 @@ int run_blob_size_test()
     sealed_blob_size = (uint64_t)sizeof(struct sealed_checkpoint);
     iv_size = AES_BLOCK_SIZE;
 
-    print_metric("checkpoint_iv_bytes", iv_size);
-    print_metric("checkpoint_plain_bytes", plain_checkpoint_size);
-    print_metric("checkpoint_tag_bytes", (uint64_t)CHECKPOINT_TAG_SIZE);
-    print_metric("checkpoint_sealed_bytes", sealed_blob_size);
+    print_metric("checkpoint_iv_bytes ", iv_size);
+    print_metric("checkpoint_plain_bytes ", plain_checkpoint_size);
+    print_metric("checkpoint_tag_bytes ", (uint64_t)CHECKPOINT_TAG_SIZE);
+    print_metric("checkpoint_sealed_bytes ", sealed_blob_size);
 
 
     return 0;
@@ -196,9 +196,9 @@ int run_cycle_breakdown_test()
         return -1;
     }
 
-    print_metric("checkpoint_seal_cycles", seal_cycles);
-    print_metric("checkpoint_unseal_cycles", unseal_cycles);
-    print_metric("checkpoint_compute_cycles", compute_cycles);
+    print_metric("checkpoint_seal_cycles ", seal_cycles);
+    print_metric("checkpoint_unseal_cycles ", unseal_cycles);
+    print_metric("checkpoint_compute_cycles ", compute_cycles);
     return 0;
 }
 
@@ -206,45 +206,45 @@ int run_break_even_test()
 {
     enum
     {
-        MAX_DETERMINISTIC_FAULTS = 3
+        MAX_DETERMINISTIC_FAULTS = 10
     };
 
     uint64_t save_cycles, load_cycles, compute_cycles;
     measure_checkpoint_cycle_breakdown(&save_cycles, &load_cycles, &compute_cycles);
 
     // Use a fixed run budget so each K value is comparable.
-    const unsigned long runs = 1000;
-    const unsigned long avg_runs = 10;
+    const unsigned long runs = 100000;
+    const unsigned long avg_runs = 10000;
     unsigned long fault_positions_save[MAX_DETERMINISTIC_FAULTS];
     unsigned long fault_positions_no_save[MAX_DETERMINISTIC_FAULTS];
     uint64_t threshold_errors = MAX_DETERMINISTIC_FAULTS + 1;
+    uint64_t cost_save[MAX_DETERMINISTIC_FAULTS] = {0};
+    uint64_t cost_no_save[MAX_DETERMINISTIC_FAULTS] = {0};
 
     for (int k = 0; k <= MAX_DETERMINISTIC_FAULTS; k++)
     {   
         
-        uint64_t k_cost_save = 0;
-        uint64_t k_cost_no_save = 0;
-
+        uint64_t current_save;
+        uint64_t current_no_save;
+        
         for (int i=0; i< avg_runs; i++)
         {
-            uint64_t current_save;
-            uint64_t current_no_save;
-            
+                
             fill_range(fault_positions_save, k, runs, 1);
             measure_scenario(runs, 1, fault_positions_save, k, &current_save);
 
             fill_range(fault_positions_no_save, k, runs, 0);
             measure_scenario(runs, 0, fault_positions_no_save, k, &current_no_save); 
             
-            k_cost_save += current_save;
-            k_cost_no_save += current_no_save;
+            cost_save[k] += current_save;
+            cost_no_save[k] += current_no_save;
         }
 
-        k_cost_save /= avg_runs;
-        k_cost_no_save /= avg_runs;
+        cost_save[k] /= avg_runs;
+        cost_no_save[k] /= avg_runs;
 
-        print_indexed_metric("cost_save", k, k_cost_save);
-        print_indexed_metric("cost_no_save", k, k_cost_no_save);
+        //print_indexed_metric("cost_save", k, cost_no_save[k]);
+        print_indexed_metric("cost_no_save_", k, cost_no_save[k]);
     }
 
     return 0;

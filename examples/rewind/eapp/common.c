@@ -22,34 +22,24 @@ void eapp_print(const char* str)
 #endif
 }
 
-void print_metric(const char* label, uint64_t cycles)
+void print_metric(const char* label, uint64_t metric)
 {
     char buffer[96];
-    format_unsigned_value(buffer, cycles, label);
+    format_unsigned_value(buffer, metric, label);
     eapp_print(buffer);
 }
 
-void print_indexed_metric(const char* prefix, int index, uint64_t cycles)
+void print_indexed_metric(const char* prefix, int index, uint64_t metric)
 {
-    char label[96];
-    size_t prefix_len = 0;
+    char label[1024];
+    format_value(label, index, prefix);
 
-    while (prefix[prefix_len] != '\0' && prefix_len + 3 < sizeof(label))
-    {
-        label[prefix_len] = prefix[prefix_len];
-        prefix_len++;
-    }
+    const char* splitter = ": ";
+    const size_t splitter_len = strlen(splitter);
+    
+    memcpy(label + strlen(label), splitter, splitter_len);
 
-    if (prefix_len + 2 >= sizeof(label))
-    {
-        return;
-    }
-
-    label[prefix_len++] = '_';
-    label[prefix_len++] = (char)('0' + index);
-    label[prefix_len] = '\0';
-
-    print_metric(label, cycles);
+    print_metric(label, metric);
 }
 
 
@@ -66,13 +56,9 @@ uint64_t increment_uint_wrapped(uint64_t value)
 
 int format_value(char *buf, const int counter, const char* val)
 {
-    const char* equal = " = ";
-    const int val_len = strlen(val);
-    const int equal_len = strlen(equal);
-    const int pfx_len = val_len + equal_len;
+    const int pfx_len = strlen(val);
+    memcpy(buf, val, pfx_len);
 
-    memcpy(buf, val, val_len);
-    memcpy(buf + val_len, equal, equal_len);
     int pos = pfx_len;
 
     unsigned int u;
@@ -118,13 +104,8 @@ int format_value(char *buf, const int counter, const char* val)
 
 int format_unsigned_value(char *buf, const unsigned long value, const char* val)
 {
-    const char* equal = " = ";
-    const int val_len = strlen(val);
-    const int equal_len = strlen(equal);
-    const int pfx_len = val_len + equal_len;
-
-    memcpy(buf, val, val_len);
-    memcpy(buf + val_len, equal, equal_len);
+    const int pfx_len = strlen(val);
+    memcpy(buf, val, pfx_len);
 
     int pos = pfx_len;
     unsigned long u = value;
@@ -155,13 +136,8 @@ int format_unsigned_value(char *buf, const unsigned long value, const char* val)
 
 int format_float_value(char *buf, double value, const char *val)
 {
-    const char* equal = " = ";
-    const int val_len = strlen(val);
-    const int equal_len = strlen(equal);
-    const int pfx_len = val_len + equal_len;
-
-    memcpy(buf, val, val_len);
-    memcpy(buf + val_len, equal, equal_len);
+    const int pfx_len = strlen(val);
+    memcpy(buf, val, pfx_len);
 
     int pos = pfx_len;
     if (value < 0.0)
@@ -230,7 +206,7 @@ int test_run_enclave(unsigned long runs, struct fault_model* fault_model, int re
     // on restart, recover the last sealed checkpoint if the host has one
     if (resume_enabled)
     {
-        if (load_checkpoint() == 0)
+        if (load_checkpoint(1) == 0)
         {
             if (restore_checkpoint() == 0)
             {
@@ -268,7 +244,7 @@ int test_run_enclave(unsigned long runs, struct fault_model* fault_model, int re
 
         if (checkpoint_enabled)
         {
-            if (save_checkpoint() != 0)
+            if (save_checkpoint(1) != 0)
             {
                 eapp_print("failed to save stack checkpoint");
                 //__builtin_trap();

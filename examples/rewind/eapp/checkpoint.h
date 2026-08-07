@@ -42,8 +42,8 @@ struct sealed_checkpoint
     uint8_t sealed[CHECKPOINT_SEALED_SIZE];
 };
 
-int load_checkpoint();
+int load_checkpoint(int send_edge_call);
 int restore_checkpoint();
-int save_checkpoint();
+int save_checkpoint(int send_edge_call);
 
 #endif

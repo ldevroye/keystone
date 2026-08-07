@@ -12,14 +12,19 @@ static struct checkpoint checkpoint_storage;
 static struct sealed_checkpoint checkpoint_blob;
 struct rewind_state *state_anchor;
 
-int load_checkpoint()
-{
-    // the host returns the sealed blob, not plain checkpoint data
-    if (ocall(OCALL_LOAD_CHECKPOINT_BLOB, NULL, 0, &checkpoint_blob, sizeof(checkpoint_blob)) != 0)
+int load_checkpoint(int send_edge_call)
+{   
+    if (send_edge_call)
     {
-        eapp_print("No saved checkpoint");
-        return -1;
+           // the host returns the sealed blob, not plain checkpoint data
+        if (ocall(OCALL_LOAD_CHECKPOINT_BLOB, NULL, 0, &checkpoint_blob, sizeof(checkpoint_blob)) != 0)
+        {
+            eapp_print("No saved checkpoint");
+            return -1;
+        }
+
     }
+
 
     if (open_checkpoint_blob(&checkpoint_storage, &checkpoint_blob) != 0)
     {
@@ -45,7 +50,7 @@ int restore_checkpoint()
     return 0;
 }
 
-int save_checkpoint()
+int save_checkpoint(int send_edge_call)
 {
     uintptr_t stack_sp;
     uintptr_t stack_anchor;
@@ -98,10 +103,13 @@ int save_checkpoint()
         return -1;
     }
 
-    if (ocall(OCALL_SAVE_CHECKPOINT_BLOB, &checkpoint_blob, sizeof(checkpoint_blob), NULL, 0) != 0)
+    if (send_edge_call)
     {
-        eapp_print("failed to save checkpoint");
-        return -1;
+        if (ocall(OCALL_SAVE_CHECKPOINT_BLOB, &checkpoint_blob, sizeof(checkpoint_blob), NULL, 0) != 0)
+        {
+            eapp_print("failed to save checkpoint");
+            return -1;
+        }
     }
 
     checkpoint_storage.checkpoint_seq++;
