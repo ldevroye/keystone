@@ -220,20 +220,20 @@ int run_break_even_test()
     unsigned long fault_positions_save[MAX_DETERMINISTIC_FAULTS];
     unsigned long fault_positions_no_save[MAX_DETERMINISTIC_FAULTS];
 
+    const uint64_t CPU_FREQ_HZ = 4370000000ULL; // my computa 
+    const uint64_t measured_compute = compute_cycles*100000ULL;
+    const uint64_t save_cost_per_iter = (save_cycles + load_cycles + measured_compute);
+    const uint64_t no_save_cost_per_iter = measured_compute;
+
     for (int rv = 0; rv < runs_count; rv++)
     {
         unsigned long runs = runs_values[rv];
-        print_indexed_metric("break_even_runs ", rv, (uint64_t)runs);
+        print_indexed_metric("-------- break_even_runs --------", rv, (uint64_t)runs);
 
-        uint64_t cost_save[MAX_DETERMINISTIC_FAULTS];
-        uint64_t cost_no_save[MAX_DETERMINISTIC_FAULTS];
-        for (int k = 0; k <= MAX_DETERMINISTIC_FAULTS; k++)
-        {
-            cost_save[k] = 0;
-            cost_no_save[k] = 0;
-        }
+        uint64_t cost_save[MAX_DETERMINISTIC_FAULTS + 1] = {0};
+        uint64_t cost_no_save[MAX_DETERMINISTIC_FAULTS + 1] = {0};
 
-        for (int k = 0; k <= MAX_DETERMINISTIC_FAULTS; k++)
+        for (int k = 0; k < MAX_DETERMINISTIC_FAULTS+1; k++)
         {
             uint64_t current_save = 0;
             uint64_t current_no_save = 0;
@@ -253,75 +253,36 @@ int run_break_even_test()
             cost_save[k] /= avg_runs;
             cost_no_save[k] /= avg_runs;
 
-            print_indexed_metric("cost_save_iterations_", k, cost_save[k]);
-            print_indexed_metric("cost_no_save_iterations_", k, cost_no_save[k]);
-        }
+            const uint64_t nbr_iter_save = cost_save[k];
+            const uint64_t nbr_iter_no_save = cost_no_save[k];
+            const uint64_t total_saving_cycles = nbr_iter_save * save_cost_per_iter;
+            const uint64_t total_no_save_cycles = nbr_iter_no_save * no_save_cost_per_iter;
 
+            print_indexed_metric("cost save_cycle   ", nbr_iter_save, save_cost_per_iter);
+            print_indexed_metric("cost no_save_cycle ", nbr_iter_no_save, no_save_cost_per_iter);
+            const uint64_t ratio = total_no_save_cycles/total_saving_cycles;
 
-        const uint64_t CPU_FREQ_HZ = 4370000000ULL; // // my computa 
-        for (int k = 0; k <= MAX_DETERMINISTIC_FAULTS; k++)
-        {
-            uint64_t saving_iter = cost_save[k];
-            uint64_t no_saving_iter = cost_no_save[k];
-
-            uint64_t threshold_compute_cycles = UINT64_MAX;
-            if (no_saving_iter > saving_iter)
-            {
-                uint64_t numer = saving_iter * (save_cycles + load_cycles);
-                uint64_t denom = no_saving_iter - saving_iter;
-                threshold_compute_cycles = numer / denom;
-            }
-
-            uint64_t threshold_time_us = UINT64_MAX;
-            if (threshold_compute_cycles != UINT64_MAX)
-            {
-                threshold_time_us = (threshold_compute_cycles * 1000000ULL + (CPU_FREQ_HZ / 2)) / CPU_FREQ_HZ;
-            }
-
-            print_indexed_metric("break_even_compute_cycles_per_iter_", k, threshold_compute_cycles);
-            print_indexed_metric("break_even_compute_time_us_per_iter_", k, threshold_time_us);
-
-            // compute absolute totals using the measured compute_cycles
-            uint64_t measured_compute = compute_cycles*1000000ULL;
-            uint64_t saving_cycle_cost = (save_cycles + load_cycles + measured_compute);
-            uint64_t no_saving_cycle_cost = measured_compute;
-
-            uint64_t total_saving_cycles = saving_iter * saving_cycle_cost;
-            uint64_t total_no_save_cycles = no_saving_iter * no_saving_cycle_cost;
-
-            print_metric("cost saving_cycle ", saving_cycle_cost);
-            print_metric("cost no_save_cycle ", no_saving_cycle_cost);
-            uint64_t ratio = total_no_save_cycles/total_saving_cycles;
+            char buffer[96] = "";
 
             if (total_no_save_cycles >= total_saving_cycles)
             {
-                print_indexed_metric("delta_cycles_positive_", k, ratio);
+                const char* prefix="POSITIVE cycle ratio ";
+                memcpy(buffer, prefix, strlen(prefix));
+                print_indexed_metric(buffer, k, ratio);
             }
             else
             {
-                print_indexed_metric("delta_cycles_negative_", k, ratio);
+                const char* char_negative = "NEGATIVE cycle ratio ";
+                memcpy(buffer, char_negative, strlen(char_negative));
+                print_metric(buffer, ratio);
             }
 
+            /*
             // also print deltas in microseconds
-            if (total_saving_cycles == UINT64_MAX || total_no_save_cycles == UINT64_MAX)
-            {
-                print_indexed_metric("delta_time_us_positive_", k, UINT64_MAX);
-                print_indexed_metric("delta_time_us_negative_", k, UINT64_MAX);
-            }
-            else
-            {
-                uint64_t total_saving_time_us = (total_saving_cycles * 1000000ULL + (CPU_FREQ_HZ / 2)) / CPU_FREQ_HZ;
-                uint64_t total_no_save_time_us = (total_no_save_cycles * 1000000ULL + (CPU_FREQ_HZ / 2)) / CPU_FREQ_HZ;
-                
-                if (total_no_save_time_us >= total_saving_time_us)
-                {
-                    print_indexed_metric("delta_time_us_positive_", k, total_no_save_time_us - total_saving_time_us);
-                }
-                else
-                {
-                    print_indexed_metric("delta_time_us_negative_", k, total_saving_time_us - total_no_save_time_us);
-                }
-            }
+            uint64_t total_saving_time_us = (total_saving_cycles * 1000000ULL + (CPU_FREQ_HZ / 2)) / CPU_FREQ_HZ;
+            uint64_t total_no_save_time_us = (total_no_save_cycles * 1000000ULL + (CPU_FREQ_HZ / 2)) / CPU_FREQ_HZ;
+            uint64_t time_ratio = total_no_save_time_us/total_saving_time_us;
+            */
         }
     }
 
