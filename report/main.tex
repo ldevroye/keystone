@@ -1724,30 +1724,33 @@ In order to better understand what is going on, it is recommended to enable both
 \section{Test cases}
 This section defines the test cases used to evaluate the checkpoint and rewind
 mechanism and explains their relevance.
-There are two parts: the \textit{Analysis} (Section \ref{sub:test-analysis}),
+There are two parts: the \textit{Analysis} (\ref{sub:test-analysis}),
 where we quantify execution costs and overhead, and the \textit{Cyber security}
-(Section \ref{sub:test-cyber}), where we validate the threat model assumptions
-and security objectives from Section \ref{sub:threat-model}.
+(\ref{sub:test-cyber}), where we validate the threat model assumptions
+and security objectives from \ref{sub:threat-model}.
+
+\subsection{Cyber security}
+\label{sub:test-cyber}
+Each test focuses on:
+\begin{itemize}
+    \item the attacker goal
+    \item the security objective under evaluation (confidentiality,
+          integrity, atomicity, unclonability)
+    \item the behavior of the enclave (e.g., detection and rejection of
+          tampered checkpoints)
+\end{itemize}
 
 \subsection{Analysis}
 \label{sub:test-analysis}
 Each test specifies:
 \begin{itemize}
     \item the enclave workload and macros used setup
-    \item the fault scenario (e.g., forced enclave stop, host crash, power cut)
+    \item the fault occurence rate
     \item the metrics recorded (latency, CPU cycles, memory overhead, final success rate)
 \end{itemize}
 
-\subsection{Cyber security}
-\label{sub:test-cyber}
-Each test focuses on:
-\begin{itemize}
-    \item attacker goal (e.g., replaying or corrupting sealed blobs)
-    \item the specific security objective under evaluation (confidentiality,
-          integrity, atomicity, unclonability)
-    \item the expected behavior of the enclave (e.g., detection and rejection of
-          tampered checkpoints)
-\end{itemize}
+
+
 
 
 %%%%%%%%%%%%%%%%%%%%%%%% Results %%%%%%%%%%%%%%%%%%%%%%%%
@@ -1759,7 +1762,11 @@ Each test focuses on:
 \subsection{Timing cost}
 
 \section{Cyber security}
-\subsection{Tampering}
+\subsection{Security objectives}
+\subsubsection{Confidentiality}
+\subsubsection{Integrity}
+\subsubsection{Atomicity}
+\subsubsection{Unclonability}
 
 \section{Discussion}
 \TODO{threshold for avrage usefulness}

@@ -1,12 +1,95 @@
 #include "eapp_test.h"
 
+#include <stdio.h>
+
+static size_t append_literal(char* buffer, size_t size, size_t pos, const char* literal)
+{
+    const size_t literal_len = strlen(literal);
+    const size_t remaining = size > pos ? size - pos : 0;
+    const size_t copy_len = literal_len < remaining ? literal_len : remaining > 0 ? remaining - 1 : 0;
+    if (copy_len > 0)
+    {
+        memcpy(buffer + pos, literal, copy_len);
+        pos += copy_len;
+    }
+    if (pos < size)
+    {
+        buffer[pos] = '\0';
+    }
+    return pos;
+}
+
+static size_t append_unsigned(char* buffer, size_t size, size_t pos, unsigned long value)
+{
+    char digits[32];
+    int length = 0;
+
+    do
+    {
+        digits[length++] = (char)('0' + (value % 10));
+        value /= 10;
+    } while (value != 0);
+
+    while (length > 0 && pos < size)
+    {
+        buffer[pos++] = digits[--length];
+    }
+
+    if (pos < size)
+    {
+        buffer[pos] = '\0';
+    }
+    return pos;
+}
+
+static size_t append_double_two_dec(char* buffer, size_t size, size_t pos, double value)
+{
+    const unsigned long whole = (unsigned long)value;
+    const double fraction = value - (double)whole;
+    const unsigned long scaled = (unsigned long)(fraction * 100.0 + 0.5);
+
+    pos = append_unsigned(buffer, size, pos, whole);
+    if (pos < size)
+    {
+        buffer[pos++] = '.';
+    }
+    if (pos < size)
+    {
+        buffer[pos++] = (char)('0' + (scaled / 10));
+    }
+    if (pos < size)
+    {
+        buffer[pos++] = (char)('0' + (scaled % 10));
+    }
+    if (pos < size)
+    {
+        buffer[pos] = '\0';
+    }
+    return pos;
+}
+
+static void emit_break_even_csv(unsigned long runs, int k, unsigned long measured_compute, double ratio)
+{
+    char csv_line[256];
+    size_t pos = 0;
+
+    pos = append_literal(csv_line, sizeof(csv_line), pos, "break_even_threshold,");
+    pos = append_unsigned(csv_line, sizeof(csv_line), pos, runs);
+    pos = append_literal(csv_line, sizeof(csv_line), pos, ",");
+    pos = append_unsigned(csv_line, sizeof(csv_line), pos, (unsigned long)k);
+    pos = append_literal(csv_line, sizeof(csv_line), pos, ",");
+    pos = append_unsigned(csv_line, sizeof(csv_line), pos, measured_compute);
+    pos = append_literal(csv_line, sizeof(csv_line), pos, ",");
+    append_double_two_dec(csv_line, sizeof(csv_line), pos, ratio);
+    eapp_print(csv_line);
+}
 
 static int measure_scenario(unsigned long runs,
                             int checkpoint_enabled,
                             const unsigned long* fault_positions,
                             size_t len_fault_positions,
                             uint64_t* total_iterations)
-{   
+{
     if (len_fault_positions == 0)
     {
         *total_iterations=runs;
@@ -206,15 +289,23 @@ int run_break_even_test()
 {
     enum
     {
-        MAX_DETERMINISTIC_FAULTS = 10
+        MAX_DETERMINISTIC_FAULTS = 9
     };
 
     uint64_t save_cycles, load_cycles, compute_cycles;
     if (measure_checkpoint_cycle_breakdown(&save_cycles, &load_cycles, &compute_cycles) != 0)
         return -1;
 
-    const unsigned long runs_values[] = {1000UL, 10000UL, 100000UL, 1000000UL, 10000000UL, 100000000UL};
-    const unsigned long compute_cost_values[] = {50000UL, 100000UL, 200000UL, 500000UL, 1000000UL, 2000000UL, 5000000UL, 10000000UL};
+    const unsigned long thousand=1000UL;
+    const unsigned long hundred_thousand=100*thousand;
+    const unsigned long million=thousand*thousand;
+    const unsigned long ten_million=10*million;
+
+    const unsigned long runs_values[] = {50*thousand, hundred_thousand, million, ten_million, 5*ten_million};
+    const unsigned long compute_cost_values[] = {50*thousand, hundred_thousand, 2*hundred_thousand, 5*hundred_thousand, 8*hundred_thousand, 
+                                                 million, 2*million, 5*million, 8*million,
+                                                 ten_million, 2*ten_million, 3*ten_million, 4*ten_million, 5*ten_million
+                                                };
     const unsigned long avg_runs = 1000; // lowered for practicality across many run values
     unsigned long fault_positions_save[MAX_DETERMINISTIC_FAULTS];
     unsigned long fault_positions_no_save[MAX_DETERMINISTIC_FAULTS];
@@ -237,6 +328,8 @@ int run_break_even_test()
         {
             uint64_t current_save = 0;
             uint64_t current_no_save = 0;
+            uint64_t min_no_save_error_sum = UINT64_MAX;
+            uint64_t max_no_save_error_sum = 0;
 
             for (unsigned long i = 0; i < avg_runs; i++)
             {
@@ -246,6 +339,15 @@ int run_break_even_test()
                 fill_range(fault_positions_no_save, k, runs, 0);
                 measure_scenario(runs, 0, fault_positions_no_save, k, &current_no_save);
 
+                if (current_no_save < min_no_save_error_sum)
+                {
+                    min_no_save_error_sum = current_no_save;
+                }
+                if (current_no_save > max_no_save_error_sum)
+                {
+                    max_no_save_error_sum = current_no_save;
+                }
+
                 cost_save[k] += current_save;
                 cost_no_save[k] += current_no_save;
             }
@@ -253,21 +355,33 @@ int run_break_even_test()
             cost_save[k] /= avg_runs;
             cost_no_save[k] /= avg_runs;
 
+            print_indexed_metric("break_even no_save min_error_sum ", k, min_no_save_error_sum);
+            print_indexed_metric("break_even no_save max_error_sum ", k, max_no_save_error_sum);
+
             int threshold_reached = 0;
             for (int cp = 0; cp < compute_count; cp++)
             {   
                 threshold_reached = 0;
                 const unsigned long measured_compute = compute_cost_values[cp];
-                const uint64_t save_cost_per_iter = (save_cycles + load_cycles + measured_compute);
+                const uint64_t save_cost_per_iter = (save_cycles + measured_compute);
                 const uint64_t no_save_cost_per_iter = measured_compute;
                 const uint64_t nbr_iter_save = cost_save[k];
                 const uint64_t nbr_iter_no_save = cost_no_save[k];
-                const uint64_t total_saving_cycles = nbr_iter_save * save_cost_per_iter;
+                const uint64_t total_saving_cycles = (nbr_iter_save * save_cost_per_iter) + (load_cycles * k);
                 const uint64_t total_no_save_cycles = nbr_iter_no_save * no_save_cost_per_iter;
 
-                const uint64_t ratio = total_no_save_cycles/total_saving_cycles;
+                const double ratio = (double)total_no_save_cycles / (double)total_saving_cycles;
 
 
+#if EAPP_BREAK_EVEN_CSV_OUTPUT
+                {
+                    emit_break_even_csv(runs, k, measured_compute, ratio);
+                    if (total_no_save_cycles >= total_saving_cycles)
+                    {
+                        threshold_reached = 1;
+                    }
+                }
+#else
                 if (total_no_save_cycles >= total_saving_cycles)
                 {
                     print_metric("current computation: ", measured_compute);
@@ -276,6 +390,7 @@ int run_break_even_test()
                     print_indexed_metric("cycle ratio ", k, ratio);
                     threshold_reached = 1;
                 }
+#endif
 
                 /*
                 // also print deltas in microseconds
