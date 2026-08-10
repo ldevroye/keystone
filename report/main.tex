@@ -1543,18 +1543,33 @@ memcpy(checkpoint, payload, sizeof(*checkpoint));
 \end{verbatim}
 
 \subsubsection{Data structures}
+\label{subsub:data-struct}
 Three data structures separate three distinct roles in the checkpoint/rewind
 pipeline:
-
-\TODO{add sizes}
 
 \begin{verbatim}
 struct checkpoint checkpoint_storage
 struct sealed_checkpoint checkpoint_blob
 struct rewind_state *state_anchor
 \end{verbatim}
+The implementation size of the resulting blob can be seen by setting the macro (and the overall eapp tests)
+\verb|EAPP_BLOB_SIZE_TESTING| to $1$.
 
-
+\begin{table}[H]
+    \centering
+    \label{tab:seal_cp_size}
+    \begin{tabular}{|l|r|}
+        \hline
+        Component & bytes \\
+        \hline
+        IV & 16 \\
+        Plain text & 8208 \\
+        Tag & 16 \\
+        Total & 8240\\
+        \hline
+    \end{tabular}
+    \caption{Sealed checkpoint size (bytes)}
+\end{table}
 
 \begin{itemize}
     \item \texttt{struct checkpoint checkpoint\_storage}: the
@@ -1671,10 +1686,9 @@ The \textbf{logs} produced can be found in the \verb|build-$PLATFORM$BITS/build.
 
 %%%%%%%%%%%%%%%%%%%%%%%% Experimental setup %%%%%%%%%%%%%%%%%%%%%%%%
 \chapter{Experimental Setup}
+\label{chap:experimental_setup}
 The Rewind enclave is evaluated on its overhead computation cycles and data cost.
-Moveover, the cyber security assumptions are being tested individualy. 
-\section{Macros}
-\label{sec:macros}
+In addition, the cyber security assumptions are being tested individualy. 
 The tests are being conducted using different macros that are all defined in the \verb|CMakeList.txt| following this structure:
 \begin{verbatim}
 ## Definition, the "some_value" can be left to ""
@@ -1699,16 +1713,14 @@ In case of them not being defined or if the field is left as \verb|""| in the \v
 #define EXAMPLE_MACRO some_value
 #endif
 \end{verbatim}
-
-
-There are various ones, three main categories emerge:
+There are various ones, \textbf{three main categories} emerge:
 \begin{itemize}
-    \item Logging, to enable/disable output from host/enclave.
-    \item Execution, to control the workflow (the number of computation iterations and tries). 
-    \item Testing, to enable/disable tests from the host/enclave. 
+    \item \textbf{Logging}, to enable/disable output from host/enclave.
+    \item \textbf{Execution}, to control the workflow (the number of computation iterations and tries). 
+    \item \textbf{Testing}, to enable/disable tests from the host/enclave. 
 \end{itemize}
 
-\subsection{Logging}
+\section{Logging}
 These macros are not to be confused with testing macros as they are independant from them.
 One could run the tests of the side with the logging of the enclave or all the tests with no logging (which wouldn't be very interesting). 
 \begin{itemize}
@@ -1717,25 +1729,25 @@ One could run the tests of the side with the logging of the enclave or all the t
     \item \verb|EAPP_BREAK_EVEN_CSV_OUTPUT|: output a csv format in order to produce graphs (\ref{sec:rt_analysis})
 \end{itemize}
 
-\subsection{Execution}
+\section{Execution}
 \begin{itemize}
     \item \verb|EAPP_RUNS|: sets the number of iteration the enclave does
     \item \verb|HOST_MAX_RUNS|: sets the maximum number of try before stopping
     \item \verb|FAULT_PERIOD|: sets the inverse of the chances to trigger a fault per call
     
 \end{itemize}
-\subsection{Testing}
+\section{Testing}
 Because the two parts are opaque to each others, tests must be implemented on both sides. 
 These macros enables (or disables) the tests in a branching way. 
 
-\subsubsection{Host-side}
+\subsection{Host-side}
 \begin{itemize}
     \item \verb|HOST_TESTING|: launches the host in testing mode, reduce outputs and run\\ \verb|ANALYSIS_RUNS| iterations to compute averages
     \item \verb|ANALYSIS_RUNS|: sets the number of runs for the analysis (host side)
     \item \verb|TEST_TAMPER_MODE|: set the mode of tampering test to do (none/bitflip/truncate/last-byte)
 \end{itemize}
 
-\subsubsection{Enclave-side}
+\subsection{Enclave-side}
 \begin{itemize}
     \item \verb|EAPP_TESTING|: launches the execution in testing mode, starts the test sequence
     \item \verb|FAULT_RANDOMIZE_SEED|: enable/disable random seed for the fault model
@@ -1752,33 +1764,37 @@ Or trying tests like \verb|TEST_TAMPER_MODE|=bitflip and not setting the \verb|H
 In order to better understand what is going on, it is recommended to enable both loggins macros.
 
 
-\section{Test cases}
-This section defines the test cases used to evaluate the checkpoint and rewind
-mechanism and explains their relevance.
-There are two parts: the \textit{Analysis} (\ref{sub:test-analysis}),
-where we quantify execution costs and overhead, and the \textit{Cyber security}
-(\ref{sub:test-cyber}), where we validate the threat model assumptions
-and security objectives from \ref{sec:threat-model}.
+%\section{Test cases}
+%This section defines the test cases used to evaluate the checkpoint and rewind
+%mechanism and explains their relevance.
+%There are two parts: the \textit{Analysis} (\ref{sub:test-analysis}),
+%where we quantify execution costs and overhead, and the \textit{Cyber security}
+%(\ref{sub:test-cyber}), where we validate the threat model assumptions
+%and security objectives from \ref{sec:threat-model}.
 
-\subsection{Cyber security}
-\label{sub:test-cyber}
-Each test focuses on:
-\begin{itemize}
-    \item the attacker goal
-    \item the security objective under evaluation (confidentiality,
-          integrity, atomicity, unclonability)
-    \item the behavior of the enclave (e.g., detection and rejection of
-          tampered checkpoints)
-\end{itemize}
 
-\subsection{Analysis}
-\label{sub:test-analysis}
-Each test specifies:
-\begin{itemize}
-    \item the enclave workload and macros used setup
-    \item the fault occurence rate
-    \item the metrics recorded (latency, CPU cycles, memory overhead, final success rate)
-\end{itemize}
+%\subsection{Analysis}
+%\label{sub:test-analysis}
+%We will make a \textit{static analysis} over the expected outcomes and a \textit{runtime analysis} to check the computation correctness.
+%Each test specifies:
+%\begin{itemize}
+    %\item the enclave workload and macros used setup
+    %\item the fault occurence rate
+    %\item the metrics recorded (latency, CPU cycles, memory overhead, final success rate when useful, etc.)
+%\end{itemize}
+
+%\subsection{Cyber security}
+%\label{sub:test-cyber}
+%Each test focuses on:
+%\begin{itemize}
+    %\item the attacker goal
+    %\item the security objective under evaluation (confidentiality,
+          %integrity, atomicity, unclonability)
+    %\item the behavior of the enclave (e.g., detection and rejection of
+          %tampered checkpoints)
+%\end{itemize}
+
+
 
 
 
@@ -1983,12 +1999,12 @@ The the balance between the two effect gives some kind of saturation slop.
 \subsection{Cycle cost per operation}
 \label{sub:cycle_cost}
 This part is a recap of each possible main operation of the enclave during an iteration.
-The values below are averaged over $1000$ runs.
-They exclude the cached material derivation from the per-part seal and unseal breakdown.
+The values below are averaged over $1000$ runs, they inclued the material derivation as \textit{cached} from the sealing and unsealing and the data being sealed can be found in the Section \ref{subsub:data-struct}.
+We used the \verb|EAPP_CYCLE_BREAKDOWN_TESTING| macro to render these tables.
+
 
 \begin{table}[H]
     \centering
-    \caption{Seal cycle cost breakdown}
     \label{tab:seal_cycle_breakdown}
     \begin{tabular}{|l|r|}
         \hline
@@ -2002,11 +2018,12 @@ They exclude the cached material derivation from the per-part seal and unseal br
         Total seal cost & 19,664,042 \\
         \hline
     \end{tabular}
+    \caption{Seal cycle cost breakdown}
+
 \end{table}
 
 \begin{table}[H]
     \centering
-    \caption{Unseal cycle cost breakdown}
     \label{tab:unseal_cycle_breakdown}
     \begin{tabular}{|l|r|}
         \hline
@@ -2020,11 +2037,12 @@ They exclude the cached material derivation from the per-part seal and unseal br
         Total unseal cost & 19,718,168 \\
         \hline
     \end{tabular}
+    \caption{Unseal cycle cost breakdown}
+
 \end{table}
 
 \begin{table}[H]
     \centering
-    \caption{Other main operation costs}
     \label{tab:cpmpute_cycle_costs}
     \begin{tabular}{|l|r|}
         \hline
@@ -2033,6 +2051,7 @@ They exclude the cached material derivation from the per-part seal and unseal br
         Computation & 275,100 \\
         \hline
     \end{tabular}
+    \caption{compute costs}
 \end{table}
 
 
@@ -2042,7 +2061,7 @@ Now that the computation and data analysis is done, we will address the cyber se
 \subsection{Security objectives}
 As stated in \ref{sec:threat-model}, there are four security objectives that will be looked upon.
 We will discuss of why they hold and what are the limitations.
-The claims can be checked using the corresponding macros in (Section \ref{sec:macros}).
+The claims can be checked using the corresponding macros in (Section \ref{chap:experimental_setup}).
 
 %\item \textbf{Confidentiality}: checkpoint contents unreadable to host
 %\item \textbf{Integrity/authenticity}: tampered blob is detected, rejected and leaks no information (response time analysis) 
