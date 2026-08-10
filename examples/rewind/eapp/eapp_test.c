@@ -289,22 +289,29 @@ int run_break_even_test()
 {
     enum
     {
-        MAX_DETERMINISTIC_FAULTS = 9
+        MAX_DETERMINISTIC_FAULTS = 10
     };
 
     uint64_t save_cycles, load_cycles, compute_cycles;
-    if (measure_checkpoint_cycle_breakdown(&save_cycles, &load_cycles, &compute_cycles) != 0)
-        return -1;
+    
+    // rt test
+    //if (measure_checkpoint_cycle_breakdown(&save_cycles, &load_cycles, &compute_cycles) != 0)
+        //return -1;
 
     const unsigned long thousand=1000UL;
     const unsigned long hundred_thousand=100*thousand;
     const unsigned long million=thousand*thousand;
     const unsigned long ten_million=10*million;
 
-    const unsigned long runs_values[] = {50*thousand, hundred_thousand, million, ten_million, 5*ten_million};
-    const unsigned long compute_cost_values[] = {50*thousand, hundred_thousand, 2*hundred_thousand, 5*hundred_thousand, 8*hundred_thousand, 
+    save_cycles = 15*million;
+    load_cycles = 15*million;
+    compute_cycles=50*thousand;
+
+
+    const unsigned long runs_values[] = {10*thousand, hundred_thousand, million, ten_million, 5*ten_million};
+    const unsigned long compute_cost_values[] = {compute_cycles, hundred_thousand, 2*hundred_thousand, 5*hundred_thousand, 8*hundred_thousand, 
                                                  million, 2*million, 5*million, 8*million,
-                                                 ten_million, 2*ten_million, 3*ten_million, 4*ten_million, 5*ten_million
+                                                 ten_million, 2*ten_million, 3*ten_million, 4*ten_million, 4*ten_million + million, 5*ten_million
                                                 };
     const unsigned long avg_runs = 1000; // lowered for practicality across many run values
     unsigned long fault_positions_save[MAX_DETERMINISTIC_FAULTS];
@@ -319,7 +326,7 @@ int run_break_even_test()
     for (int rv = 0; rv < runs_count; rv++)
     {
         const unsigned long runs = runs_values[rv];
-        print_indexed_metric("-------- break_even_runs --------", rv, (uint64_t)runs);
+        print_indexed_metric("-------- break_even_runs -------- ", rv, (uint64_t)runs);
 
         uint64_t cost_save[MAX_DETERMINISTIC_FAULTS + 1] = {0};
         uint64_t cost_no_save[MAX_DETERMINISTIC_FAULTS + 1] = {0};
@@ -382,22 +389,18 @@ int run_break_even_test()
                     }
                 }
 #else
-                if (total_no_save_cycles >= total_saving_cycles)
+                if (total_no_save_cycles >= total_saving_cycles) 
                 {
                     print_metric("current computation: ", measured_compute);
                     print_indexed_metric("cost save_cycle    ", nbr_iter_save, save_cost_per_iter);
                     print_indexed_metric("cost no_save_cycle ", nbr_iter_no_save, no_save_cost_per_iter);
                     print_indexed_metric("cycle ratio ", k, ratio);
+                    
+                    // stop after first found
                     threshold_reached = 1;
+                    break; 
                 }
 #endif
-
-                /*
-                // also print deltas in microseconds
-                uint64_t total_saving_time_us = (total_saving_cycles * 1000000ULL + (CPU_FREQ_HZ / 2)) / CPU_FREQ_HZ;
-                uint64_t total_no_save_time_us = (total_no_save_cycles * 1000000ULL + (CPU_FREQ_HZ / 2)) / CPU_FREQ_HZ;
-                uint64_t time_ratio = total_no_save_time_us/total_saving_time_us;
-                */
             }
 
             if (!threshold_reached)
