@@ -3,6 +3,8 @@
 
 #include <stdint.h>
 
+#include "common.h"
+
 // deterministic seed for repeatable fault schedules
 #ifndef SEED
 #define SEED 0x6b656973746f6e68ULL
@@ -16,6 +18,11 @@
 // average recurrence period in calls before a fault is allowed to fire again
 #ifndef PERIOD
 #define PERIOD 30ULL
+#endif
+
+// set to 1 to stop the enclave immediately when a modeled fault fires
+#ifndef FAULT_RETURN_ON_TRIGGER
+#define FAULT_RETURN_ON_TRIGGER 1
 #endif
 
 // splitmix64 constants are the standard mixer parameters used by the algorithm
@@ -33,6 +40,7 @@
     .seed = fault_default_seed(), \
     .step = 0, \
     .period = PERIOD, \
+    .count = 0, \
 }
 
 struct fault_model 
@@ -40,11 +48,17 @@ struct fault_model
     uint64_t seed;
     uint64_t step;
     uint64_t period;
+    uint64_t count;
 };
+
 
 uint64_t fault_default_seed(void);
 struct fault_model get_default_model();
-int fault_should_trigger(struct fault_model *model);
-void eapp_print(char* str); /// placeholder
+int should_fault_trigger(struct fault_model *model);
+int will_fault_trigger(struct fault_model *model, uint64_t step);
+uint64_t find_optimal_period(uint64_t fault_number, uint64_t run_number);
+int find_fault_positions(struct fault_model* model, unsigned long runs, int K, unsigned long* positions_out, int saving);
+void fill_range(unsigned long* out, int k, unsigned long N, int sorted);
+
 
 #endif

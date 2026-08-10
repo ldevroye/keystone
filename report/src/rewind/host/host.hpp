@@ -5,8 +5,10 @@
 
 #include <cstdint>
 #include <cstdio>
-#include <cstring>
+#include <cstdlib>
 #include <vector>
+
+#include "host_test.hpp"
 
 using namespace Keystone;
 using namespace std;
@@ -39,12 +41,36 @@ using namespace std;
 #define HOST_LOGGING 1
 #endif
 
-#ifndef ENABLE_TESTING
-#define ENABLE_TESTING 0
+#ifndef HOST_TESTING
+#define HOST_TESTING 0
+#endif
+
+#ifndef EAPP_TESTING
+#define EAPP_TESTING 0
+#endif
+
+#ifndef EAPP_BLOB_SIZE_TESTING
+#define EAPP_BLOB_SIZE_TESTING 0
+#endif
+
+#ifndef EAPP_AVG_FAULT_TESTING
+#define EAPP_AVG_FAULT_TESTING 0
+#endif
+
+#ifndef EAPP_ROUND_TRIP_TESTING
+#define EAPP_ROUND_TRIP_TESTING 0
+#endif
+
+#ifndef EAPP_CYCLE_BREAKDOWN_TESTING
+#define EAPP_CYCLE_BREAKDOWN_TESTING 0
+#endif
+
+#ifndef EAPP_BREAK_EVEN_TESTING
+#define EAPP_BREAK_EVEN_TESTING 0
 #endif
 
 #ifndef ANALYSIS_RUNS
-#define ANALYSIS_RUNS 1000
+#define ANALYSIS_RUNS 20
 #endif
 
 #ifndef STRINGIFY_IMPL
@@ -59,123 +85,64 @@ enum
   OCALL_SAVE_CHECKPOINT_BLOB = 9,
 };
 
-struct timing_stats
-{
-  uint64_t count = 0;
-  uint64_t sum = 0;
-  uint64_t min = 0;
-  uint64_t max = 0;
-};
-
 inline timing_stats save_stats;
 inline timing_stats load_stats;
 inline timing_stats run_stats;
-inline vector<uint8_t> saved_checkpoint_blob;
+inline timing_stats blob_size_stats;
+inline timing_stats retry_stats;
+inline vector<uint8_t> saved_blob;
 
+const auto success = Error::Success;
 
+void host_print(const char* str);
+void host_print_if_not_testing(const char* str);
 void save_checkpoint_blob_dispatch(void* buffer);
 void load_checkpoint_blob_dispatch(void* buffer);
 void print_buffer_dispatch(void* buffer);
 Error configure_enclave(Enclave& enclave, Params& params, char** argv);
 
-inline void host_print(const char* str)
-{
-  printf("[HOST] %s\n", str);
-}
-
-inline void host_print_if_not_testing(const char* str)
-{
-#if HOST_LOGGING && !ENABLE_TESTING
-  host_print(str);
-#else
-  (void)str;
-#endif
-}
-
-inline void update_timing_stats(timing_stats& stats, uint64_t value)
-{
-  if (stats.count == 0)
-  {
-    stats.min = value;
-    stats.max = value;
-  }
-  else
-  {
-    if (value < stats.min) stats.min = value;
-    if (value > stats.max) stats.max = value;
-  }
-
-  stats.sum += value;
-  stats.count++;
-}
-
-inline void print_timing_stats(const char* label, const timing_stats& stats)
-{
-  if (stats.count == 0)
-  {
-    char buffer[96];
-    snprintf(buffer, sizeof(buffer), "%s count=0", label);
-    host_print(buffer);
-    return;
-  }
-
-  const double avg = static_cast<double>(stats.sum) / static_cast<double>(stats.count);
-  char buffer[128];
-  snprintf(buffer, sizeof(buffer), "%s count=%llu avg=%.2f min=%llu max=%llu",
-                label,
-                static_cast<unsigned long long>(stats.count),
-                avg,
-                static_cast<unsigned long long>(stats.min),
-                static_cast<unsigned long long>(stats.max));
-  host_print(buffer);
-}
-
-inline void print_analysis_run_summary(uint64_t analysis_index)
-{
-  if (run_stats.count == 0)
-  {
-    char buffer[96];
-    snprintf(buffer, sizeof(buffer), "analysis_run=%llu count=0", static_cast<unsigned long long>(analysis_index));
-    host_print(buffer);
-    return;
-  }
-
-  const double avg = static_cast<double>(run_stats.sum) / static_cast<double>(run_stats.count);
-  char buffer[160];
-  snprintf(buffer, sizeof(buffer), "analysis_run=%llu count=%llu avg=%.2f min=%llu max=%llu",
-                static_cast<unsigned long long>(analysis_index),
-                static_cast<unsigned long long>(run_stats.count),
-                avg,
-                static_cast<unsigned long long>(run_stats.min),
-                static_cast<unsigned long long>(run_stats.max));
-  host_print(buffer);
-}
-
 inline void print_test_parameters()
 {
-#if ENABLE_TESTING || HOST_LOGGING
-  char buffer[320];
+#if HOST_TESTING || HOST_LOGGING
+  char buffer[1024];
+
   snprintf(buffer, sizeof(buffer), "test params:\n"
          "\thost_logging=%d\n"
          "\teapp_logging=%d\n"
+         "\thost_testing=%d\n"
+         "\teapp_testing=%d\n"
          "\thost_max_runs=%d\n"
          "\tanalysis_runs=%d\n"
          "\teapp_runs=%s\n"
          "\tfault_period=%s\n"
          "\tfault_randomize_seed=%s\n"
-         "\tfault_seed=%s",
+         "\tfault_seed=%s\n"
+         "\teapp_blob_size_testing=%d\n"
+         "\teapp_avg_fault_testing=%d\n"
+         "\teapp_round_trip_testing=%d\n"
+         "\teapp_cycle_breakdown_testing=%d\n"
+         "\teapp_break_even_testing=%d\n"
+         "\ttamper_mode=%s",
                 HOST_LOGGING,
 #ifdef EAPP_LOGGING
                 EAPP_LOGGING,
 #else
                 HOST_LOGGING,
 #endif
+                HOST_TESTING,
+                EAPP_TESTING,
                 MAX_RUNS,
-                ENABLE_TESTING ? ANALYSIS_RUNS : 1,
+                HOST_TESTING ? ANALYSIS_RUNS : 1,
                 STRINGIFY(EAPP_RUNS),
                 STRINGIFY(PERIOD),
                 STRINGIFY(FAULT_RANDOMIZE_SEED),
-                STRINGIFY(SEED));
+                STRINGIFY(SEED),
+                EAPP_BLOB_SIZE_TESTING,
+                EAPP_AVG_FAULT_TESTING,
+                EAPP_ROUND_TRIP_TESTING,
+                EAPP_CYCLE_BREAKDOWN_TESTING,
+                EAPP_BREAK_EVEN_TESTING,
+                TEST_TAMPER_MODE);
   host_print(buffer);
 #endif
 }

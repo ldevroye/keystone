@@ -8,66 +8,70 @@
 #include "checkpoint.h"
 #include "crypto.h"
 
+static const char ENC_KEY_IDENTIFIER[] = "rewind-checkpoint-enc-v1";
+static const char AUTH_KEY_IDENTIFIER[] = "rewind-checkpoint-auth-v1";
+
+static uint8_t enc_key[AES_KEY_SIZE];
+static uint8_t auth_key[AES_KEY_SIZE];
+static int checkpoint_keys_ready;
+
 /*
  * Workflow:
  *
  * Save:
- * 1) derive_checkpoint_material() asks the platform sealing API for key
- *    material bound to scheme label (key_id[]).
- * 2) The returned material is split into two independent AES-256 keys:
+ * a) derive_checkpoint_material() asks the SM sealing API for key
+ *    material bound to scheme label (identifiers[]).
+ * b) The returned material is two independent AES-256 keys:
  *    - enc_key for confidentiality (CTR stream encryption)
  *    - auth_key for integrity/authenticity (CBC-MAC)
- * 3) derive_nonce() builds a 16-byte nonce from a fixed prefix and the
- *    checkpoint sequence number so each checkpoint uses a distinct CTR stream.
- * 4) encrypt_stack() AES-CTR-encrypts blob->stack_data in place.
- * 5) compute_tag() MACs the whole blob prefix up to (but excluding) tag,
- *    covering metadata + nonce + ciphertext so tampering is detectable.
- * 6) The computed tag is copied into blob->tag before sending the blob out.
+ * c) encrypt_stack(payload) AES-CTR-encrypts the plaintext payload
+ *    with the checkpoint iv.
+ * d) compute_tag() MACs the iv and ciphertext together.
+ * e) The iv, payload, and tag are copied into the host-facing blob.
  *
  * Load:
- * 1) Derive the same enc_key/auth_key again from the same sealing context.
- * 2) Recompute the expected tag over the received blob contents.
- * 3) Compare expected tag with blob->tag; if mismatch, reject immediately.
- * 4) if success, decrypt blob->stack_data in place.
- * 5) Rebuild the plain rewind_checkpoint view from verified/decrypted data.
- */
+ * a) Derive the same enc_key/auth_key again from the same context.
+ * b) Split the opaque blob into ciphertext, iv, and tag.
+ * c) Recompute the expected tag over the iv and ciphertext.
+ * d) Compare expected tag with the stored tag; if mismatch, reject.
+ * e) Decrypt the ciphertext with the authenticated iv.
+ * f) Rebuild the plain checkpoint.
+*/
 
 
 // 'static' for interal usage only
-static int derive_checkpoint_material(struct sealing_key *sk, 
-                                        uint8_t enc_key[AES_KEY_SIZE], 
-                                        uint8_t auth_key[AES_KEY_SIZE])
+static int derive_checkpoint_material(void)
 {
-    const char key_id[] = "rewind-checkpoint-v1";
+    struct sealing_key sk;
 
-    // reuse the sealing root key, then split it into separate enc and auth keys
-    if (get_sealing_key(sk, sizeof(*sk), (void *)key_id, sizeof(key_id) - 1) != 0) 
+    if (checkpoint_keys_ready) {return 0;}
+
+    // separate labels provide domain-separated keys instead of splitting one kdf output
+    if (get_sealing_key(&sk,
+                        sizeof(sk),
+                        (void *)ENC_KEY_IDENTIFIER,
+                        sizeof(ENC_KEY_IDENTIFIER) - 1) != 0)
     {
         return -1;
     }
+    memcpy(enc_key, sk.key, AES_KEY_SIZE);
 
-    memcpy(enc_key, sk->key, AES_KEY_SIZE);
-    memcpy(auth_key, sk->key + AES_KEY_SIZE, AES_KEY_SIZE);
-    return 0;
-}
-
-static void derive_nonce(uint8_t nonce[CHECKPOINT_NONCE_SIZE], uint64_t sequence)
-{
-    static const uint8_t nonce_prefix[8] = {'R', 'W', 'N', 'D', 'C', 'K', 'P', 'T'};
-
-    // prefix the nonce with a fixed label and append the checkpoint sequence
-    memset(nonce, 0, CHECKPOINT_NONCE_SIZE);
-    memcpy(nonce, nonce_prefix, sizeof(nonce_prefix));
-
-    for (size_t i = 0; i < sizeof(sequence); ++i) {
-        nonce[CHECKPOINT_NONCE_SIZE - 1 - i] = (uint8_t)(sequence >> (i * 8));
+    if (get_sealing_key(&sk,
+                        sizeof(sk),
+                        (void *)AUTH_KEY_IDENTIFIER,
+                        sizeof(AUTH_KEY_IDENTIFIER) - 1) != 0)
+    {
+        return -1;
     }
+    memcpy(auth_key, sk.key, AES_KEY_SIZE);
+
+    checkpoint_keys_ready = 1;
+    return 0;
 }
 
 static int encrypt_stack(uint8_t *stack_data,
                             size_t stack_len,
-                            const uint8_t enc_key[AES_KEY_SIZE],
-                            const uint8_t nonce[CHECKPOINT_NONCE_SIZE])
+                            const uint8_t nonce[AES_BLOCK_SIZE])
 {
     WORD enc_schedule[AES_SCHEDULE_WORDS];
 
@@ -78,8 +82,7 @@ static int encrypt_stack(uint8_t *stack_data,
 
 static int decrypt_stack(uint8_t *stack_data,
                             size_t stack_len,
-                            const uint8_t enc_key[AES_KEY_SIZE],
-                            const uint8_t nonce[CHECKPOINT_NONCE_SIZE])
+                            const uint8_t nonce[AES_BLOCK_SIZE])
 {
     WORD enc_schedule[AES_SCHEDULE_WORDS];
 
@@ -88,22 +91,38 @@ static int decrypt_stack(uint8_t *stack_data,
     return 0;
 }
 
-static int compute_tag(const struct rewind_checkpoint_blob *blob,
-                        const uint8_t auth_key[AES_KEY_SIZE],
+static int constant_time_equal(const uint8_t *left,
+                               const uint8_t *right,
+                               size_t len)
+{
+    uint8_t diff = 0;
+
+    for (size_t idx = 0; idx < len; idx++)
+    {
+        diff |= left[idx] ^ right[idx];
+    }
+
+    return diff == 0;
+}
+
+static int compute_tag(const uint8_t iv[AES_BLOCK_SIZE],
+                        const uint8_t *payload,
+                        size_t payload_len,
                         uint8_t tag[CHECKPOINT_TAG_SIZE])
 {
     WORD auth_schedule[AES_SCHEDULE_WORDS];
     uint8_t zero_iv[AES_BLOCK_SIZE] = {0};
-    size_t auth_len = offsetof(struct rewind_checkpoint_blob, tag);
+    uint8_t mac_input[AES_BLOCK_SIZE + sizeof(struct checkpoint)];
+    size_t mac_len = AES_BLOCK_SIZE + payload_len;
 
-    if (auth_len % AES_BLOCK_SIZE != 0) 
-    {
-        return -1;
-    }
+    if (payload_len % AES_BLOCK_SIZE != 0) {return -1;}
 
     aes_key_setup(auth_key, auth_schedule, AES_KEY_BITS);
-    // mac the metadata and ciphertext together so any tampering is detected
-    if (aes_encrypt_cbc_mac((const BYTE *)blob, auth_len, tag, auth_schedule, AES_KEY_BITS, zero_iv) == 0) 
+    memcpy(mac_input, iv, AES_BLOCK_SIZE);
+    memcpy(mac_input + AES_BLOCK_SIZE, payload, payload_len);
+
+    // mac the iv and ciphertext together so the decrypt nonce is authenticated too
+    if (aes_encrypt_cbc_mac((const BYTE *)mac_input, mac_len, tag, auth_schedule, AES_KEY_BITS, zero_iv) == 0) 
     {
         return -1;
     }
@@ -111,62 +130,72 @@ static int compute_tag(const struct rewind_checkpoint_blob *blob,
     return 0;
 }
 
-int seal_checkpoint_blob(struct rewind_checkpoint_blob *blob)
+int seal_checkpoint_blob(struct sealed_checkpoint *blob, const struct checkpoint *checkpoint)
 {
-    struct sealing_key sk;
-    uint8_t enc_key[AES_KEY_SIZE];
-    uint8_t auth_key[AES_KEY_SIZE];
     uint8_t computed_tag[CHECKPOINT_TAG_SIZE];
+    uint8_t payload[sizeof(struct checkpoint)];
+    uint8_t iv[AES_BLOCK_SIZE] = {0};
+    uint8_t *ciphertext = blob->sealed;
+    uint8_t *tag = blob->sealed + sizeof(payload);
 
-    // save path: encrypt the stack bytes, authenticate the whole blob, then hand it to the host
-    if (derive_checkpoint_material(&sk, enc_key, auth_key) != 0) {
+    memcpy(payload, checkpoint, sizeof(payload));
+
+    // checkpoint_seq must never repeat across the enclave lifetime for iv uniqueness to hold
+    memcpy(iv, &checkpoint->checkpoint_seq, sizeof(checkpoint->checkpoint_seq));
+
+    // removes empty 0s as the checkpoint_seq is AES_BLOCK_SIZE//2 (16//2 -> 8) bytes
+    memcpy(iv + sizeof(checkpoint->checkpoint_seq), &checkpoint->checkpoint_seq, sizeof(checkpoint->checkpoint_seq));
+
+    // save path: encrypt first, then authenticate the iv and ciphertext
+    if (derive_checkpoint_material() != 0) {
         eapp_print("failed to derive sealing key");
         return -1;
     }
 
-    derive_nonce(blob->nonce, blob->checkpoint_seq);
-    encrypt_stack(blob->stack_data, STACK_SNAPSHOT_SIZE, enc_key, blob->nonce);
+    encrypt_stack(payload, sizeof(payload), iv);
 
-    if (compute_tag(blob, auth_key, computed_tag) != 0) {
+    if (compute_tag(iv, payload, sizeof(payload), computed_tag) != 0) {
         eapp_print("failed to authenticate checkpoint");
         return -1;
     }
 
-    memcpy(blob->tag, computed_tag, sizeof(computed_tag));
+    memcpy(blob->iv, iv, sizeof(iv));
+    memcpy(ciphertext, payload, sizeof(payload));
+    memcpy(tag, computed_tag, sizeof(computed_tag));
+
     return 0;
 }
 
-int open_checkpoint_blob(struct rewind_checkpoint *checkpoint, struct rewind_checkpoint_blob *blob)
+int open_checkpoint_blob(struct checkpoint *checkpoint, const struct sealed_checkpoint *blob)
 {
-    struct sealing_key sk;
-    uint8_t enc_key[AES_KEY_SIZE];
-    uint8_t auth_key[AES_KEY_SIZE];
     uint8_t expected_tag[CHECKPOINT_TAG_SIZE];
+    uint8_t payload[sizeof(struct checkpoint)];
+    const uint8_t *ciphertext = blob->sealed;
+    const uint8_t *tag = blob->sealed + sizeof(payload);
 
-    // load path: verify first, then decrypt and rebuild the plain checkpoint view
-    if (derive_checkpoint_material(&sk, enc_key, auth_key) != 0) 
+    // load path: verify the iv and ciphertext first, then decrypt
+    if (derive_checkpoint_material() != 0) 
     {
         eapp_print("failed to derive sealing key");
         return -1;
     }
 
-    if (compute_tag(blob, auth_key, expected_tag) != 0) 
+    memcpy(payload, ciphertext, sizeof(payload));
+
+    if (compute_tag(blob->iv, payload, sizeof(payload), expected_tag) != 0) 
     {
         eapp_print("failed to verify checkpoint");
         return -1;
     }
 
-    if (memcmp(expected_tag, blob->tag, sizeof(expected_tag)) != 0) 
+    if (!constant_time_equal(expected_tag, tag, sizeof(expected_tag))) 
     {
         eapp_print("checkpoint authentication failed");
         return -1;
     }
 
-    decrypt_stack(blob->stack_data, STACK_SNAPSHOT_SIZE, enc_key, blob->nonce);
+    decrypt_stack(payload, sizeof(payload), blob->iv);
 
-    checkpoint->stack_sp = blob->stack_sp;
-    checkpoint->stack_fp = blob->stack_fp;
-    checkpoint->stack_len = blob->stack_len;
-    memcpy(checkpoint->stack_data, blob->stack_data, sizeof(checkpoint->stack_data));
+    memcpy(checkpoint, payload, sizeof(*checkpoint));
     return 0;
 }

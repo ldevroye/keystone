@@ -4,13 +4,21 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include "common.h"
+#include "crypto.h"
+
 // fixed upper bound for the live stack window, independent of rewind_state size
 #define STACK_SNAPSHOT_SIZE 8*1024
 #define OCALL_SAVE_CHECKPOINT_BLOB 9
 #define OCALL_LOAD_CHECKPOINT_BLOB 8
 
-#define CHECKPOINT_NONCE_SIZE 16
 #define CHECKPOINT_TAG_SIZE 16
+#define CHECKPOINT_IV_SIZE AES_BLOCK_SIZE
+#define CHECKPOINT_SEALED_SIZE (sizeof(struct checkpoint) + CHECKPOINT_TAG_SIZE)
+#define CHECKPOINT_BLOB_SIZE (CHECKPOINT_IV_SIZE + CHECKPOINT_SEALED_SIZE)
+
+
+extern struct rewind_state *state_anchor;
 
 struct rewind_state 
 {
@@ -19,31 +27,23 @@ struct rewind_state
     int counter;
 };
 
-// "Safe" checkpoint - interface for the sealing blob used by enclave (plain data)
-struct rewind_checkpoint 
+// plaintext checkpoint state kept inside the enclave
+struct checkpoint 
 {
-    uintptr_t stack_sp;
-    uintptr_t stack_fp;
-    size_t stack_len;
-    uint8_t stack_data[STACK_SNAPSHOT_SIZE];
-};
-
-// Complete struct with blob (opaque data)
-struct rewind_checkpoint_blob 
-{
-    uintptr_t stack_sp;
-    uintptr_t stack_fp;
-    size_t stack_len;
     uint64_t checkpoint_seq;
-    uint8_t nonce[CHECKPOINT_NONCE_SIZE];
-    uint8_t reserved[16];
+    uint64_t reserved;  //placeholder for the checkpoint to be a multiple of 16 (CBC-MAC restriction)
     uint8_t stack_data[STACK_SNAPSHOT_SIZE];
-    uint8_t tag[CHECKPOINT_TAG_SIZE];
 };
 
-void eapp_print_if_not_testing(const char *str); // placeholder
-int load_checkpoint(struct rewind_checkpoint *checkpoint);
-int restore_checkpoint(struct rewind_state *state, const struct rewind_checkpoint *checkpoint);
-int save_checkpoint(uintptr_t stack_anchor, size_t anchor_len);
+// host-facing sealed blob: opaque bytes only
+struct sealed_checkpoint 
+{
+    uint8_t iv[CHECKPOINT_IV_SIZE];
+    uint8_t sealed[CHECKPOINT_SEALED_SIZE];
+};
+
+int load_checkpoint(int send_edge_call);
+int restore_checkpoint();
+int save_checkpoint(int send_edge_call);
 
 #endif

@@ -4,6 +4,8 @@
 //------------------------------------------------------------------------------
 #include "edge/edge_call.h"
 #include "host/keystone.h"
+
+
 #include "host.hpp"
 
 #include <chrono>
@@ -11,7 +13,19 @@
 #include <cstring>
 #include <cstdint>
 
+void host_print(const char* str)
+{
+  printf("[HOST] %s\n", str);
+}
 
+void host_print_if_not_testing(const char* str)
+{
+#if HOST_LOGGING && !HOST_TESTING
+  host_print(str);
+#else
+  (void)str;
+#endif
+}
 
 void save_checkpoint_blob_dispatch(void* buffer)
 {
@@ -29,17 +43,18 @@ void save_checkpoint_blob_dispatch(void* buffer)
     return;
   }
 
-  saved_checkpoint_blob.resize(arg_size);
-  memcpy(saved_checkpoint_blob.data(), (void*)arg_ptr, arg_size);
-#if !ENABLE_TESTING && HOST_LOGGING
+  saved_blob.resize(arg_size);
+  memcpy(saved_blob.data(), (void*)arg_ptr, arg_size);
+  update_timing_stats(blob_size_stats, static_cast<uint64_t>(arg_size));
+#if !EAPP_BREAK_EVEN_TESTING || (!EAPP_TESTING && EAPP_BREAK_EVEN_TESTING)
   char to_prt[80];
   sprintf(to_prt, "saved checkpoint blob size = %zu", arg_size);
-  host_print_if_not_testing(to_prt);
+  host_print(to_prt);
 #endif
 
+#if HOST_TESTING
   auto end = chrono::steady_clock::now();
   const auto elapsed_us = chrono::duration_cast<chrono::microseconds>(end - start).count();
-#if ENABLE_TESTING
   update_timing_stats(save_stats, static_cast<uint64_t>(elapsed_us));
 #endif
   
@@ -51,24 +66,36 @@ void save_checkpoint_blob_dispatch(void* buffer)
 void load_checkpoint_blob_dispatch(void* buffer)
 {
   struct edge_call* edge_call = (struct edge_call*)buffer;
-
   auto start = chrono::steady_clock::now();
   
-  if (saved_checkpoint_blob.empty()) 
+  if (saved_blob.empty()) 
   {
     edge_call->return_data.call_status = CALL_STATUS_ERROR;
     return;
   }
 
+#if HOST_TESTING 
+  if (!test_done && strcmp(TEST_TAMPER_MODE, "none") != 0)
+  {
+    tamper_checkpoint_blob(saved_blob);
+    char tamper_log[96];
+    snprintf(tamper_log, sizeof(tamper_log), "tampering checkpoint blob with mode=%s", TEST_TAMPER_MODE);
+    host_print(tamper_log);
+
+    test_done = true;
+  }
+#endif
+  
+
   // copy the opaque blob back through the shared return buffer, not a host pointer
   void* return_buffer = (void*)edge_call_data_ptr();
-  memcpy(return_buffer, saved_checkpoint_blob.data(), saved_checkpoint_blob.size());
-  edge_call_setup_ret(edge_call, return_buffer, saved_checkpoint_blob.size());
+  memcpy(return_buffer, saved_blob.data(), saved_blob.size());
+  edge_call_setup_ret(edge_call, return_buffer, saved_blob.size());
   edge_call->return_data.call_status = CALL_STATUS_OK;
 
   auto end = chrono::steady_clock::now();
   const auto elapsed_us = chrono::duration_cast<chrono::microseconds>(end - start).count();
-#if ENABLE_TESTING
+#if HOST_TESTING
   update_timing_stats(load_stats, static_cast<uint64_t>(elapsed_us));
 #endif
 }
@@ -99,7 +126,7 @@ Error configure_enclave(Enclave& enclave, Params& params, char** argv)
 {
   Error init_ret = enclave.init(argv[1], argv[2], argv[3], params);
   
-  if (init_ret != Error::Success) 
+  if (init_ret != success) 
   {
     host_print("Error loading the enclave");
     return init_ret;
@@ -112,7 +139,7 @@ Error configure_enclave(Enclave& enclave, Params& params, char** argv)
   edge_call_init_internals(
     (uintptr_t)enclave.getSharedBuffer(), enclave.getSharedBufferSize());
 
-  return Error::Success;
+  return success;
 }
 
 
@@ -126,16 +153,16 @@ int main(int argc, char** argv)
   print_test_parameters();
 
   uintptr_t ret = 0;
-  const auto success = Error::Success;
 
   const auto host_retry_limit = MAX_RUNS;
-  const auto analysis_iteration_limit = ENABLE_TESTING ? ANALYSIS_RUNS : 1;
+  const auto analysis_iteration_limit = HOST_TESTING ? ANALYSIS_RUNS : 1;
   auto analysis_counter = 0;
   while (analysis_counter < analysis_iteration_limit)
   {
     analysis_counter++;
-    saved_checkpoint_blob.clear(); // clear checkpoint
+    saved_blob.clear(); // clear checkpoint
     run_stats = {};
+    retry_stats = {};
     auto retry_counter = 0;
 
     while ((ret != 0 || retry_counter == 0) && // retry_counter = 0 => initial enclave => result is null
@@ -145,19 +172,18 @@ int main(int argc, char** argv)
       Enclave enclave;
 
       auto run_start = chrono::steady_clock::now();
-      host_print_if_not_testing("configuring enclave");
+      host_print("configuring enclave");
       if (configure_enclave(enclave, params, argv) != success) 
       {
         return 1;
       }
 
-      host_print_if_not_testing("starting enclave");
+      host_print("starting enclave");
       enclave.run(&ret);
       auto run_end = chrono::steady_clock::now();
       auto run_ms = chrono::duration_cast<chrono::milliseconds>(run_end - run_start).count();
-#if ENABLE_TESTING
+#if HOST_TESTING
       update_timing_stats(run_stats, static_cast<uint64_t>(run_ms));
-#else
       char run_log[128];
       snprintf(run_log, sizeof(run_log), "analysis_run=%d retry=%d return_val=%lu duration_ms=%lld",
                    analysis_counter, retry_counter, (unsigned long)ret, (long long)run_ms);
@@ -166,26 +192,35 @@ int main(int argc, char** argv)
 
       if (ret != 0) 
       {
-        host_print_if_not_testing("enclave returned non-success, retrying");
+        host_print("enclave returned non-success, retrying");
       }
     }
 
-#if ENABLE_TESTING
+  #if HOST_TESTING
+    if (retry_counter > 0)
+    {
+      update_timing_stats(retry_stats, static_cast<uint64_t>(retry_counter - 1));
+    }
+  #endif
+
+#if HOST_TESTING
     print_analysis_run_summary(analysis_counter);
 #endif
   }
 
-#if ENABLE_TESTING
+#if HOST_TESTING
   print_timing_stats("save_checkpoint", save_stats);
   print_timing_stats("load_checkpoint", load_stats);
-#endif
-
+  print_timing_stats("checkpoint_blob_bytes", blob_size_stats);
+  print_timing_stats("analysis_errors", retry_stats);
+#else
   if (ret != 0)
   {
-    host_print_if_not_testing("too many runs, exiting");
+    host_print("too many runs, exiting");
   } else {
-    host_print_if_not_testing("run completed");
+    host_print("run completed");
   }
+#endif
   
   return ret;
 }

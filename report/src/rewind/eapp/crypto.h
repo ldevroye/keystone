@@ -12,10 +12,10 @@
 
 
 // placeholders for the checkpoint.h structs
-struct rewind_checkpoint; 
-struct rewind_checkpoint_blob;
+struct checkpoint; 
+struct sealed_checkpoint;
 
-int seal_checkpoint_blob(struct rewind_checkpoint_blob *blob);
-int open_checkpoint_blob(struct rewind_checkpoint *checkpoint, struct rewind_checkpoint_blob *blob);
+int seal_checkpoint_blob(struct sealed_checkpoint *blob, const struct checkpoint *checkpoint);
+int open_checkpoint_blob(struct checkpoint *checkpoint, const struct sealed_checkpoint *blob);
 
 #endif
