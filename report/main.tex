@@ -1689,7 +1689,7 @@ One could run the tests of the side with the logging of the enclave or all the t
 \begin{itemize}
     \item \verb|HOST_LOGGING|: enable host printing
     \item \verb|EAPP_LOGGING|: enable eapp printing
-    \item \verb|EAPP_BREAK_EVEN_CSV_OUTPUT|: output a csv format in order to produce graphs (\ref{fig:treshold-k-1})
+    \item \verb|EAPP_BREAK_EVEN_CSV_OUTPUT|: output a csv format in order to produce graphs (\ref{fig:threshold_k})
 \end{itemize}
 
 \subsection{Execution}
@@ -1779,42 +1779,84 @@ C_{checkpoint} = N\cdot (C_{save} + C_{compute}) + K\cdot C_{load}
 \end{equation}
 
 \begin{align*}
-C_{no\_checkpoint} = (C_{compute}) \cdot (N + \sum_{i=0}^{K-1}(errors[i]))
+C_{no\_checkpoint} = (C_{compute}) \cdot (N + \sum_{i=0}^{K}(errors[i]))
 \end{align*}
-Note that the sum of the error indexes ($\sum_{i=0}^{K-1}(errors[i])$) as an expected value of $K \cdot \lfloor \frac{N}{2} \rfloor$.
-This is because the probability of a fault occuring at index $i$ over $[0, N]$ ($X_i$, which is equal to $errors[i]$) is $\frac{1}{N}$ as $X$ is iid. Thus:
-\begin{align*}
+Note that the sum of the error indexes ($\sum_{i=0}^{K}(errors[i])$) as an expected value of $K \cdot \lfloor \frac{N}{2} \rfloor$.\\
+This is because the probability of a fault occuring at index $i$ over $[0, N]$ ($X_i$, which is equal to $errors[i]$) is $\frac{1}{N}$ as $X_i$ is iid. Thus:
+\begin{equation}
 \mathbb{E}[X] = \frac{N}{2} 
-\end{align*}
+\label{eq:expected_error}
+\end{equation}
 The average (expected value) can be derived using basic probability:
 \begin{align*}
-\mathbb{E}\left[\sum_{i=0}^{K-1} \text{errors}[i]\right]
-&= \mathbb{E}\left[\sum_{i=0}^{K-1} X_i\right] \\
-&= \sum_{i=0}^{K-1} \mathbb{E}[X_i] \\
-&= \sum_{i=0}^{K-1} \mathbb{E}[X] \quad \text{(since } X_i \text{ are i.i.d.)} \\
+\mathbb{E}\left[\sum_{i=0}^{K} \text{errors}[i]\right]
+&= \mathbb{E}\left[\sum_{i=0}^{K} X_i\right] \\
+&= \sum_{i=0}^{K} \mathbb{E}[X_i] \\
+&= \sum_{i=0}^{K} \mathbb{E}[X] \quad \text{(since } X_i \text{ are i.i.d.)} \\
 &= K \cdot \mathbb{E}[X] \\
 &= K \cdot \frac{N}{2}
 \end{align*}
-One can test the validity of this statement in the implementation by running the average fault testing and the break-even treshold. \\
+One can test the validity of this statement in the implementation by running the average fault testing and the break-even threshold. \\
 Using that result, $C_{no\_checkpoint}$ can be written as :
 \begin{equation}
 C_{no\_checkpoint} = C_{compute} \cdot \left(N + \frac{K \cdot N}{2}\right)
 \label{eq:no_save_total_cost}
 \end{equation}
 
-\paragraph{Comparison}
-Having the two equations (\ref{eq:save_total_cost}, \ref{eq:no_save_total_cost}). 
-We can compute
+\subsection{Computation threshold}
+Having the equations \ref{eq:save_total_cost} and \ref{eq:no_save_total_cost}, we can compute the threshold.
+This threshold is obtained when the ratio shown below is greater or equal to one.
+\begin{equation}
+ratio = \frac{C_{no\_checkpoint}}{C_{checkpoint}}
+\end{equation}
+\begin{equation}
+ratio = \frac
+{C_{compute} \cdot \left(N + \frac{K \cdot N}{2}\right)}
+{N\cdot (C_{save} + C_{compute}) + K\cdot C_{load}}
+\end{equation}
 
-\TODO{Table saving cost}
-\TODO{Table loading cost}
+\begin{align*}
+\frac{C_{compute} \cdot \left(N + \dfrac{K \cdot N}{2}\right)}
+{N\cdot (C_{save} + C_{compute}) + K\cdot C_{load}} &\geq 1 \\[2mm]
+C_{compute} \cdot \left(N + \frac{K \cdot N}{2}\right) &\geq N\cdot C_{save} + N\cdot C_{compute} + K\cdot C_{load} \\[2mm]
+C_{compute} \cdot \left(N + \frac{K \cdot N}{2} - N\right) &\geq N\cdot C_{save} + K\cdot C_{load} \\[2mm]
+C_{compute} \cdot \frac{K \cdot N}{2} &\geq N\cdot C_{save} + K\cdot C_{load} \\[2mm]
+C_{compute} &\geq \frac{N\cdot C_{save} + K\cdot C_{load}}{\dfrac{K \cdot N}{2}} \\[2mm]
+C_{compute} &\geq \frac{2\,C_{save}}{K} + \frac{2\,C_{load}}{N}
+\end{align*}
+Given the actual costs of the save and load cycles as shown in \ref{sub:cycle_cost}.
+We can isolate the computation needed in order to reach the threshold value.
+\begin{align*}
+C_{compute} &\geq \frac{40.000.000}{K} + \frac{40.000.000}{N}\\
+C_{compute} &\geq 40.000.400
+\end{align*}
 
+\subsection{Cycle cost per operation}
+\label{sub:cycle_cost}
+\begin{table}
+\end{table}
+
+\begin{table}
+\end{table}
+
+\begin{table}
+\end{table}
+
+
+\section{Experiment Analysis}
 \begin{figure}[H]
         \centering
         \includegraphics[width=0.8\linewidth]{img/plots/break_even_focus_run_100000_k_1.png}
-        \caption{Treshold for 1 error over a 100.000 runs enclave}
-        \label{fig:treshold-k-1}
+        \caption{Threshold for 1 error over a 100.000 runs enclave}
+        \label{fig:threshold_k}
     \end{figure}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.8\linewidth]{img/plots/break_even_thresholds_runs_100000.png}
+    \caption{Threshold ratio for k=$[0-9]$, over a 100.000 runs enclave}
+    \label{fig:threshold_all_k}
+\end{figure}
 \subsubsection{Timing overhead}
 \subsubsection{Data cost}
 \subsubsection{Timing cost}
