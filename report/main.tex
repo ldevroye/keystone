@@ -1772,6 +1772,7 @@ The enclave is made to run in discrete time, for our calculations, we will use :
     \item $C_{event}$ the total number of cycles used by the $event$ (save, load, compute, etc.) 
 \end{itemize}
 Having these variables states we can compute the theoretical cost of checkpointing compared to restartarting the enclave from scratch.
+A small nuance is that the $C_{save}$ and $C_{load}$ do not include the corresponding edge calls because of their assymetry.
 
 \begin{equation}
 C_{checkpoint} = N\cdot (C_{save} + C_{compute}) + K\cdot C_{load}
@@ -1805,7 +1806,14 @@ C_{no\_checkpoint} = C_{compute} \cdot \left(N + \frac{K \cdot N}{2}\right)
 
 \subsection{Computation threshold}
 Having the equations \ref{eq:save_total_cost} and \ref{eq:no_save_total_cost}, we can compute the threshold.
-This threshold is obtained when the ratio shown below is greater or equal to one.
+This threshold is obtained when the ratio shown below is \textbf{greater or equal} to \textbf{one}.
+\\
+
+However, the equations below are taking the \textit{expected} values (average), a single iteration of an enclave of this will \textbf{not} follow this exact rule.
+This is because of the randomness, a simple (yet more than rare) example would be that an iteration with 10 faults have all of them at the first step.
+The number of runs for $C_{no\_checkpoint}$ is then $N+K$ which is not only very much below the average but also equal to $C\_{checkpoint}$.
+The latter being strictly more expensive in cycles will perform more poorly.
+The expected behaviour for a given $K$ are discussion in Section \ref{fig:15m_threshold_k}.
 \begin{equation}
 ratio = \frac{C_{no\_checkpoint}}{C_{checkpoint}}
 \end{equation}
@@ -1822,43 +1830,52 @@ C_{compute} \cdot \left(N + \frac{K \cdot N}{2}\right) &\geq N\cdot C_{save} + N
 C_{compute} \cdot \left(N + \frac{K \cdot N}{2} - N\right) &\geq N\cdot C_{save} + K\cdot C_{load} \\[2mm]
 C_{compute} \cdot \frac{K \cdot N}{2} &\geq N\cdot C_{save} + K\cdot C_{load} \\[2mm]
 C_{compute} &\geq \frac{N\cdot C_{save} + K\cdot C_{load}}{\dfrac{K \cdot N}{2}} \\[2mm]
-C_{compute} &\geq \frac{2\,C_{save}}{K} + \frac{2\,C_{load}}{N}
 \end{align*}
+The final equation is thus:
+\begin{equation}
+C_{compute} \geq \frac{2\,C_{save}}{K} + \frac{2\,C_{load}}{N}
+\end{equation}
+This confirms that what is seen in the graphs of Section \ref{sec:rt_analysis} :
+\begin{itemize}
+    \item For $k=0$, the model can only approach, from below, the threshold ratio.
+    \item As the $C_{save}$ and $C_{load}$ are rising, the $C_{compute}$ must also go up, this translates to a plateau after the first threshold overpass.
+    \item The number of fault $K$, that is supposedly much smaller than the number of runs $N$, which is great ($\ge 10.000$) as per the goal of long running tasks, makes the $C_{load}$ weight little compared to $C_{save}$
+\end{itemize}
 Given the actual costs of the save and load cycles as shown in \ref{sub:cycle_cost}.
 We can isolate the computation needed in order to reach the threshold value.
 \\
 Assuming that we use:
 \begin{itemize}
     \item $N = 1.000.000$
-    \item $K = [0-9]$
-    \item $C_{save} = 15.000.000$ (runtime test is $[15M-20M]$)
-    \item $C_{load} = 15.000.000$
+    \item $K = 1$ the minimal number to be able to reach a threshold
+    \item $C_{save} = 15.000.000$ as the runtime test is $[15M-20M]$
+    \item $C_{load} = 15.000.000$ to better isolate the compute cost, we assume that load and save are symmetric
 \end{itemize} 
 \begin{align*}
-C_{compute} &\geq \frac{40.000.000}{K} + \frac{40.000.000}{N}\\
-C_{compute} &\geq 40.000.400
+C_{compute} &\geq \frac{2 \cdot 15.000.000}{1} + \frac{2\cdot 15.000.000}{1.000.000}\\
+C_{compute} &\geq 30.000.000 + 30
 \end{align*}
+This result is confirmed by the runtime analysis graphs (and underlying benchmarks) in Section \ref{sub:threshold}.
 
-\subsection{Cycle cost per operation}
-\label{sub:cycle_cost}
-\begin{table}
-\end{table}
+\section{Runtime Analysis}
+\label{sec:rt_analysis}
+Now that the theory is established, we will focus on the runtime benchmarks and their resulting graphs.
 
-\begin{table}
-\end{table}
+\subsection{Computation threshold}
+\label{sub:threshold}
+in order to avoid outliers and CPU inconsistency, all the tests have been made a $1000$ times, their results have been divided by the same amount.
+The following subparts are constitued of three graphs, these graphs are all representing the same output data but the cost of the the save and load ($C_{save}$, $C_{load}$).
+Our current implementation' save and load costs are ranging from $15.000.000$ and $20.000.000$ (\ref{sub:cycle_cost}), this is the value given to the first two of each graphs.
+Third one has a set cost of $50.000.000$ for both.
+The choice has been made to set them to equal values as $C_{load}$ holds less weight for our purpose of long running tasks (\ref{eq:no_save_total_cost}), avoiding unnecessary confusion.
 
-\begin{table}
-\end{table}
-
-
-\section{Experiment Analysis}
+\subsubsection{Fixed K}
 \begin{figure}[H]
         \centering
         \includegraphics[width=0.8\linewidth]{img/plots/15m_break_even_focus_run_1000000_k_1.png}
         \caption{Threshold for 1 error over a 1.000.000 runs enclave assuming a 15M cost for load and save}
         \label{fig:15m_threshold_k}
 \end{figure}
-Note that this is represents our scenario.
 
 \begin{figure}[H]
         \centering
@@ -1895,9 +1912,19 @@ Note that this is represents our scenario.
     \caption{Threshold ratio for k=$[0-9]$, over a 1.000.000 runs enclave assuming a 50M cost for load and save}
     \label{fig:50m_threshold_all_k}
 \end{figure}
-\subsubsection{Timing overhead}
-\subsubsection{Data cost}
-\subsubsection{Timing cost}
+
+\subsection{Cycle cost per operation}
+\label{sub:cycle_cost}
+This part is a recap of each possible operation of the enclave during an iteration.
+
+\begin{table}
+\end{table}
+
+\begin{table}
+\end{table}
+
+\begin{table}
+\end{table}
 
 
 \section{Cyber security}

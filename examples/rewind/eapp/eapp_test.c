@@ -303,7 +303,7 @@ int run_break_even_test()
     const unsigned long million=thousand*thousand;
     const unsigned long ten_million=10*million;
 
-    save_cycles = 15*million;
+    save_cycles = 20*million;
     load_cycles = save_cycles;
     compute_cycles=50*thousand;
 
@@ -311,7 +311,8 @@ int run_break_even_test()
     const unsigned long runs_values[] = {10*thousand, hundred_thousand, million, ten_million, 5*ten_million};
     const unsigned long compute_cost_values[] = {compute_cycles, hundred_thousand, 2*hundred_thousand, 5*hundred_thousand, 8*hundred_thousand, 
                                                  million, 2*million, 5*million, 8*million,
-                                                 ten_million, 2*ten_million, 3*ten_million, 4*ten_million, 4*ten_million + million, 5*ten_million
+                                                 ten_million, 2*ten_million, 3*ten_million, 4*ten_million, 4*ten_million + million, 5*ten_million,
+                                                 10*ten_million, 15*ten_million, 20*ten_million, 25*ten_million, 30*ten_million, 50*ten_million
                                                 };
     const unsigned long avg_runs = 1000; // lowered for practicality across many run values
     unsigned long fault_positions_save[MAX_DETERMINISTIC_FAULTS];
