@@ -1826,6 +1826,14 @@ C_{compute} &\geq \frac{2\,C_{save}}{K} + \frac{2\,C_{load}}{N}
 \end{align*}
 Given the actual costs of the save and load cycles as shown in \ref{sub:cycle_cost}.
 We can isolate the computation needed in order to reach the threshold value.
+\\
+Assuming that we use:
+\begin{itemize}
+    \item $N = 1.000.000$
+    \item $K = [0-9]$
+    \item $C_{save} = 15.000.000$ (runtime test is $[15M-20M]$)
+    \item $C_{load} = 15.000.000$
+\end{itemize} 
 \begin{align*}
 C_{compute} &\geq \frac{40.000.000}{K} + \frac{40.000.000}{N}\\
 C_{compute} &\geq 40.000.400
@@ -1846,16 +1854,46 @@ C_{compute} &\geq 40.000.400
 \section{Experiment Analysis}
 \begin{figure}[H]
         \centering
-        \includegraphics[width=0.8\linewidth]{img/plots/break_even_focus_run_100000_k_1.png}
-        \caption{Threshold for 1 error over a 100.000 runs enclave}
-        \label{fig:threshold_k}
-    \end{figure}
+        \includegraphics[width=0.8\linewidth]{img/plots/15m_break_even_focus_run_1000000_k_1.png}
+        \caption{Threshold for 1 error over a 1.000.000 runs enclave assuming a 15M cost for load and save}
+        \label{fig:15m_threshold_k}
+\end{figure}
+Note that this is represents our scenario.
+
+\begin{figure}[H]
+        \centering
+        \includegraphics[width=0.8\linewidth]{img/plots/20m_break_even_focus_run_1000000_k_1.png}
+        \caption{Threshold for 1 error over a 1.000.000 runs enclave assuming a 20M cost for load and save}
+        \label{fig:20m_threshold_k}
+\end{figure}
+
+\begin{figure}[H]
+        \centering
+        \includegraphics[width=0.8\linewidth]{img/plots/50m_break_even_focus_run_1000000_k_1.png}
+        \caption{Threshold for 1 error over a 1.000.000 runs enclave assuming a 50M cost for load and save}
+        \label{fig:50m_threshold_k}
+\end{figure}
 
 \begin{figure}[H]
     \centering
-    \includegraphics[width=0.8\linewidth]{img/plots/break_even_thresholds_runs_100000.png}
-    \caption{Threshold ratio for k=$[0-9]$, over a 100.000 runs enclave}
-    \label{fig:threshold_all_k}
+    \includegraphics[width=0.8\linewidth]{img/plots/15m_break_even_thresholds_runs_1000000.png}
+    \caption{Threshold ratio for k=$[0-9]$, over a 1.000.000 runs enclave assuming a 15M cost for load and save}
+    \label{fig:15m_threshold_all_k}
+\end{figure}
+Note that this is represents our scenario.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.8\linewidth]{img/plots/20m_break_even_thresholds_runs_1000000.png}
+    \caption{Threshold ratio for k=$[0-9]$, over a 1.000.000 runs enclave assuming a 20M cost for load and save}
+    \label{fig:20m_threshold_all_k}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.8\linewidth]{img/plots/50m_break_even_thresholds_runs_1000000.png}
+    \caption{Threshold ratio for k=$[0-9]$, over a 1.000.000 runs enclave assuming a 50M cost for load and save}
+    \label{fig:50m_threshold_all_k}
 \end{figure}
 \subsubsection{Timing overhead}
 \subsubsection{Data cost}

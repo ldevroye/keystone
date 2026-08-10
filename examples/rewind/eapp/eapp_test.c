@@ -289,7 +289,7 @@ int run_break_even_test()
 {
     enum
     {
-        MAX_DETERMINISTIC_FAULTS = 10
+        MAX_DETERMINISTIC_FAULTS = 9
     };
 
     uint64_t save_cycles, load_cycles, compute_cycles;
@@ -304,7 +304,7 @@ int run_break_even_test()
     const unsigned long ten_million=10*million;
 
     save_cycles = 15*million;
-    load_cycles = 15*million;
+    load_cycles = save_cycles;
     compute_cycles=50*thousand;
 
 
@@ -362,9 +362,10 @@ int run_break_even_test()
             cost_save[k] /= avg_runs;
             cost_no_save[k] /= avg_runs;
 
+#if EAPP_BREAK_EVEN_CSV_OUTPUT
             print_indexed_metric("break_even no_save min_error_sum ", k, min_no_save_error_sum);
             print_indexed_metric("break_even no_save max_error_sum ", k, max_no_save_error_sum);
-
+#endif
             int threshold_reached = 0;
             for (int cp = 0; cp < compute_count; cp++)
             {   
