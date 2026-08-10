@@ -114,57 +114,178 @@ static int measure_scenario(unsigned long runs,
     return 0;
 }
 
-static int measure_checkpoint_cycle_breakdown(uint64_t* seal_cycles, uint64_t* unseal_cycles, uint64_t* compute_cycles)
+static int measure_checkpoint_cycle_breakdown(uint64_t* derive_cycles,
+                                             uint64_t* seal_cycles,
+                                             uint64_t* unseal_cycles,
+                                             uint64_t* compute_cycles,
+                                             struct checkpoint_crypto_metrics* crypto_metrics_out)
 {
-    struct rewind_state state = {1, 2, 3};
-    uint64_t seal_start;
-    uint64_t seal_end;
-    uint64_t unseal_start;
-    uint64_t unseal_end;
-    uint64_t compute_start;
-    uint64_t compute_end;
+    struct rewind_state expected_state = {1, 2, 3};
+    struct rewind_state restored_state;
+    struct checkpoint checkpoint;
+    struct sealed_checkpoint blob;
+    const size_t state_offset = STACK_SNAPSHOT_SIZE - sizeof(expected_state);
+    struct checkpoint_crypto_metrics crypto_metrics;
 
-    state_anchor = &state;
+    memset(&checkpoint, 0, sizeof(checkpoint));
+    memset(&restored_state, 0, sizeof(restored_state));
+    memset(&blob, 0, sizeof(blob));
+    memset(&crypto_metrics, 0, sizeof(crypto_metrics));
+    state_anchor = &restored_state;
 
-    seal_start = read_cycle_counter();
-    if (save_checkpoint(0) != 0)
+    checkpoint.checkpoint_seq = 42;
+    memset(checkpoint.stack_data, 0xA5, sizeof(checkpoint.stack_data));
+    memcpy(checkpoint.stack_data + state_offset, &expected_state, sizeof(expected_state));
+
+    uint64_t derive_start = read_cycle_counter();
+    if (derive_checkpoint_material() != 0)
     {
-        eapp_print("cycle breakdown save failed");
+        eapp_print("cycle breakdown derive failed");
         return -1;
     }
-    seal_end = read_cycle_counter();
+    uint64_t derive_end = read_cycle_counter();
 
-    memset(&state, 0, sizeof(state));
-
-    unseal_start = read_cycle_counter();
-    if (load_checkpoint(0) != 0)
+    uint64_t seal_start = read_cycle_counter();
+    if (seal_checkpoint_blob_profile(&blob, &checkpoint, &crypto_metrics) != 0)
     {
-        eapp_print("cycle breakdown load failed");
+        eapp_print("cycle breakdown seal failed");
         return -1;
     }
-    if (restore_checkpoint() != 0)
+    uint64_t seal_end = read_cycle_counter();
+
+    uint64_t unseal_start = read_cycle_counter();
+    if (unseal_checkpoint_blob_profile(&checkpoint, &blob, &crypto_metrics) != 0)
     {
-        eapp_print("cycle breakdown restore failed");
+        eapp_print("cycle breakdown unseal failed");
         return -1;
     }
-    unseal_end = read_cycle_counter();
+    uint64_t unseal_end = read_cycle_counter();
 
-    if (state.a != 1 || state.b != 2 || state.counter != 3)
+    memcpy(&restored_state,
+           checkpoint.stack_data + state_offset,
+           sizeof(restored_state));
+
+    if (restored_state.a != expected_state.a ||
+        restored_state.b != expected_state.b ||
+        restored_state.counter != expected_state.counter)
     {
         eapp_print("cycle breakdown validation failed");
         return -1;
     }
 
-    compute_start = read_cycle_counter();
+    uint64_t compute_start = read_cycle_counter();
     computation();
-    compute_end = read_cycle_counter();
-    
+    uint64_t compute_end = read_cycle_counter();
 
+    *derive_cycles = derive_end - derive_start;
     *seal_cycles = seal_end - seal_start;
     *unseal_cycles = unseal_end - unseal_start;
     *compute_cycles = compute_end - compute_start;
+
+    if (crypto_metrics_out != NULL)
+    {
+        *crypto_metrics_out = crypto_metrics;
+    }
     return 0;
 }
+
+static int measure_checkpoint_cycle_breakdown_avg(uint64_t* derive_cycles,
+                                                    uint64_t* seal_cycles,
+                                                    uint64_t* unseal_cycles,
+                                                    uint64_t* compute_cycles,
+                                                    struct checkpoint_crypto_metrics* crypto_metrics_out)
+{
+    const unsigned long avg_runs = 1000UL;
+    uint64_t derive_sum = 0;
+    uint64_t seal_sum = 0;
+    uint64_t unseal_sum = 0;
+    uint64_t compute_sum = 0;
+    struct checkpoint_crypto_metrics crypto_sum;
+
+    memset(&crypto_sum, 0, sizeof(crypto_sum));
+
+    for (unsigned long run = 0; run < avg_runs; run++)
+    {
+        uint64_t derive_once = 0;
+        uint64_t seal_once = 0;
+        uint64_t unseal_once = 0;
+        uint64_t compute_once = 0;
+        struct checkpoint_crypto_metrics crypto_once;
+
+        memset(&crypto_once, 0, sizeof(crypto_once));
+
+        if (measure_checkpoint_cycle_breakdown(&derive_once,
+                                               &seal_once,
+                                               &unseal_once,
+                                               &compute_once,
+                                               &crypto_once) != 0)
+        {
+            return -1;
+        }
+
+        derive_sum += derive_once;
+        seal_sum += seal_once;
+        unseal_sum += unseal_once;
+        compute_sum += compute_once;
+
+        crypto_sum.seal_prep_cycles += crypto_once.seal_prep_cycles;
+        crypto_sum.seal_encrypt_cycles += crypto_once.seal_encrypt_cycles;
+        crypto_sum.seal_tag_cycles += crypto_once.seal_tag_cycles;
+        crypto_sum.seal_copy_cycles += crypto_once.seal_copy_cycles;
+        crypto_sum.unseal_copy_in_cycles += crypto_once.unseal_copy_in_cycles;
+        crypto_sum.unseal_tag_cycles += crypto_once.unseal_tag_cycles;
+        crypto_sum.unseal_compare_cycles += crypto_once.unseal_compare_cycles;
+        crypto_sum.unseal_decrypt_cycles += crypto_once.unseal_decrypt_cycles;
+        crypto_sum.unseal_copy_out_cycles += crypto_once.unseal_copy_out_cycles;
+    }
+
+    *derive_cycles = derive_sum / avg_runs;
+    *seal_cycles = seal_sum / avg_runs;
+    *unseal_cycles = unseal_sum / avg_runs;
+    *compute_cycles = compute_sum / avg_runs;
+
+    if (crypto_metrics_out != NULL)
+    {
+        crypto_metrics_out->seal_prep_cycles = crypto_sum.seal_prep_cycles / avg_runs;
+        crypto_metrics_out->seal_encrypt_cycles = crypto_sum.seal_encrypt_cycles / avg_runs;
+        crypto_metrics_out->seal_tag_cycles = crypto_sum.seal_tag_cycles / avg_runs;
+        crypto_metrics_out->seal_copy_cycles = crypto_sum.seal_copy_cycles / avg_runs;
+        crypto_metrics_out->unseal_copy_in_cycles = crypto_sum.unseal_copy_in_cycles / avg_runs;
+        crypto_metrics_out->unseal_tag_cycles = crypto_sum.unseal_tag_cycles / avg_runs;
+        crypto_metrics_out->unseal_compare_cycles = crypto_sum.unseal_compare_cycles / avg_runs;
+        crypto_metrics_out->unseal_decrypt_cycles = crypto_sum.unseal_decrypt_cycles / avg_runs;
+        crypto_metrics_out->unseal_copy_out_cycles = crypto_sum.unseal_copy_out_cycles / avg_runs;
+    }
+
+    return 0;
+}
+
+static void print_cycle_sum(const char* total_label,
+                                   uint64_t total_cycles,
+                                   uint64_t part_cycles[],
+                                   size_t len_part_cycles)
+{   
+
+    uint64_t part_sum=0;
+    for (int i =0; i<len_part_cycles; i++)
+    {
+        part_sum += part_cycles[i];
+    }
+    
+    print_metric(total_label, total_cycles);
+    print_metric("parts_sum ", part_sum);
+
+    if (part_sum >= total_cycles)
+    {
+        print_metric("diff: ", part_sum - total_cycles);
+    }
+    else
+    {
+        print_metric("diff: ", total_cycles- part_sum);
+
+    }
+}
+
 
 int run_blob_size_test()
 {
@@ -246,7 +367,7 @@ int run_round_trip_test()
         return -1;
     }
 
-    if (open_checkpoint_blob(&checkpoint, &blob) != 0)
+    if (unseal_checkpoint_blob(&checkpoint, &blob) != 0)
     {
         eapp_print("round-trip test opening failed");
         return -1;
@@ -270,17 +391,38 @@ int run_round_trip_test()
 
 int run_cycle_breakdown_test()
 {
+    uint64_t derive_cycles = 0;
     uint64_t seal_cycles = 0;
     uint64_t unseal_cycles = 0;
     uint64_t compute_cycles = 0;
+    struct checkpoint_crypto_metrics crypto_metrics;
 
-    if (measure_checkpoint_cycle_breakdown(&seal_cycles, &unseal_cycles, &compute_cycles) != 0)
+    if (measure_checkpoint_cycle_breakdown_avg(&derive_cycles,
+                                                &seal_cycles,
+                                                &unseal_cycles,
+                                                &compute_cycles,
+                                                &crypto_metrics) != 0)
     {
         return -1;
     }
 
-    print_metric("checkpoint_seal_cycles ", seal_cycles);
-    print_metric("checkpoint_unseal_cycles ", unseal_cycles);
+    print_metric("checkpoint_derive_cycles ", derive_cycles);
+    uint64_t seal_parts[] = {
+        crypto_metrics.seal_prep_cycles,
+        crypto_metrics.seal_encrypt_cycles,
+        crypto_metrics.seal_tag_cycles,
+        crypto_metrics.seal_copy_cycles,
+    };
+    uint64_t unseal_parts[] = {
+        crypto_metrics.unseal_copy_in_cycles,
+        crypto_metrics.unseal_tag_cycles,
+        crypto_metrics.unseal_compare_cycles,
+        crypto_metrics.unseal_decrypt_cycles,
+        crypto_metrics.unseal_copy_out_cycles,
+    };
+
+    print_cycle_sum("checkpoint_seal_cycles ", seal_cycles, seal_parts, sizeof(seal_parts) / sizeof(seal_parts[0]));
+    print_cycle_sum("checkpoint_unseal_cycles ", unseal_cycles, unseal_parts, sizeof(unseal_parts) / sizeof(unseal_parts[0]));
     print_metric("checkpoint_compute_cycles ", compute_cycles);
     return 0;
 }
@@ -303,17 +445,20 @@ int run_break_even_test()
     const unsigned long million=thousand*thousand;
     const unsigned long ten_million=10*million;
 
-    save_cycles = 20*million;
+    save_cycles = 50*million;
     load_cycles = save_cycles;
     compute_cycles=50*thousand;
 
 
     const unsigned long runs_values[] = {10*thousand, hundred_thousand, million, ten_million, 5*ten_million};
     const unsigned long compute_cost_values[] = {compute_cycles, hundred_thousand, 2*hundred_thousand, 5*hundred_thousand, 8*hundred_thousand, 
-                                                 million, 2*million, 5*million, 8*million,
-                                                 ten_million, 2*ten_million, 3*ten_million, 4*ten_million, 4*ten_million + million, 5*ten_million,
-                                                 10*ten_million, 15*ten_million, 20*ten_million, 25*ten_million, 30*ten_million, 50*ten_million
-                                                };
+                                                million, 2*million, 5*million, 8*million,
+                                                ten_million, 2*ten_million, 3*ten_million, 4*ten_million, 5*ten_million,
+                                                6*ten_million, 7*ten_million, 8*ten_million, 9*ten_million, 10*ten_million,
+                                                11*ten_million, 12*ten_million, 13*ten_million, 14*ten_million, 15*ten_million,
+                                                16*ten_million, 17*ten_million, 18*ten_million, 19*ten_million, 20*ten_million
+                                                
+                                            };
     const unsigned long avg_runs = 1000; // lowered for practicality across many run values
     unsigned long fault_positions_save[MAX_DETERMINISTIC_FAULTS];
     unsigned long fault_positions_no_save[MAX_DETERMINISTIC_FAULTS];

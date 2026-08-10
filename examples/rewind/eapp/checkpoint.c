@@ -26,7 +26,7 @@ int load_checkpoint(int send_edge_call)
     }
 
 
-    if (open_checkpoint_blob(&checkpoint_storage, &checkpoint_blob) != 0)
+    if (unseal_checkpoint_blob(&checkpoint_storage, &checkpoint_blob) != 0)
     {
         return -1;
     }

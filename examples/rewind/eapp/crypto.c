@@ -39,8 +39,7 @@ static int checkpoint_keys_ready;
 */
 
 
-// 'static' for interal usage only
-static int derive_checkpoint_material(void)
+int derive_checkpoint_material(void)
 {
     struct sealing_key sk;
 
@@ -69,6 +68,7 @@ static int derive_checkpoint_material(void)
     return 0;
 }
 
+// 'static' for interal usage only
 static int encrypt_stack(uint8_t *stack_data,
                             size_t stack_len,
                             const uint8_t nonce[AES_BLOCK_SIZE])
@@ -130,14 +130,17 @@ static int compute_tag(const uint8_t iv[AES_BLOCK_SIZE],
     return 0;
 }
 
-int seal_checkpoint_blob(struct sealed_checkpoint *blob, const struct checkpoint *checkpoint)
-{
+static int seal_checkpoint_blob_impl(struct sealed_checkpoint *blob,
+                                     const struct checkpoint *checkpoint,
+                                     struct checkpoint_crypto_metrics *metrics)
+{   
     uint8_t computed_tag[CHECKPOINT_TAG_SIZE];
     uint8_t payload[sizeof(struct checkpoint)];
     uint8_t iv[AES_BLOCK_SIZE] = {0};
     uint8_t *ciphertext = blob->sealed;
     uint8_t *tag = blob->sealed + sizeof(payload);
 
+    uint64_t start_0 = read_cycle_counter();
     memcpy(payload, checkpoint, sizeof(payload));
 
     // checkpoint_seq must never repeat across the enclave lifetime for iv uniqueness to hold
@@ -146,27 +149,41 @@ int seal_checkpoint_blob(struct sealed_checkpoint *blob, const struct checkpoint
     // removes empty 0s as the checkpoint_seq is AES_BLOCK_SIZE//2 (16//2 -> 8) bytes
     memcpy(iv + sizeof(checkpoint->checkpoint_seq), &checkpoint->checkpoint_seq, sizeof(checkpoint->checkpoint_seq));
 
-    // save path: encrypt first, then authenticate the iv and ciphertext
+    uint64_t end_0=read_cycle_counter();
+    if (metrics != NULL) { metrics->seal_prep_cycles = end_0 - start_0; }
+
     if (derive_checkpoint_material() != 0) {
         eapp_print("failed to derive sealing key");
         return -1;
     }
 
+    // save path: encrypt first, then authenticate the iv and ciphertext
+    uint64_t start_1 = read_cycle_counter();
     encrypt_stack(payload, sizeof(payload), iv);
+    uint64_t end_1 = read_cycle_counter();
+    if (metrics != NULL) { metrics->seal_encrypt_cycles = end_1 - start_1; }
 
+    uint64_t start_2 = read_cycle_counter();
     if (compute_tag(iv, payload, sizeof(payload), computed_tag) != 0) {
         eapp_print("failed to authenticate checkpoint");
         return -1;
     }
+    uint64_t end_2 = read_cycle_counter();
+    if (metrics != NULL) { metrics->seal_tag_cycles = end_2 - start_2; }
 
+    uint64_t start_3 = read_cycle_counter();
     memcpy(blob->iv, iv, sizeof(iv));
     memcpy(ciphertext, payload, sizeof(payload));
     memcpy(tag, computed_tag, sizeof(computed_tag));
+    uint64_t end_3 = read_cycle_counter();
+    if (metrics != NULL) { metrics->seal_copy_cycles = end_3 - start_3; }
 
     return 0;
 }
 
-int open_checkpoint_blob(struct checkpoint *checkpoint, const struct sealed_checkpoint *blob)
+static int unseal_checkpoint_blob_impl(struct checkpoint *checkpoint,
+                                       const struct sealed_checkpoint *blob,
+                                       struct checkpoint_crypto_metrics *metrics)
 {
     uint8_t expected_tag[CHECKPOINT_TAG_SIZE];
     uint8_t payload[sizeof(struct checkpoint)];
@@ -180,22 +197,61 @@ int open_checkpoint_blob(struct checkpoint *checkpoint, const struct sealed_chec
         return -1;
     }
 
+    uint64_t start_0 = read_cycle_counter();
     memcpy(payload, ciphertext, sizeof(payload));
+    uint64_t end_0 = read_cycle_counter();
+    if (metrics != NULL) { metrics->unseal_copy_in_cycles = end_0 - start_0; }
 
+    uint64_t start_1 = read_cycle_counter();
     if (compute_tag(blob->iv, payload, sizeof(payload), expected_tag) != 0) 
     {
         eapp_print("failed to verify checkpoint");
         return -1;
     }
+    uint64_t end_1 = read_cycle_counter();
+    if (metrics != NULL) { metrics->unseal_tag_cycles = end_1 - start_1; }
 
+    uint64_t start_2 = read_cycle_counter();
     if (!constant_time_equal(expected_tag, tag, sizeof(expected_tag))) 
     {
         eapp_print("checkpoint authentication failed");
         return -1;
     }
+    uint64_t end_2 = read_cycle_counter();
+    if (metrics != NULL) { metrics->unseal_compare_cycles = end_2 - start_2; }
 
+    uint64_t start_3 = read_cycle_counter();
     decrypt_stack(payload, sizeof(payload), blob->iv);
+    uint64_t end_3 = read_cycle_counter();
+    if (metrics != NULL) { metrics->unseal_decrypt_cycles = end_3 - start_3; }
 
+    uint64_t start_4 = read_cycle_counter();
     memcpy(checkpoint, payload, sizeof(*checkpoint));
+    uint64_t end_4 = read_cycle_counter();
+    if (metrics != NULL) { metrics->unseal_copy_out_cycles = end_4 - start_4; }
     return 0;
+}
+
+int seal_checkpoint_blob(struct sealed_checkpoint *blob, const struct checkpoint *checkpoint)
+{
+    return seal_checkpoint_blob_impl(blob, checkpoint, NULL);
+}
+
+int unseal_checkpoint_blob(struct checkpoint *checkpoint, const struct sealed_checkpoint *blob)
+{
+    return unseal_checkpoint_blob_impl(checkpoint, blob, NULL);
+}
+
+int seal_checkpoint_blob_profile(struct sealed_checkpoint *blob,
+                                 const struct checkpoint *checkpoint,
+                                 struct checkpoint_crypto_metrics *metrics)
+{
+    return seal_checkpoint_blob_impl(blob, checkpoint, metrics);
+}
+
+int unseal_checkpoint_blob_profile(struct checkpoint *checkpoint,
+                                   const struct sealed_checkpoint *blob,
+                                   struct checkpoint_crypto_metrics *metrics)
+{
+    return unseal_checkpoint_blob_impl(checkpoint, blob, metrics);
 }
