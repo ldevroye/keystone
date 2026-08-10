@@ -1689,6 +1689,7 @@ One could run the tests of the side with the logging of the enclave or all the t
 \begin{itemize}
     \item \verb|HOST_LOGGING|: enable host printing
     \item \verb|EAPP_LOGGING|: enable eapp printing
+    \item \verb|EAPP_BREAK_EVEN_CSV_OUTPUT|: output a csv format in order to produce graphs (\ref{fig:treshold-k-1})
 \end{itemize}
 
 \subsection{Execution}
@@ -1714,9 +1715,14 @@ These macros enables (or disables) the tests in a branching way.
     \item \verb|EAPP_TESTING|: launches the execution in testing mode, starts the test sequence
     \item \verb|FAULT_RANDOMIZE_SEED|: enable/disable random seed for the fault model
     \item \verb|FAULT_SEED|: sets the seed to start from for the fault model (if\\ \verb|FAULT_RANDOMIZE_SEED|=0)
+    \item \verb|EAPP_AVG_FAULT_TESTING|: enables the fault model average period testing
+    \item \verb|EAPP_BLOB_SIZE_TESTING|: enables the blob size benchmark
+    \item \verb|EAPP_ROUND_TRIP_TESTING|: enables the round trip test
+    \item \verb|EAPP_CYCLE_BREAKDOWN_TESTING|: enables the cycle cost breakdown benchmark
+    \item \verb|EAPP_BREAK_EVEN_TESTING|: enables the break-even threshold benchmark
 \end{itemize}
 Manipulating the macros can get confusing as they are independant. 
-One could launch a full set of host testing with \verb|HOST_TESTING|=1 and \verb|ANALYSIS_RUNS|=100 (to analyze the average runtimes for example) while enableing the \verb|EAPP_TESTING| making the enclave only executing tests (and even more, returning failed tests that the host will try to accomplish).
+One could launch a full set of host testing with \verb|HOST_TESTING|=1 and \verb|ANALYSIS_RUNS|=100 (to analyze the average runtimes for example) while enabling the \verb|EAPP_TESTING| making the enclave only executing tests (and even more, returning failed tests that the host will try to accomplish).
 Or trying tests like \verb|TEST_TAMPER_MODE|=bitflip and not setting the \verb|HOST_TESTING| to true.
 In order to better understand what is going on, it is recommended to enable both loggins macros.
 
@@ -1755,11 +1761,64 @@ Each test specifies:
 
 %%%%%%%%%%%%%%%%%%%%%%%% Results %%%%%%%%%%%%%%%%%%%%%%%%
 \chapter{Results and Discussion}
+In this chatper, we will discuss the the computation cost of checkpointing each iterations and the security assumptions and their limitations.
 
-\section{Analysis}
-\subsection{Timing overhead}
-\subsection{Data cost}
-\subsection{Timing cost}
+\section{Static Analysis}
+The enclave is made to run in discrete time, for our calculations, we will use :
+\begin{itemize}
+    \item $N$ the number of runs it is doing before the job is considered done
+    \item $K$ the number of occuring fault during the enclave runs
+    \item $errors$ a set of size $K$ of the indexes of the occuring faults
+    \item $C_{event}$ the total number of cycles used by the $event$ (save, load, compute, etc.) 
+\end{itemize}
+Having these variables states we can compute the theoretical cost of checkpointing compared to restartarting the enclave from scratch.
+
+\begin{equation}
+C_{checkpoint} = N\cdot (C_{save} + C_{compute}) + K\cdot C_{load}
+\label{eq:save_total_cost}
+\end{equation}
+
+\begin{align*}
+C_{no\_checkpoint} = (C_{compute}) \cdot (N + \sum_{i=0}^{K-1}(errors[i]))
+\end{align*}
+Note that the sum of the error indexes ($\sum_{i=0}^{K-1}(errors[i])$) as an expected value of $K \cdot \lfloor \frac{N}{2} \rfloor$.
+This is because the probability of a fault occuring at index $i$ over $[0, N]$ ($X_i$, which is equal to $errors[i]$) is $\frac{1}{N}$ as $X$ is iid. Thus:
+\begin{align*}
+\mathbb{E}[X] = \frac{N}{2} 
+\end{align*}
+The average (expected value) can be derived using basic probability:
+\begin{align*}
+\mathbb{E}\left[\sum_{i=0}^{K-1} \text{errors}[i]\right]
+&= \mathbb{E}\left[\sum_{i=0}^{K-1} X_i\right] \\
+&= \sum_{i=0}^{K-1} \mathbb{E}[X_i] \\
+&= \sum_{i=0}^{K-1} \mathbb{E}[X] \quad \text{(since } X_i \text{ are i.i.d.)} \\
+&= K \cdot \mathbb{E}[X] \\
+&= K \cdot \frac{N}{2}
+\end{align*}
+One can test the validity of this statement in the implementation by running the average fault testing and the break-even treshold. \\
+Using that result, $C_{no\_checkpoint}$ can be written as :
+\begin{equation}
+C_{no\_checkpoint} = C_{compute} \cdot \left(N + \frac{K \cdot N}{2}\right)
+\label{eq:no_save_total_cost}
+\end{equation}
+
+\paragraph{Comparison}
+Having the two equations (\ref{eq:save_total_cost}, \ref{eq:no_save_total_cost}). 
+We can compute
+
+\TODO{Table saving cost}
+\TODO{Table loading cost}
+
+\begin{figure}[H]
+        \centering
+        \includegraphics[width=0.8\linewidth]{img/plots/break_even_focus_run_100000_k_1.png}
+        \caption{Treshold for 1 error over a 100.000 runs enclave}
+        \label{fig:treshold-k-1}
+    \end{figure}
+\subsubsection{Timing overhead}
+\subsubsection{Data cost}
+\subsubsection{Timing cost}
+
 
 \section{Cyber security}
 \subsection{Security objectives}
