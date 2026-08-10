@@ -866,7 +866,7 @@ Considering this, small functions to format numbers into strings (char*) have be
 
 
 \section{Data sealing}
-\label{sub:data-sealing}
+\label{sec:data-sealing}
 Keystone has a sealing protocol. 
 Using this, an enclave can save data in an untrusted, non-volatile, memory outside of its memory range.
 It works by enabling the SM to to compute a \texttt{deterministic key} from the RoT for the enclave to use.
@@ -1027,7 +1027,7 @@ The SM (\ref{sub:sm}) is an enclave factory and provides them with, as previousl
 
 % data sealing
 Furthermore, several enclaves of the same binary (compiled source file) can be initialized. 
-This is important for the key generation of an enclave (\ref{sub:data-sealing}).
+This is important for the key generation of an enclave (\ref{sec:data-sealing}).
 In the case of a fault occuring in an enclave, the host can see the return code of the enclave and ask for the SM to create another instance of that same enclave (using PMP entries).
 The two instances will (as the key generation is determistic \cite{keystone-docs, review-keystone}) have the same resulting sealing key.
 This is true if we consider the identifier to be the same for both, as it is implemented in the binary of the enclave's eapp, the statement is supposedly satisfied.
@@ -1436,7 +1436,7 @@ To preserve the security objectives, the enclave implements a cryptographic prot
 \\
 
 The authentificaction and encryption keys are both derived using the function\\
-\verb|derive_checkpoint_material()| usging Keystone \verb|get_sealing_key()| \ref{sub:data-sealing}.
+\verb|derive_checkpoint_material()| usging Keystone \verb|get_sealing_key()| \ref{sec:data-sealing}.
 This function is cached after the first usage as the keys will never be changed afterwards. The worklow can be described as such:
 \paragraph{1. Save}
 \begin{itemize}
@@ -1674,6 +1674,7 @@ The \textbf{logs} produced can be found in the \verb|build-$PLATFORM$BITS/build.
 The Rewind enclave is evaluated on its overhead computation cycles and data cost.
 Moveover, the cyber security assumptions are being tested individualy. 
 \section{Macros}
+\label{sec:macros}
 The tests are being conducted using different macros that are all defined in the \verb|CMakeList.txt| following this structure:
 \begin{verbatim}
 ## Definition, the "some_value" can be left to ""
@@ -1982,7 +1983,6 @@ The the balance between the two effect gives some kind of saturation slop.
 \subsection{Cycle cost per operation}
 \label{sub:cycle_cost}
 This part is a recap of each possible main operation of the enclave during an iteration.
-
 The values below are averaged over $1000$ runs.
 They exclude the cached material derivation from the per-part seal and unseal breakdown.
 
@@ -2040,39 +2040,79 @@ They exclude the cached material derivation from the per-part seal and unseal br
 Now that the computation and data analysis is done, we will address the cyber security assumptions and requirements.
 
 \subsection{Security objectives}
-There are four different security objectives, stated in \ref{sec:threat-model}:
+As stated in \ref{sec:threat-model}, there are four security objectives that will be looked upon.
+We will discuss of why they hold and what are the limitations.
+The claims can be checked using the corresponding macros in (Section \ref{sec:macros}).
+
+%\item \textbf{Confidentiality}: checkpoint contents unreadable to host
+%\item \textbf{Integrity/authenticity}: tampered blob is detected, rejected and leaks no information (response time analysis) 
+%\item \textbf{Atomicity}: no undefined state from interrupted checkpoint writes
+%\item \textbf{Unclonability}: can't clone device from checkpoint data alone
 \subsubsection{Confidentiality}
-The con
+The checkpoint is, at any time, opaque from the host. 
+An attacker can, indeed, not read the saved checkpoint because of the \verb|aes_encrypt_ctr()| function provided by Keystone.   
+In our implementation, the rewind state to save is read from the stack, placed into a plain text checkpoint storage and then sealed using the encryption key derived from Keystone data sealing key (Section \verb|get_sealing_key()| \ref{sec:data-sealing}) and the iv (the checkpoint sequence).
+After that, a tag is done over the ciphertext using the authentification key to block anyone from tampering without notice.
+The resulting sealed checkpoint blob is then sent to the host along with the iv and the tag.
+
+
 \subsubsection{Integrity}
+Based on the Confidentiality CBC-MAC and CTR scheme, tampering is handled.
+\\
+
+Now we have to consider the possible side-attacks, these are that the attackers tries to tamper with the blob directly, which is not plausible under the scheme \textit{over a fixed length message}. 
+Another attack is to obtain side informations to deduce information. This can be time to compute the tag or reloading the enclave by destroying it at every save edge call.
+The first one is addressed using a simple, home made compare function that always passes over the whole sequence instead of a memcmp() that stops as soon a one byte is wrong.
+using memcmp(), or any non constant time comparison function would lead to a time of authentification leak.
+The second one is, in our case, directly addressed by the inherent deterministic mechanism of the enclave, the initial state, will always be the same as the one being compiled (whatever a and b are).
+Moreover, the checkpoint sequence also follows this rule. Making a XOR of a possibly same ciphertext with different IVs simply not possible. 
+
 \subsubsection{Atomicity}
+The atomicity states that we cannot have an undefind saved state. Based on the two last objectives, a maliciously modified state is not something to scared of.
+However, could an attacker stops the enclave at the perfect time in order to create a chimera state.
+The answer is no. In fact, the only real abilities, to this regard, of the attacker is to cut the power of the enclave. 
+The only outcome of this scenario is to also stop the host and the SM, effectively stopping the whole system.
+The protection of a whole system is not in the scope of this thesis.
+Nevertheless, the state, checkpoint of this state and sealed checkpoint are being kept separated for this purpose. 
+Whenever one changes, it doesn't always affect the others.
+\\
+
+Another idea would be to compromise the PMP hardware itself, this scenario is not in the scope of this thesis as it is assumed to be sound in runtime to malicious programs.
+Even only destroying the entry would result in a call to the SM, and a move of the enclave from this hardware space.
+
 \subsubsection{Unclonability}
+We consider a device to be cloned if we can replicate the exact behaviour given a sealed state.
+This is only possible for a program that has the \textbf{exact} same hash as the EAPP and is ruled by the SM.
+Otherwise, the keys won't correspond and the attacker will not be able to read or to use the sealed data.
+In addition to that, there is no point in time where the plaintext is exposed.
+We can thus safely rely on Keystone data sealing to make the sealed checkpoint unusable for someone that is not the enclave EAPP.
 
 \section{Discussion}
 \label{sec:Discussion}
-\TODO{threshold for avrage usefulness}
-
-mitigate tampering but host is not reliable so a malicious can stall.
-
+great, better (less computation) crypto scheme, how many runs, still useful in practice in case of a full stop of several days for examples
+\TODO{time regarding}
+\TODO{threat is contained but host is unreliable}
 
 
 %%%%%%%%%%%%%%%%%%%%%%%% Future Work %%%%%%%%%%%%%%%%%%%%%%%%
 \section{Future Work}
 
 \subsection{Mixed criticality}
+
+\subsection{Modern lightweight cryptoscheme}
+
 \subsection{More complex fault model}
 \label{sub:fault-model}
+
 \subsection{Enclave Complexity on backup}
 \label{sub:back-complexity}
 
-\TODO{More?}
 
 
 
 %%%%%%%%%%%%%%%%%%%%%%%% Conclusion %%%%%%%%%%%%%%%%%%%%%%%%
 \chapter{Conclusion}
 \TODO{conclusion}
-Enclaves are great, even with a medium computation overhead in time and data it is useful for long processes.
-
 
 
 \printbibliography
