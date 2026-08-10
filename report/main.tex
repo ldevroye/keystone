@@ -1051,7 +1051,7 @@ However, we address this in the future work section \ref{sub:back-complexity}.
 % Fault model
 % Tests
 \section{Threat Model}
-\label{sub:threat-model}
+\label{sec:threat-model}
 A threat model helps to clarify the hypothesis, the goals and the limitiations compared to the real, unsafe, world.
 
 \subsection{Trusted}
@@ -1237,7 +1237,7 @@ In order to rewind or discard an enclave, there must be a checkpointed state tha
 as for the overall implementation, the two sides have their own wrapper logic as they have an asymmetric relationship.
 The host supervises the enclave and the latter is, once running, sealed from the former \ref{file:checkpoint}.
 However, as soon as the enclave submit an edge call, the host could (assuming malicious intentions) destroy the enclave or stall it indefinetly.
-This is bounded by Keystone structure and is, as noted in the threat model \ref{sub:threat-model}, not in the scope of this thesis.
+This is bounded by Keystone structure and is, as noted in the threat model \ref{sec:threat-model}, not in the scope of this thesis.
 \\
 
 One could implement a direct call from the enclave to the SM to external safe memory with, for example, table pages protected by outside PMP entry or another "data enclave" that has a direct communication channel with the "runtime" one.
@@ -1733,7 +1733,7 @@ mechanism and explains their relevance.
 There are two parts: the \textit{Analysis} (\ref{sub:test-analysis}),
 where we quantify execution costs and overhead, and the \textit{Cyber security}
 (\ref{sub:test-cyber}), where we validate the threat model assumptions
-and security objectives from \ref{sub:threat-model}.
+and security objectives from \ref{sec:threat-model}.
 
 \subsection{Cyber security}
 \label{sub:test-cyber}
@@ -1833,6 +1833,7 @@ C_{compute} &\geq \frac{N\cdot C_{save} + K\cdot C_{load}}{\dfrac{K \cdot N}{2}}
 \end{align*}
 The final equation is thus:
 \begin{equation}
+\label{eq:threshold_ratio}
 C_{compute} \geq \frac{2\,C_{save}}{K} + \frac{2\,C_{load}}{N}
 \end{equation}
 This confirms that what is seen in the graphs of Section \ref{sec:rt_analysis} :
@@ -1860,36 +1861,78 @@ This result is confirmed by the runtime analysis graphs (and underlying benchmar
 \section{Runtime Analysis}
 \label{sec:rt_analysis}
 Now that the theory is established, we will focus on the runtime benchmarks and their resulting graphs.
+in order to avoid outliers and CPU inconsistency, all the tests have been made a $1000$ times, their results have been divided by the same amount.
+The following subparts are constitued of three graphs, these graphs are all representing the same output data but the cost of the the save and load ($C_{save}$, $C_{load}$).
+Our current implementation save and load costs are ranging from $15.000.000$ and $20.000.000$ (\ref{sub:cycle_cost}), this is the value given to the first two of each graphs.
+Third one has a set cost of $50.000.000$ for both.
+The choice has been made to set them to equal values as $C_{load}$ holds less weight for our purpose of long running tasks (\ref{eq:no_save_total_cost}), avoiding unnecessary confusion.
+\\
+
+Moreover, the compute cost measured in our implementation is contained within $[60k-200k]$.
+It is a simple addition, variable switch and an increment and doesn't represent a real life specific application.
+The main application being very theoric, we compare different values in order to avoid making false assumptions of the implementation of a specific task in the enclave.
+We will discuss the relevance of these posssible values of the three different costs in the Section \ref{sec:Discussion}.
+
 
 \subsection{Computation threshold}
 \label{sub:threshold}
-in order to avoid outliers and CPU inconsistency, all the tests have been made a $1000$ times, their results have been divided by the same amount.
-The following subparts are constitued of three graphs, these graphs are all representing the same output data but the cost of the the save and load ($C_{save}$, $C_{load}$).
-Our current implementation' save and load costs are ranging from $15.000.000$ and $20.000.000$ (\ref{sub:cycle_cost}), this is the value given to the first two of each graphs.
-Third one has a set cost of $50.000.000$ for both.
-The choice has been made to set them to equal values as $C_{load}$ holds less weight for our purpose of long running tasks (\ref{eq:no_save_total_cost}), avoiding unnecessary confusion.
+These graphs have been made using the \verb|EAPP_BREAK_EVEN_TESTING| macro along with the \verb|EAPP_BREAK_EVEN_CSV_OUTPUT|.
+\\
+
+Firstly, For the fixed $K$ (to $1$).
+The Figure \ref{fig:15m_threshold_k} and  is the \textit{low expectation} runtime, the ratio is met at around $30M$ as shown in the example equation.
+Figure \ref{fig:20m_threshold_k} is the \textit{high expectation} runtime, the ratio is met at around $40M$.
+To be convince of this, just replace the parameters of the equation \ref{eq:threshold_ratio}:
+\begin{align*}
+C_{compute} &\geq \frac{2 \cdot 20.000.000}{1} + \frac{2\cdot 20.000.000}{1.000.000}\\
+C_{compute} &\geq 40.000.000 + 40
+\end{align*}
+As for the last one, the Figure \ref{fig:50m_threshold_k} can be verified if we just replace the parameters:
+\begin{align*}
+C_{compute} &\geq \frac{2 \cdot 50.000.000}{1} + \frac{2\cdot 50.000.000}{1.000.000}\\
+C_{compute} &\geq 100.000.000 + 100
+\end{align*}
+\\
+
+Secondly for the overview of several possible $K$, 
 
 \subsubsection{Fixed K}
+First, we fix $K$ to 1 as if it is below that, the threshold cannot be reached and if higher, the threshold will simply be met sooner.
+Making this value the most interesting one to analyze.
+These k-fixed graphs also highlight the possible gap between the average, the maximum and the minimum recorded over the $1000$ test runs.  
+This contrast to the theoric bound by showing that even if the average is indeed meeting the threshold, an actual run might not be worth the excess computation.
+On the other hand, we now know that the model behaves as intended and is, most likely, reliable when conditions are met. 
+
 \begin{figure}[H]
-        \centering
-        \includegraphics[width=0.8\linewidth]{img/plots/15m_break_even_focus_run_1000000_k_1.png}
-        \caption{Threshold for 1 error over a 1.000.000 runs enclave assuming a 15M cost for load and save}
-        \label{fig:15m_threshold_k}
+    \centering
+    \includegraphics[width=0.8\linewidth]{img/plots/15m_break_even_focus_run_1000000_k_1.png}
+    \caption{Threshold for 1 error over a 1.000.000 runs enclave assuming a 15M cost for load and save}
+    \label{fig:15m_threshold_k}
 \end{figure}
 
 \begin{figure}[H]
-        \centering
-        \includegraphics[width=0.8\linewidth]{img/plots/20m_break_even_focus_run_1000000_k_1.png}
-        \caption{Threshold for 1 error over a 1.000.000 runs enclave assuming a 20M cost for load and save}
-        \label{fig:20m_threshold_k}
+    \centering
+    \includegraphics[width=0.8\linewidth]{img/plots/20m_break_even_focus_run_1000000_k_1.png}
+    \caption{Threshold for 1 error over a 1.000.000 runs enclave assuming a 20M cost for load and save}
+    \label{fig:20m_threshold_k}
 \end{figure}
 
 \begin{figure}[H]
-        \centering
-        \includegraphics[width=0.8\linewidth]{img/plots/50m_break_even_focus_run_1000000_k_1.png}
-        \caption{Threshold for 1 error over a 1.000.000 runs enclave assuming a 50M cost for load and save}
-        \label{fig:50m_threshold_k}
+    \centering
+    \includegraphics[width=0.8\linewidth]{img/plots/50m_break_even_focus_run_1000000_k_1.png}
+    \caption{Threshold for 1 error over a 1.000.000 runs enclave assuming a 50M cost for load and save}
+    \label{fig:50m_threshold_k}
 \end{figure}
+
+
+\subsubsection{K = $[0-9]$}
+Next we show the result, without the maximal and minimal bounds for the first $9$ errors.
+These ones highlight the plateau effect even when working with possibly more faults.
+As we explained above, the plateau appears because as we increase $C_{compute}$ to balance the other ones, the two sides equals out and both $C_{save}$ and $C_{load}$ become insignificant.
+Our intuition can also help us understand that effect as both $C_{checkpoint}$ and $C_{no_checkpoint}$ both use $C_{compute}$
+Nevertheless, as $K$ grows, the first slope gets steeper. 
+We can explain that with the effective cost of the save being shrinked by more faults, in both intuition and equation \ref{eq:threshold_ratio}.
+The the balance between the two effect gives some kind of saturation slop.
 
 \begin{figure}[H]
     \centering
@@ -1897,7 +1940,6 @@ The choice has been made to set them to equal values as $C_{load}$ holds less we
     \caption{Threshold ratio for k=$[0-9]$, over a 1.000.000 runs enclave assuming a 15M cost for load and save}
     \label{fig:15m_threshold_all_k}
 \end{figure}
-Note that this is represents our scenario.
 
 \begin{figure}[H]
     \centering
@@ -1915,26 +1957,26 @@ Note that this is represents our scenario.
 
 \subsection{Cycle cost per operation}
 \label{sub:cycle_cost}
-This part is a recap of each possible operation of the enclave during an iteration.
+This part is a recap of each possible main operation of the enclave during an iteration.
 
-\begin{table}
-\end{table}
-
-\begin{table}
-\end{table}
-
-\begin{table}
-\end{table}
+%\begin{table}
+%\end{table}
+\TODO{compute more precisely}
 
 
 \section{Cyber security}
+Now that the computation and data analysis is done, we will address the cyber security assumptions and requirements.
+
 \subsection{Security objectives}
+There are four different security objectives, stated in \ref{sec:threat-model}:
 \subsubsection{Confidentiality}
+The con
 \subsubsection{Integrity}
 \subsubsection{Atomicity}
 \subsubsection{Unclonability}
 
 \section{Discussion}
+\label{sec:Discussion}
 \TODO{threshold for avrage usefulness}
 
 mitigate tampering but host is not reliable so a malicious can stall.
