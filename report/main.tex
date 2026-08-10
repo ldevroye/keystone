@@ -1983,9 +1983,57 @@ The the balance between the two effect gives some kind of saturation slop.
 \label{sub:cycle_cost}
 This part is a recap of each possible main operation of the enclave during an iteration.
 
-%\begin{table}
-%\end{table}
-\TODO{compute more precisely}
+The values below are averaged over $1000$ runs.
+They exclude the cached material derivation from the per-part seal and unseal breakdown.
+
+\begin{table}[H]
+    \centering
+    \caption{Seal cycle cost breakdown}
+    \label{tab:seal_cycle_breakdown}
+    \begin{tabular}{|l|r|}
+        \hline
+        Component & Cycles \\
+        \hline
+        Key derivation & 21,873 \\
+        Seal preparation & 9,366 \\
+        AES-CTR encryption & 9,698,615 \\
+        CBC-MAC tag & 9,939,972 \\
+        Blob copy out & 16,089 \\
+        Total seal cost & 19,664,042 \\
+        \hline
+    \end{tabular}
+\end{table}
+
+\begin{table}[H]
+    \centering
+    \caption{Unseal cycle cost breakdown}
+    \label{tab:unseal_cycle_breakdown}
+    \begin{tabular}{|l|r|}
+        \hline
+        Component & Cycles \\
+        \hline
+        Blob copy in & 8,367 \\
+        CBC-MAC tag recomputation & 9,992,689 \\
+        Tag compare & 1,697 \\
+        AES-CTR decryption & 9,702,006 \\
+        Blob copy out & 13,409 \\
+        Total unseal cost & 19,718,168 \\
+        \hline
+    \end{tabular}
+\end{table}
+
+\begin{table}[H]
+    \centering
+    \caption{Other main operation costs}
+    \label{tab:cpmpute_cycle_costs}
+    \begin{tabular}{|l|r|}
+        \hline
+        Operation & Cycles \\
+        \hline
+        Computation & 275,100 \\
+        \hline
+    \end{tabular}
+\end{table}
 
 
 \section{Cyber security}

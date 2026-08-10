@@ -407,12 +407,21 @@ int run_cycle_breakdown_test()
     }
 
     print_metric("checkpoint_derive_cycles ", derive_cycles);
+    print_metric("checkpoint_seal_prep_cycles ", crypto_metrics.seal_prep_cycles);
+    print_metric("checkpoint_seal_encrypt_cycles ", crypto_metrics.seal_encrypt_cycles);
+    print_metric("checkpoint_seal_tag_cycles ", crypto_metrics.seal_tag_cycles);
+    print_metric("checkpoint_seal_copy_cycles ", crypto_metrics.seal_copy_cycles);
     uint64_t seal_parts[] = {
         crypto_metrics.seal_prep_cycles,
         crypto_metrics.seal_encrypt_cycles,
         crypto_metrics.seal_tag_cycles,
         crypto_metrics.seal_copy_cycles,
     };
+    print_metric("checkpoint_unseal_copy_in_cycles ", crypto_metrics.unseal_copy_in_cycles);
+    print_metric("checkpoint_unseal_tag_cycles ", crypto_metrics.unseal_tag_cycles);
+    print_metric("checkpoint_unseal_compare_cycles ", crypto_metrics.unseal_compare_cycles);
+    print_metric("checkpoint_unseal_decrypt_cycles ", crypto_metrics.unseal_decrypt_cycles);
+    print_metric("checkpoint_unseal_copy_out_cycles ", crypto_metrics.unseal_copy_out_cycles);
     uint64_t unseal_parts[] = {
         crypto_metrics.unseal_copy_in_cycles,
         crypto_metrics.unseal_tag_cycles,
