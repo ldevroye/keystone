@@ -1810,7 +1810,7 @@ The enclave is made to run in discrete time, for our calculations, we will use :
     \item $N$ the number of runs it is doing before the job is considered done
     \item $K$ the number of occuring fault during the enclave runs
     \item $errors$ a set of size $K$ of the indexes of the occuring faults
-    \item $C_{event}$ the total number of cycles used by the $event$ (save, load, compute, etc.) 
+    \item $C_{event}$ the total number of \textbf{cycles} used by the \textit{event} (save, load, compute, etc.) 
 \end{itemize}
 Having these variables states we can compute the theoretical cost of checkpointing compared to restartarting the enclave from scratch.
 A small nuance is that the $C_{save}$ and $C_{load}$ do not include the corresponding edge calls because of their assymetry.
@@ -2001,7 +2001,19 @@ The the balance between the two effect gives some kind of saturation slop.
 This part is a recap of each possible main operation of the enclave during an iteration.
 The values below are averaged over $1000$ runs, they inclued the material derivation as \textit{cached} from the sealing and unsealing and the data being sealed can be found in the Section \ref{subsub:data-struct}.
 We used the \verb|EAPP_CYCLE_BREAKDOWN_TESTING| macro to render these tables.
+\\
 
+However, even using a smoothing method to avoid outliers, QEMU is not as reliable as FireSim \cite{keystone-web} in terms of cycle usage.
+Having this in mind, we could not run FireSim because of the long setup it needs.
+In fact, it has a whole documentation over at : \href{https://chipyard.readthedocs.io/en/latest/simulation/fpga-accelerated-simulation/#firesim-sim-intro}{Chipyart documentation}.
+In order to use it, we would need to :
+\begin{itemize}
+    \item setup a FireSim Manager instance on Amazon EC2
+    \item deploy it to Amazon AWS FPGAs using FireSim
+    \item install the Chipyard repo onto it
+    \item use it as an external library in Chipyard
+\end{itemize}
+The following results must then be interpreted while keeping this limitation in mind.
 
 \begin{table}[H]
     \centering
@@ -2054,6 +2066,19 @@ We used the \verb|EAPP_CYCLE_BREAKDOWN_TESTING| macro to render these tables.
     \caption{compute costs}
 \end{table}
 
+\subsection{Data cost}
+\label{sub:data-cost}
+
+The benchmarked plaintext checkpoint has size $8208$ bytes, and the measured costs are $19.664.042$ cycles for sealing and $19.718.168$ cycles for unsealing. 
+Using the plaintext size as denominator gives the per-byte averages:
+\begin{align}
+    C_{\text{1\_byte\_seal}} &\approx \lceil\frac{19.664.042}{8208}\rceil \approx 2396 \\
+    C_{\text{1\_byte\_unseal}} &\approx \lceil\frac{19.718.168}{8208}\rceil \approx 2402 \\
+    C_{\text{1\_byte\_roundtrip}} &\approx 4798
+\end{align}
+
+\subsection*{Time cost}
+As for the \textit{data cost}, the time can be derived from the cycle cost.
 
 \section{Cyber security}
 Now that the computation and data analysis is done, we will address the cyber security assumptions and requirements.
@@ -2190,7 +2215,7 @@ examples/rewind/
 \srcattach{src/rewind/eapp/crypto.h}{examples/rewind/eapp/crypto.h}
 
 \subsection*{\texttt{eapp/common}}
-\label{file:crypto}
+\label{file:common}
 \srcattach{src/rewind/eapp/common.c}{examples/rewind/eapp/common.c}
 \srcattach{src/rewind/eapp/common.h}{examples/rewind/eapp/common.h}
 

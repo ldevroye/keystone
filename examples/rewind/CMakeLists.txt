@@ -26,16 +26,16 @@ set(HOST_MAX_RUN "10" CACHE STRING "optional override for host main loop bound b
 ##### logging #####
 set(HOST_LOGGING "1" CACHE STRING "optional override for host logging (0 or 1)")
 set(EAPP_LOGGING "1" CACHE STRING "optional override for enclave logging (0 or 1)")
-set(EAPP_BREAK_EVEN_CSV_OUTPUT "1" CACHE STRING "emit break-even benchmark points in CSV form (0 or 1)")
+set(EAPP_BREAK_EVEN_CSV_OUTPUT "0" CACHE STRING "emit break-even benchmark points in CSV form (0 or 1)")
 
 ############ testing macros ############
 # eapp
 set(EAPP_TESTING "1" CACHE STRING "enable enclave self-tests mode (0 or 1)")
-set(EAPP_BLOB_SIZE_TESTING "0" CACHE STRING "enable the blob size benchmark (0 or 1)")
-set(EAPP_AVG_FAULT_TESTING "0" CACHE STRING "enable the average fault test (0 or 1)")
-set(EAPP_ROUND_TRIP_TESTING "0" CACHE STRING "enable the round-trip test (0 or 1)")
+set(EAPP_BLOB_SIZE_TESTING "1" CACHE STRING "enable the blob size benchmark (0 or 1)")
+set(EAPP_AVG_FAULT_TESTING "1" CACHE STRING "enable the average fault test (0 or 1)")
+set(EAPP_ROUND_TRIP_TESTING "1" CACHE STRING "enable the round-trip test (0 or 1)")
 set(EAPP_CYCLE_BREAKDOWN_TESTING "1" CACHE STRING "enable the cycle breakdown benchmark (0 or 1)")
-set(EAPP_BREAK_EVEN_TESTING "0" CACHE STRING "enable the break-even benchmark (0 or 1)")
+set(EAPP_BREAK_EVEN_TESTING "1" CACHE STRING "enable the break-even benchmark (0 or 1)")
 
 # host
 set(HOST_TESTING "0" CACHE STRING "enable host-side analysis/tamper timing mode (0 or 1)")

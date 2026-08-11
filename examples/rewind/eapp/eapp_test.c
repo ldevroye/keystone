@@ -195,7 +195,7 @@ static int measure_checkpoint_cycle_breakdown_avg(uint64_t* derive_cycles,
                                                     uint64_t* compute_cycles,
                                                     struct checkpoint_crypto_metrics* crypto_metrics_out)
 {
-    const unsigned long avg_runs = 1000UL;
+    const unsigned long avg_runs = 100UL;
     uint64_t derive_sum = 0;
     uint64_t seal_sum = 0;
     uint64_t unseal_sum = 0;
