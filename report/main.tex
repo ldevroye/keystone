@@ -1052,41 +1052,38 @@ However, we address this in the future work section \ref{sub:back-complexity}.
 % Tests
 \section{Threat Model}
 \label{sec:threat-model}
-A threat model helps to clarify the hypothesis, the goals and the limitiations compared to the real, unsafe, world.
+A threat model helps to clarify the hypothesis, the goals and the limitiations compared to the real, unsafe, world. 
+To this extent, we will ground the thesis over a specififed one.
+\\  
 
-\subsection{Trusted}
-\begin{itemize}
-  \item Enclave code, runtime and memory access (Keystone TEE, RISC-V, PMP isolation)
-  \item Enclave-derived sealing keys (via \texttt{get\_sealing\_key}, bound to enclave measurement)
-\end{itemize}
+First, the trusted domain. 
+It consists of the enclave code, its runtime, and its memory access under Keystone, RISC-V, and PMP isolation. 
+It also includes enclave-derived sealing keys, obtained through \texttt{get\_sealing\_key}, because these keys are bound to the enclave measurement.
+\\
 
-\subsection{Adversarial}
-\begin{itemize}
-  \item Host / OS / everything outside the enclave
-  \item The channel carrying the sealed blob (host storage, OCALL buffer, any transport)
-  \item Physical access implied by power loss (\cite{sdrad, ARM-TrustZone-CortexM}), attacker can trigger crashes/power-cuts
-\end{itemize}
+Second, the adversarial domain. 
+This includes the \textbf{host}, the OS, and everything outside the enclave, with an exception for the \textit{SM}, \textit{RoT} and \textit{PMP entries} that run the said enclave. 
+It also includes the channel carrying the sealed blob, whether that channel is host storage, an OCALL buffer, or any other transport. 
+Finally, it includes physical disruption such as power loss \cite{sdrad, ARM-TrustZone-CortexM}, since an attacker may trigger crashes or power cuts.
+\\
 
-\subsection{Attacker Capabilities}
-\begin{itemize}
-  \item Can read/write/replay/corrupt any sealed blob stored on the host
-  \item Can trigger enclave stops (or even destroy) when incoming edge calls
-  \item Can crash power/execution at arbitrary points
-\end{itemize}
+Next, the attacker capabilities. 
+It can read, write, replay, or corrupt any sealed blob stored on the host. 
+It can also trigger enclave stops, or even destruction, when incoming edge calls arrive, and it can crash power or execution at arbitrary points.
+\\
 
-\subsection{Security Objectives}
-\begin{enumerate}
-  \item \textbf{Confidentiality}: checkpoint contents unreadable to host
-  \item \textbf{Integrity/authenticity}: tampered blob is detected, rejected and leaks no information (response time analysis) 
-  \item \textbf{Atomicity}: no undefined state from interrupted checkpoint writes
-  \item \textbf{Unclonability}: can't clone device from checkpoint data alone
-\end{enumerate}
+After that, the security objectives. 
+They are confidentiality, integrity and authenticity, atomicity, and unclonability. 
+Confidentiality requires the checkpoint contents to remain unreadable to the host. 
+Integrity and authenticity require that a tampered blob is detected and rejected without leaking information through response time analysis. 
+Atomicity requires that no undefined state can arise from interrupted checkpoint writes. 
+Unclonability requires that the device cannot be cloned from checkpoint data alone.
+\\
 
-\subsection{Accepted Limitations}
-\begin{itemize}
-  \item Replaying and rollback is out of scope. This is because the host is the only link to the outside world and is not to be trusted. 
-  \item Edge call manipulation such as enclave stall and destruction not in the scope for the same reason.
-\end{itemize}
+Finaly, the accepted limitations. 
+These are replaying and rollback are out of scope because the host is the only link to the outside world and cannot be trusted.
+Edge call manipulation, such as enclave stall or destruction, is also out of scope for the same reason.
+\\
 
 \subsection{Assumptions}
 The attacker may obtain arbitrary access to process (host) memory and may trigger run-time attacks that corrupt application state, but cannot modify code pages of the enclave under a W\(\oplus\)X policy \cite{sdrad, security-privacy}. 
@@ -1119,6 +1116,7 @@ All of these are used to produce the implementation of the rewind enclave mechan
 The files that are implemented and described can be found on the \github.
 Also note that the repository setup is described at the end of the \verb|README.md| (at the root of the repository itself).
 All of these files are also available in the Appendix \ref{chap:appendix}. 
+\\
 
 Implementing the rewind example is done in two different places, the \verb|eapp/| and \verb|host| subfolders.
 The eapp is, as shown is the Keystone Basics \ref{sub:basics}, the trusted part and would be considered a \textit{transient domain} \cite{sdrad}.
@@ -1685,10 +1683,16 @@ The \textbf{logs} produced can be found in the \verb|build-$PLATFORM$BITS/build.
 
 
 %%%%%%%%%%%%%%%%%%%%%%%% Experimental setup %%%%%%%%%%%%%%%%%%%%%%%%
-\chapter{Experimental Setup}
+\chapter{Experimental Setup and Evaluation}
 \label{chap:experimental_setup}
-The Rewind enclave is evaluated on its overhead computation cycles and data cost.
-In addition, the cyber security assumptions are being tested individualy. 
+This chapter measures the cost of rewind and the security effect of the recovery path.
+It measures checkpoint save cost, checkpoint load cost, ordinary compute cost, and checkpoint size.
+It also checks whether the implementation still satisfies confidentiality, integrity and authenticity, atomicity, and unclonability.
+These measurements answer the question of practicality because they show when checkpointing is cheaper than restarting from scratch.
+They also address the goals and objectives because they test whether the host can stay untrusted while the enclave still recovers safely.
+\\
+
+\section{Macros}
 The tests are being conducted using different macros that are all defined in the \verb|CMakeList.txt| following this structure:
 \begin{verbatim}
 ## Definition, the "some_value" can be left to ""
@@ -1720,7 +1724,7 @@ There are various ones, \textbf{three main categories} emerge:
     \item \textbf{Testing}, to enable/disable tests from the host/enclave. 
 \end{itemize}
 
-\section{Logging}
+\subsection{Logging}
 These macros are not to be confused with testing macros as they are independant from them.
 One could run the tests of the side with the logging of the enclave or all the tests with no logging (which wouldn't be very interesting). 
 \begin{itemize}
@@ -1729,25 +1733,25 @@ One could run the tests of the side with the logging of the enclave or all the t
     \item \verb|EAPP_BREAK_EVEN_CSV_OUTPUT|: output a csv format in order to produce graphs (\ref{sec:rt_analysis})
 \end{itemize}
 
-\section{Execution}
+\subsection{Execution}
 \begin{itemize}
     \item \verb|EAPP_RUNS|: sets the number of iteration the enclave does
     \item \verb|HOST_MAX_RUNS|: sets the maximum number of try before stopping
     \item \verb|FAULT_PERIOD|: sets the inverse of the chances to trigger a fault per call
     
 \end{itemize}
-\section{Testing}
+\subsection{Testing}
 Because the two parts are opaque to each others, tests must be implemented on both sides. 
 These macros enables (or disables) the tests in a branching way. 
 
-\subsection{Host-side}
+\subsubsection{Host-side}
 \begin{itemize}
     \item \verb|HOST_TESTING|: launches the host in testing mode, reduce outputs and run\\ \verb|ANALYSIS_RUNS| iterations to compute averages
     \item \verb|ANALYSIS_RUNS|: sets the number of runs for the analysis (host side)
     \item \verb|TEST_TAMPER_MODE|: set the mode of tampering test to do (none/bitflip/truncate/last-byte)
 \end{itemize}
 
-\subsection{Enclave-side}
+\subsubsection{Enclave-side}
 \begin{itemize}
     \item \verb|EAPP_TESTING|: launches the execution in testing mode, starts the test sequence
     \item \verb|FAULT_RANDOMIZE_SEED|: enable/disable random seed for the fault model
@@ -1764,45 +1768,33 @@ Or trying tests like \verb|TEST_TAMPER_MODE|=bitflip and not setting the \verb|H
 In order to better understand what is going on, it is recommended to enable both loggins macros.
 
 
-%\section{Test cases}
-%This section defines the test cases used to evaluate the checkpoint and rewind
-%mechanism and explains their relevance.
-%There are two parts: the \textit{Analysis} (\ref{sub:test-analysis}),
-%where we quantify execution costs and overhead, and the \textit{Cyber security}
-%(\ref{sub:test-cyber}), where we validate the threat model assumptions
-%and security objectives from \ref{sec:threat-model}.
+\section{Test definitions}
+This section defines the test metrics that we are lookg for to evaluate the checkpoint and rewind mechanism.
+There are two parts: the \textit{analysis}, where we quantify execution costs and overhead, and the \textit{cyber security}, where we validate the threat model assumptions and security objectives from \ref{sec:threat-model}.
+\\
 
+The metric that is in our main interest for the \textit{analysis} is the \textbf{cycle cost} taken for each of the main operation of the enclave.
+These main operations are: \textit{sealing} the checkpoint, \textit{unsealing} it and the \textit{computation} made by the enclave at each step.
+The goal is to find when does the use of rewinding exceed the costs of using it. 
+We also will compare the data cost per byte, for these operations to see what would it cost to be using other sizes for different payloads.
+\\
+The second metric used to compute this given cycle cost and the corresponding threshold to make the rewinding viable is the \textbf{Number of errors}.
+We will fix this number for a given run and check what is the gain of the rewind over starting from scratch.
+\\
+After that come the, previously stated, main operations. 
+A naive enclave would only do the \textit{computation} at each step but a Rewind is more complexe and cost more to operate.
+We thus need to fix a size for each of them to compare the costs and when they can balance out eachothers. 
+\\
 
-%\subsection{Analysis}
-%\label{sub:test-analysis}
-%We will make a \textit{static analysis} over the expected outcomes and a \textit{runtime analysis} to check the computation correctness.
-%Each test specifies:
-%\begin{itemize}
-    %\item the enclave workload and macros used setup
-    %\item the fault occurence rate
-    %\item the metrics recorded (latency, CPU cycles, memory overhead, final success rate when useful, etc.)
-%\end{itemize}
-
-%\subsection{Cyber security}
-%\label{sub:test-cyber}
-%Each test focuses on:
-%\begin{itemize}
-    %\item the attacker goal
-    %\item the security objective under evaluation (confidentiality,
-          %integrity, atomicity, unclonability)
-    %\item the behavior of the enclave (e.g., detection and rejection of
-          %tampered checkpoints)
-%\end{itemize}
-
-
-
-
-
+Now, for the \textit{cyber security}, we will assess that the security objects are, along with the requirements, respected and fulfilled.
 
 
 %%%%%%%%%%%%%%%%%%%%%%%% Results %%%%%%%%%%%%%%%%%%%%%%%%
-\chapter{Results and Discussion}
-In this chatper, we will discuss the the computation cost of checkpointing each iterations and the security assumptions and their limitations.
+\section{Results}
+This section interprets the measurements collected from the tests defined above.
+It derives the checkpointing cost model, compares the model with the runtime benchmarks.
+It also checks the security assumptions against the threat model and the stated objectives.
+\\
 
 \section{Static Analysis}
 The enclave is made to run in discrete time, for our calculations, we will use :
