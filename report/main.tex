@@ -474,9 +474,19 @@ These inherent limitations are that no system is full proof.
 
 
 \subsection{Background work}
-\TODO{related work that's already done, that we're basing ourselves of.}
-% papers
-\cite{sdrad,ARM-TrustZone-CortexM}
+The background work for this thesis is mainly built on Secure Domain Rewind and Discard.
+SDRaD introduces the idea of compartmentalized domains that can be rewound or discarded when an error occurs, so that faults do not necessarily force a full restart.
+That work is important here because it shows how rewind can be used not only as a recovery mechanism, but also as a way to contain faults and reduce the impact of denial-of-service style failures in multi-client systems \cite{sdrad}.
+\\
+
+The second line of work is secure intermittent computing, where a system checkpoints its state, stores it outside the volatile execution context, and restores it after an interruption.
+The TrustZone-based work on Cortex-M shows that this can be done securely by protecting checkpoint confidentiality, integrity, authenticity, state continuity, and freshness inside a TEE, while keeping the recovery path small enough to remain practical.
+It also confirms that a checkpoint utility can be implemented with moderate runtime overhead on an embedded platform \cite{ARM-TrustZone-CortexM}.
+\\
+
+This thesis takes those ideas and places them in a Keystone setting.
+Instead of intermittent execution on Cortex-M, the focus here is on opaque enclaves on RISC-V, with checkpointing, sealing, and recovery handled by the enclave and the security monitor.
+The goal is therefore not to restate the prior work, but to adapt its security and recovery principles to a different architecture and to measure whether rewind remains practical under that model.
 
 
 
@@ -2159,13 +2169,10 @@ As stated in \ref{sec:threat-model}, there are four security objectives that wil
 We will discuss of why they hold and what are the limitations.
 The claims can be checked using the corresponding macros in (Section \ref{chap:experimental_setup}).
 
-%\item \textbf{Confidentiality}: checkpoint contents unreadable to host
-%\item \textbf{Integrity/authenticity}: tampered blob is detected, rejected and leaks no information (response time analysis) 
-%\item \textbf{Atomicity}: no undefined state from interrupted checkpoint writes
-%\item \textbf{Unclonability}: can't clone device from checkpoint data alone
+
 \subsubsection{Confidentiality}
 Confidentiality means that the checkpoint is, at any time, opaque from the host. 
-An attacker can, indeed, not read the saved checkpoint because of the \verb|aes_encrypt_ctr()| function provided by Keystone.   
+An attacker can, indeed, not read the saved blob because of the \verb|aes_encrypt_ctr()| function provided by Keystone.   
 In our implementation, the rewind state to save is read from the stack, placed into a plain text checkpoint storage and then sealed using the encryption key derived from Keystone data sealing key (Section \verb|get_sealing_key()| \ref{sec:data-sealing}) and the iv (the checkpoint sequence).
 After that, a tag is done over the ciphertext using the authentification key to block anyone from tampering without notice.
 The resulting sealed checkpoint blob is then sent to the host along with the iv and the tag.
@@ -2251,7 +2258,7 @@ They focus on making the checkpoint policy more adaptable, the protection layer 
 The current implementation treats every enclave run as if it had the same level of urgency and the same recovery policy. 
 A natural follow-up would be to support mixed-criticality workloads, where the enclave can distinguish between essential work that must always be preserved and optional work that can be recomputed or discarded more aggressively.
 
-This would make the checkpoint policy more flexible. A high-criticality task could save state more often and use a stricter recovery path, while a lower-criticality task could accept larger intervals or even cheaper checkpoint protection. 
+This could make the checkpoint policy more flexible. A high-criticality task could save state more often and use a stricter recovery path, while a lower-criticality task could accept larger intervals or even cheaper checkpoint protection. 
 In that setting, the checkpoint interval would no longer be a single global parameter, but a policy that depends on the value of the task being protected.
 
 Such a design would also make the discussion on usefulness more realistic. 
@@ -2269,23 +2276,23 @@ This matters because the cryptographic cost appears directly in the checkpointin
 It would also improve the practicality of rewind for workloads with smaller compute cost, which are currently the least favorable case for the mechanism.
 
 Another possible improvement would be to separate the cryptographic policy from the checkpoint logic more clearly using hardware enforced cryptography for example or built-in more specialised schemes. 
-That would make it easier to compare several schemes under the same benchmark framework and to measure whether the gain is mostly coming from a better algorithm, a smaller state, or a better implementation choice.
+That could make it easier to compare several schemes under the same benchmark framework and to measure whether the gain is mostly coming from a better algorithm, a smaller state, or a better implementation choice.
 
 \subsection{More complex fault model}
 \label{sub:fault-model}
 The thesis currently assumes a relatively simple fault model, which is enough to show the basic behavior of rewind but not enough to describe every realistic failure pattern. 
 A stronger follow-up would be to study burst faults, correlated faults, and repeated faults on the same execution window, since those cases can change the usefulness of checkpointing quite dramatically.
 
-This would also let the model capture the difference between isolated failures and adversarial or unstable environments. 
+This ould also let the model capture the difference between isolated failures and adversarial or unstable environments. 
 If the faults are no longer independent, then the expected recomputation cost changes, the optimal checkpoint interval changes, and the threshold analysis becomes more difficult but also more representative of real deployments.
 
-From an implementation point of view, a richer fault model would also allow the enclave to react differently depending on the failure history. 
+From an implementation point of view, a richer fault model could also allow the enclave to react differently depending on the failure history. 
 For example, the system could decide to shorten the checkpoint interval after repeated faults or to switch to a degraded recovery mode when the fault rate becomes too high.
 
 \subsection{Enclave Complexity on backup}
 \label{sub:back-complexity}
 The current backup path is intentionally simple: it restores the enclave state and resumes execution without introducing a richer failure-management policy. 
-A further step would be to study how the complexity of the backup enclave affects both security and performance.
+A further step could be to study how the complexity of the backup enclave affects both security and performance.
 
 This is important because the backup path is part of the trusted computing base. 
 The more logic it contains, the more careful one must be about correctness, memory usage, and attack surface. 
