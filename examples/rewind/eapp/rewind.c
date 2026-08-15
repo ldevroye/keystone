@@ -15,6 +15,6 @@ int main()
     EAPP_RETURN(run_eapp_tests());
 #else
     struct fault_model fault_model=get_default_model();
-    EAPP_RETURN(run_enclave(EAPP_RUNS, &fault_model));
+    EAPP_RETURN(run_enclave(EAPP_RUNS, &fault_model, CHECKPOINT_INTERVAL));
 #endif
 }

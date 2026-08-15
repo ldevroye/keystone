@@ -1899,6 +1899,77 @@ C_{compute} &\geq 30.000.000 + 30
 \end{align*}
 This result is confirmed by the runtime analysis graphs (and underlying benchmarks) in Section \ref{sub:threshold}.
 
+\subsection{Checkpoint interval}
+Another parameter that we can set is the \textit{checkpoint interval (X)} . This is the number of step the enclave does between each saving.
+The previous equations doesn't account for it and it is assumed to be $1$, ie. each step saves the whole payload. 
+Now taking this in the $C_{checkpoint}$ becomes:
+\begin{equation}
+C_{checkpoint}(X) = \frac{N}{X} \cdot C_{save} \;+\; C_{compute} \cdot N \;+\; C_{load} \cdot K \;+\; C_{compute} \cdot K \cdot \lceil \frac{X}{2} \rceil
+\label{eq:checkpoint_interval_cost}
+\end{equation}
+What changed is that the $X$ factor is below the first term, cutting the threshold drastically and a new term appeard, it is the estimated cost or reloading.
+This estimation is the number of reload needs to recompute, in average, half of the checkpoint interval. This is because the fault can happen anywhere in the range $[0-X]$ uniformly.
+Thus giving an estimated of loss of $\lceil \frac{X}{2} \rceil$ per crash.
+The optimal interval balances these two terms.
+Taking the derivative of $C_{checkpoint}(X)$ with respect to $X$ and setting
+it to zero yields:
+
+\begin{equation}
+\frac{dC}{dX} = -\frac{N \cdot C_{save}}{X^2} + \frac{C_{compute} \cdot K}{2} = 0
+\label{eq:derivative_zero}
+\end{equation}
+
+Isolating the term in $X^2$ gives:
+
+\begin{equation}
+\frac{N \cdot C_{save}}{X^2} = \frac{C_{compute} \cdot K}{2}
+\label{eq:derivative_isolated}
+\end{equation}
+
+Cross-multiplying and solving for $X^2$:
+
+\begin{equation}
+X^2 = \frac{2 N \cdot C_{save}}{C_{compute} \cdot K}
+\label{eq:x_squared}
+\end{equation}
+
+Taking the square root of both sides gives the closed-form optimal
+checkpoint interval:
+
+\begin{equation}
+X^* = \lceil \sqrt{\frac{2 N \cdot C_{save}}{C_{compute} \cdot K}} \rceil
+\label{eq:optimal_interval}
+\end{equation}
+
+This result is structurally equivalent to the classical Young/Daly optimal
+checkpoint interval formula \cite{DALY}, adapted
+here to a discrete fault-count model $K$ rather than a continuous
+failures rate. Equation\ref{eq:optimal_interval}
+shows that $X^*$ grows with the square root of the save cost $C_{save}$ and
+the total workload $N$, while it shrinks as the fault count $K$ or the
+compute cost $C_{compute}$ increases, reflecting the intuition that more
+frequent or more costly faults justify more frequent checkpointing.
+
+The resulting value for our implementation is:
+
+\begin{equation}
+X^*(C_{compute}) = \lceil \sqrt{\frac{2 N \cdot C_{save}}{K \cdot C_{compute}}} \rceil 
+= \lceil \sqrt{\frac{2 \cdot (1.000.000)\cdot(15.000.000)}{1 \cdot C_{compute}}} \rceil
+= \lceil \sqrt{\frac{3\times 10^{13}}{C_{compute}}} \rceil
+\label{eq:optimal_interval_vs_ccompute}
+\end{equation}
+Showing that as the computing cost rises, the interval can be smaller in order to for the costs to be break even with the gains.
+Now, we can try to check that for our implementation with $C_{compute} = 200.000$
+
+\begin{align}
+X^* &= \lceil \sqrt{\frac{2 N \cdot C_{save}}{C_{compute} \cdot K}} \rceil\\
+&=  \lceil\sqrt{\frac{2 \cdot (1.000.000) \cdot (15.000.000)}{(200.000)\cdot 1}} \rceil\\
+&= \lceil \sqrt{1.5 \times 10^{8}} \rceil\\
+&\approx \lceil 12.247 \rceil\\
+&= 13
+\end{align}
+
+
 \section{Runtime Analysis}
 \label{sec:rt_analysis}
 Now that the theory is established, we will focus on the runtime benchmarks and their resulting graphs.
@@ -1912,7 +1983,7 @@ The choice has been made to set them to equal values as $C_{load}$ holds less we
 Moreover, the compute cost measured in our implementation is contained within $[60k-200k]$.
 It is a simple addition, variable switch and an increment and doesn't represent a real life specific application.
 The main application being very theoric, we compare different values in order to avoid making false assumptions of the implementation of a specific task in the enclave.
-We will discuss the relevance of these posssible values of the three different costs in the Section \ref{sec:Discussion}.
+We will discuss the relevance of these posssible values of the three different costs in the Section \ref{chap:discussion}.
 
 
 \subsection{Computation threshold}
@@ -2136,23 +2207,23 @@ Otherwise, the keys won't correspond and the attacker will not be able to read o
 In addition to that, there is no point in time where the plaintext is exposed.
 We can thus safely rely on Keystone data sealing to make the sealed checkpoint unusable for someone that is not the enclave EAPP.
 
+
+%%%%%%%%%%%%%%%%%%%%%%%% Discussion & Future work %%%%%%%%%%%%%%%%%%%%%%%%
+\chapter{Discussion and Future work}
+\label{chap:discussion}
+
 \section{Discussion}
-\label{sec:Discussion}
 great, better (less computation) crypto scheme, how many runs, still useful in practice in case of a full stop of several days for examples
 \TODO{time regarding}
 \TODO{threat is contained but host is unreliable}
 
 
-%%%%%%%%%%%%%%%%%%%%%%%% Future Work %%%%%%%%%%%%%%%%%%%%%%%%
 \section{Future Work}
 
 \subsection{Mixed criticality}
-
 \subsection{Modern lightweight cryptoscheme}
-
 \subsection{More complex fault model}
 \label{sub:fault-model}
-
 \subsection{Enclave Complexity on backup}
 \label{sub:back-complexity}
 

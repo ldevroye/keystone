@@ -9,3 +9,4 @@ riscv32/
 .vscode/*
 !report/build/
 scripts/rewind_metric/
+*copy*

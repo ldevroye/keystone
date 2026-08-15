@@ -21,6 +21,7 @@ set(FAULT_RANDOMIZE_SEED "1" CACHE STRING "optional override for FAULT_RANDOMIZE
 set(FAULT_SEED "" CACHE STRING "optional override for SEED macro (example: 0x6b656973746f6e68ULL)")
 set(EAPP_RUNS "50" CACHE STRING "optional override for the eapp main loop bound (example: 50)")
 set(HOST_MAX_RUN "10" CACHE STRING "optional override for host main loop bound before stopping execution (example: 10)")
+set(CHECKPOINT_INTERVAL "1" CACHE STRING "optional override for the checkpoint save interval (example: 1)")
 
 
 ##### logging #####
@@ -30,10 +31,10 @@ set(EAPP_BREAK_EVEN_CSV_OUTPUT "0" CACHE STRING "emit break-even benchmark point
 
 ############ testing macros ############
 # eapp
-set(EAPP_TESTING "1" CACHE STRING "enable enclave self-tests mode (0 or 1)")
-set(EAPP_BLOB_SIZE_TESTING "1" CACHE STRING "enable the blob size benchmark (0 or 1)")
-set(EAPP_AVG_FAULT_TESTING "1" CACHE STRING "enable the average fault test (0 or 1)")
-set(EAPP_ROUND_TRIP_TESTING "1" CACHE STRING "enable the round-trip test (0 or 1)")
+set(EAPP_TESTING "0" CACHE STRING "enable enclave self-tests mode (0 or 1)")
+set(EAPP_BLOB_SIZE_TESTING "0" CACHE STRING "enable the blob size benchmark (0 or 1)")
+set(EAPP_AVG_FAULT_TESTING "0" CACHE STRING "enable the average fault test (0 or 1)")
+set(EAPP_ROUND_TRIP_TESTING "0" CACHE STRING "enable the round-trip test (0 or 1)")
 set(EAPP_CYCLE_BREAKDOWN_TESTING "1" CACHE STRING "enable the cycle breakdown benchmark (0 or 1)")
 set(EAPP_BREAK_EVEN_TESTING "1" CACHE STRING "enable the break-even benchmark (0 or 1)")
 
@@ -69,6 +70,10 @@ endif()
 
 if(NOT "${EAPP_RUNS}" STREQUAL "")
   target_compile_definitions(${eapp_bin} PRIVATE EAPP_RUNS=${EAPP_RUNS})
+endif()
+
+if(NOT "${CHECKPOINT_INTERVAL}" STREQUAL "")
+  target_compile_definitions(${eapp_bin} PRIVATE CHECKPOINT_INTERVAL=${CHECKPOINT_INTERVAL})
 endif()
 
 if(NOT "${EAPP_LOGGING}" STREQUAL "")
@@ -169,6 +174,10 @@ endif()
 
 if(NOT "${EAPP_RUNS}" STREQUAL "")
   target_compile_definitions(${host_bin} PRIVATE EAPP_RUNS=${EAPP_RUNS})
+endif()
+
+if(NOT "${CHECKPOINT_INTERVAL}" STREQUAL "")
+  target_compile_definitions(${host_bin} PRIVATE CHECKPOINT_INTERVAL=${CHECKPOINT_INTERVAL})
 endif()
 
 

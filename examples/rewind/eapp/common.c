@@ -197,7 +197,7 @@ void computation()
     state->counter++;
 };
 
-int test_run_enclave(unsigned long runs, struct fault_model* fault_model, int return_on_fault, int checkpoint_enabled, int resume_enabled, int fault_enabled)
+int test_run_enclave(unsigned long runs, struct fault_model* fault_model, int return_on_fault, int checkpoint_enabled, int resume_enabled, int fault_enabled, int checkpoint_interval)
 {
     struct rewind_state state = {0, 1, 0}; // fibonacci sequence init
 
@@ -242,7 +242,7 @@ int test_run_enclave(unsigned long runs, struct fault_model* fault_model, int re
 
         computation();
 
-        if (checkpoint_enabled)
+        if (checkpoint_enabled && checkpoint_interval > 0 && (state.counter % checkpoint_interval) == 0)
         {
             if (save_checkpoint(1) != 0)
             {
@@ -256,11 +256,11 @@ int test_run_enclave(unsigned long runs, struct fault_model* fault_model, int re
     return 0;
 }
 
-int run_enclave(unsigned long runs, struct fault_model* fault_model)
+int run_enclave(unsigned long runs, struct fault_model* fault_model, int checkpoint_interval)
 {   
     int return_on_fault=1;
     int checkpoint_enabled=1;
     int resume_enabled=1;
     int fault_enabled=1;
-    return test_run_enclave(runs, fault_model, return_on_fault, checkpoint_enabled, resume_enabled, fault_enabled);
+    return test_run_enclave(runs, fault_model, return_on_fault, checkpoint_enabled, resume_enabled, fault_enabled, checkpoint_interval);
 }

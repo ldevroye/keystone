@@ -21,6 +21,10 @@ using namespace std;
 #define EAPP_RUNS 50
 #endif
 
+#ifndef CHECKPOINT_INTERVAL
+#define CHECKPOINT_INTERVAL 1
+#endif
+
 #ifndef PERIOD
 #define PERIOD 30ULL
 #endif
@@ -114,6 +118,7 @@ inline void print_test_parameters()
          "\thost_max_runs=%d\n"
          "\tanalysis_runs=%d\n"
          "\teapp_runs=%s\n"
+         "\tcheckpoint_interval=%s\n"
          "\tfault_period=%s\n"
          "\tfault_randomize_seed=%s\n"
          "\tfault_seed=%s\n"
@@ -134,6 +139,7 @@ inline void print_test_parameters()
                 MAX_RUNS,
                 HOST_TESTING ? ANALYSIS_RUNS : 1,
                 STRINGIFY(EAPP_RUNS),
+                STRINGIFY(CHECKPOINT_INTERVAL),
                 STRINGIFY(PERIOD),
                 STRINGIFY(FAULT_RANDOMIZE_SEED),
                 STRINGIFY(SEED),
