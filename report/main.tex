@@ -2281,13 +2281,15 @@ That could make it easier to compare several schemes under the same benchmark fr
 \subsection{More complex fault model}
 \label{sub:fault-model}
 The thesis currently assumes a relatively simple fault model, which is enough to show the basic behavior of rewind but not enough to describe every realistic failure pattern. 
-A stronger follow-up would be to study burst faults, correlated faults, and repeated faults on the same execution window, since those cases can change the usefulness of checkpointing quite dramatically.
+A stronger follow-up would be to study burst faults, correlated faults, and repeated faults on the same execution window, since those cases can change the usefulness of checkpointing quite dramatically. 
 
 This ould also let the model capture the difference between isolated failures and adversarial or unstable environments. 
 If the faults are no longer independent, then the expected recomputation cost changes, the optimal checkpoint interval changes, and the threshold analysis becomes more difficult but also more representative of real deployments.
 
 From an implementation point of view, a richer fault model could also allow the enclave to react differently depending on the failure history. 
 For example, the system could decide to shorten the checkpoint interval after repeated faults or to switch to a degraded recovery mode when the fault rate becomes too high.
+
+A strong fault model could enable to produce deeper researches and more relevant results to analyze. 
 
 \subsection{Enclave Complexity on backup}
 \label{sub:back-complexity}
@@ -2306,7 +2308,22 @@ Studying that tradeoff would clarify how far the design can scale (up or down) b
 
 %%%%%%%%%%%%%%%%%%%%%%%% Conclusion %%%%%%%%%%%%%%%%%%%%%%%%
 \chapter{Conclusion}
-\TODO{conclusion}
+This thesis asked whether rewind on RISC-V enclaves in an untrusted environment is practical and can be linked to the base papers \cite{sdrad,ARM-TrustZone-CortexM}.
+The answer is that it can bef  practical, but only under a narrow set of conditions where the checkpoint cost is justified by enough useful execution between faults.
+
+To support that answer, we combined a background study on SDRaD, secure intermittent computing, Keystone, and TrustZone-style checkpointing with an implementation of checkpoint and recovery inside a Keystone-based enclave.
+The resulting design shows that the enclave can preserve state outside the normal execution flow while keeping the recovery mechanism small enough to remain meaningful as a security boundary.
+
+The experimental analysis then showed that the cost model is dominated by checkpointing overhead and by the tradeoff between saving more often and recomputing more after a fault.
+The break-even threshold and the checkpoint interval therefore matter more than a single fixed execution cost, because they determine whether rewind actually saves work in practice.
+Furthermore, even under sub-optimal settings, rewinding could find some use for the time cost. In a non automated system that needs constant supervision for example.  
+
+In addition, we saw that the security assumptions are not optional details.
+The host may be untrusted, but the sealing key, the enclave boundary, and the restore path must remain trustworthy for the mechanism to remain sound.
+This makes rewind a useful recovery technique for long-running protected workloads, but not a universal solution for every enclave or fault pattern.
+
+The main contribution of this work is therefore not that rewind always wins, but that it can be analyzed, implemented, and justified in a concrete Keystone setting.
+That result also points directly to the next steps of the thesis, especially better policies, lighter protection schemes, and richer fault models for analysis.
 
 
 \printbibliography
