@@ -488,22 +488,18 @@ These inherent limitations are that no system is full proof.
 %% theoretical assumptions
 Now that everything is, roughly speaking, well defined. 
 Although the whole domain is very interesting and always needs specific studies on various topics, it needs to be narrowed down in order to suit a Master thesis.
-\\
 
 First cut is the type of \textit{redundancy}. 
 For the purpose of the research, the tests will be based on the \textit{timed} redundancy method that is \textit{rewinding} agains't no redundancy. 
 This allows to measure the viability and the relevance of the work done. 
-\\
 
 Second cut is the type of systems that needs to be modeled. 
 Our focus will be \textit{one level} criticality system, as they are great will reflect an encalve that has one single job.
 There could be extended work on several enclave levels that have a different saving rates. Making it mixed criticals enclaves of a bigger system.
-\\
 
 Third cut is the type of faults. 
 As diving in any type of fault could be a thesis in itself, the faults will be reviewed only for what they are and not necessarily for their cause. 
 Thus, \textit{all three types} will be looked upon.
-\\
 
 Next cut is the channel that will be use. 
 In other terms, \textit{hardware} and \textit{software}. 
@@ -512,7 +508,6 @@ The focus will not only, at least initially, be on one of them but rather on \te
 For example, Enclaves that need restricted access and create a waterfall of complexity in the design and implementation has on impact on both hardware and software. 
 To the extent, we will base our work on \textit{Keystone} that provides a platform to emulate a RISC-V processor with enclaves and cryptographic soundness using hardware (PMP) on a TEE. 
 (\cite{keystone-repo, keystone-web, keystone-docs}), This will be detailed in the corresponding Chapter \ref{chap:Keystone}.
-\\
 
 Final cut is about the \textit{cybersecurity} perspective. 
 As the industry around this domain is mostly critical (aviation, automobile, space or even medical), there is a high risk with someone getting access to something they shouldn't have. Considering that, we must ensure that the faults occurring, possibly from a malicious source, does \textit{not break the system nor give informations} about it. 
@@ -1031,7 +1026,6 @@ The goal is to obtain domains that can be checkpointed and the data that has bee
 The domains discussed here are the ones from the "Rewind $\&$ Discard: Improving Software Resilience using Isolated Domains" \cite{sdrad}.
 We can make an easy parallel between enclaves and domains as they are executed in an isolated execution context with controlled memory (\ref{sub:pmp}) from the outer, untrusted, world.
 The SM (\ref{sub:sm}) is an enclave factory and provides them with, as previously mentionned, controlled memory.
-\\
 
 % data sealing
 Furthermore, several enclaves of the same binary (compiled source file) can be initialized. 
@@ -1039,7 +1033,6 @@ This is important for the key generation of an enclave (\ref{sec:data-sealing}).
 In the case of a fault occuring in an enclave, the host can see the return code of the enclave and ask for the SM to create another instance of that same enclave (using PMP entries).
 The two instances will (as the key generation is determistic \cite{keystone-docs, review-keystone}) have the same resulting sealing key.
 This is true if we consider the identifier to be the same for both, as it is implemented in the binary of the enclave's eapp, the statement is supposedly satisfied.
-\\
 
 % data sealing & edge calls
 For the checkpointing scheme, the enclave use the edge calls (\ref{sub:edge-calls}) already implemented in keystone. 
@@ -1047,14 +1040,12 @@ The checkpointed data is sent and retrieved (to and from the host's memory space
 To ensure that the data isn't tampered, there is a layer on top of Keystone's encryption scheme.
 The layer adds a tag and an Initialisation Vector (IV) for the enclave to check if the unsealed data corresponds to the sealed one.
 Only the last checkpoint is saved.
-\\
 
 \TODO{cite papers}
 Finaly, some rewind models can have modified (often degraded) version in case of a discard. 
 This is done to prevent attacks using the computation power and overloading a server by making it fail a task idefinitly for example. 
 In this project, there is only one binary source (the compile code) and it doesn't implement any fault assessment, the enclave behaves as if the fault caused a fatal crash and stops immediatly, returning an error.
 However, we address this in the future work section \ref{sub:back-complexity}.
-\\
 
 % Fault model
 % Tests
@@ -1067,18 +1058,15 @@ To this extent, we will ground the thesis over a specififed one.
 First, the trusted domain. 
 It consists of the enclave code, its runtime, and its memory access under Keystone, RISC-V, and PMP isolation. 
 It also includes enclave-derived sealing keys, obtained through \texttt{get\_sealing\_key}, because these keys are bound to the enclave measurement.
-\\
 
 Second, the adversarial domain. 
 This includes the \textbf{host}, the OS, and everything outside the enclave, with an exception for the \textit{SM}, \textit{RoT} and \textit{PMP entries} that run the said enclave. 
 It also includes the channel carrying the sealed blob, whether that channel is host storage, an OCALL buffer, or any other transport. 
 Finally, it includes physical disruption such as power loss \cite{sdrad, ARM-TrustZone-CortexM}, since an attacker may trigger crashes or power cuts.
-\\
 
 Next, the attacker capabilities. 
 It can read, write, replay, or corrupt any sealed blob stored on the host. 
 It can also trigger enclave stops, or even destruction, when incoming edge calls arrive, and it can crash power or execution at arbitrary points.
-\\
 
 After that, the security objectives. 
 They are confidentiality, integrity and authenticity, atomicity, and unclonability. 
@@ -1086,23 +1074,19 @@ Confidentiality requires the checkpoint contents to remain unreadable to the hos
 Integrity and authenticity require that a tampered blob is detected and rejected without leaking information through response time analysis. 
 Atomicity requires that no undefined state can arise from interrupted checkpoint writes. 
 Unclonability requires that the device cannot be cloned from checkpoint data alone.
-\\
 
 Finaly, the accepted limitations. 
 These are replaying and rollback are out of scope because the host is the only link to the outside world and cannot be trusted.
 Edge call manipulation, such as enclave stall or destruction, is also out of scope for the same reason.
-\\
 
 \subsection{Assumptions}
 The attacker may obtain arbitrary access to process (host) memory and may trigger run-time attacks that corrupt application state, but cannot modify code pages of the enclave under a W\(\oplus\)X policy \cite{sdrad, security-privacy}. 
 The attacker is also assumed to detect or exploit software-level vulnerabilities, while transient execution attacks, hardware-level fault injection, and other hardware or firmware-level attacks are out of scope and assumed to be covered by the Keystone security implementation. 
 In the Keystone setting, we additionally assume the enclave isolation and the underlying secure world mechanisms protect enclave code and secrets against direct software manipulation, and that the host is not trusted with enclave state recovery details.
-\\
 
 We further assume that the checkpointing and rewind mechanism operates securely, that is: a state external to the protected domain may be compromised, but the protected recovery boundary must remain trustworthy. 
 For the intermittent-device context, the checkpointed state may be exposed to physical disruption such as power loss or tampering with external storage.
 The enclave only restores the checkpoint on restart and does not base its execution on the sealed checkpoint it sent unless there is a fault and thus a, possibly corrupted, rewind.
-\\
 
 Enclave execution is assumed deterministic given identical entry state (no host-controlled inputs, per Attacker Capabilities). Under this assumption, IV/seq reuse acrosscrash-and-restart is safe: identical plaintext re-encrypted under the same IV leaks nothing.
 This safety does not hold if the enclave itself introduces non-determinism (uninitializedmemory, internal RNG/timer reads, etc.) before the point of divergence from a prior checkpoint\_seq.
@@ -1110,7 +1094,6 @@ This safety does not hold if the enclave itself introduces non-determinism (unin
 \subsection{Requirements}
 The system must allow the application to continue operation after a detected fault or attack by restoring a trusted state and resuming execution from a safe point. 
 The recovery mechanism must preserve memory integrity after rewind, and isolation must ensure that faults in one compartment do not compromise other protected compartments or the logic responsible for transitions and recovery.
-\\
 
 An enclave state must remain protected across enclave transitions, that recovery metadata must be authenticated, and that the host must not be able to forge or tamper with a checkpoint without detection.
 
@@ -1131,13 +1114,11 @@ The eapp is, as shown is the Keystone Basics \ref{sub:basics}, the trusted part 
 A transient domain can exit (abnormally or not), it doesn't retain data upon exiting and is closed from the outer world (in both writing and reading).
 In comparison, the host would be considered a \textit{persistent domain} as it keeps the enclave data (the sealed checkpoint), it cannot look into an enclave's memory region (except for the shared one given by the SM).
 However, the host is \textbf{not} trusted in itself.
-\\
 
 To address this security issue, the checkpoint is sealed (using the sealing key provided by the SM) and uses a tag. 
 This ensure that the host can neither read it or tamper with it.
 Upon unsealing a the checkpoint, the enclave checks its tag so see if it fits the data. 
 If not, the  data is discarded and the enclave restarts the computation from the beginning.
-\\
 
 The discard and rewind is done by asking the SM to destroy the enclave, free the PMP entry and then allocate a new entry on the the same binary to create the rewinded version of the enclave.
 This new enclave's instance will ask the host (using and edge call) for any saved, sealed, checkpoint. 
@@ -1246,7 +1227,7 @@ This is bounded by Keystone structure and is, as noted in the threat model \ref{
 One could implement a direct call from the enclave to the SM to external safe memory with, for example, table pages protected by outside PMP entry or another "data enclave" that has a direct communication channel with the "runtime" one.
 The problem in our scenario is that the host is the only link to the outside world and is, by definition, also not to be trusted.
 This limitation being addressed, the saved checkpoint must be sealed and must be checked in order to not introduce unsafe data into the enclave's memory.
-\\
+
 
 \subsubsection{Host-side}
 \label{subsub:checkpoint-host}
@@ -1746,6 +1727,7 @@ One could run the tests of the side with the logging of the enclave or all the t
     \item \verb|EAPP_RUNS|: sets the number of iteration the enclave does
     \item \verb|HOST_MAX_RUNS|: sets the maximum number of try before stopping
     \item \verb|FAULT_PERIOD|: sets the inverse of the chances to trigger a fault per call
+    \item \verb|CHECKPOINT_INTERVAL|: sets the period the checkpointing, ie. the number of steps to do inbetween saves
     
 \end{itemize}
 \subsection{Testing}
@@ -1785,10 +1767,10 @@ The metric that is in our main interest for the \textit{analysis} is the \textbf
 These main operations are: \textit{sealing} the checkpoint, \textit{unsealing} it and the \textit{computation} made by the enclave at each step.
 The goal is to find when does the use of rewinding exceed the costs of using it. 
 We also will compare the data cost per byte, for these operations to see what would it cost to be using other sizes for different payloads.
-\\
+
 The second metric used to compute this given cycle cost and the corresponding threshold to make the rewinding viable is the \textbf{Number of errors}.
 We will fix this number for a given run and check what is the gain of the rewind over starting from scratch.
-\\
+
 After that come the, previously stated, main operations. 
 A naive enclave would only do the \textit{computation} at each step but a Rewind is more complexe and cost more to operate.
 We thus need to fix a size for each of them to compare the costs and when they can balance out eachothers. 
@@ -1940,34 +1922,32 @@ checkpoint interval:
 X^* = \lceil \sqrt{\frac{2 N \cdot C_{save}}{C_{compute} \cdot K}} \rceil
 \label{eq:optimal_interval}
 \end{equation}
-
 This result is structurally equivalent to the classical Young/Daly optimal
 checkpoint interval formula \cite{DALY}, adapted
 here to a discrete fault-count model $K$ rather than a continuous
-failures rate. Equation\ref{eq:optimal_interval}
+failures rate. Equation \ref{eq:optimal_interval}
 shows that $X^*$ grows with the square root of the save cost $C_{save}$ and
 the total workload $N$, while it shrinks as the fault count $K$ or the
 compute cost $C_{compute}$ increases, reflecting the intuition that more
 frequent or more costly faults justify more frequent checkpointing.
+We can also note that, compared to the other equations, the number of runs done has a great impact on the resulting optimum.
+
 
 The resulting value for our implementation is:
-
-\begin{equation}
-X^*(C_{compute}) = \lceil \sqrt{\frac{2 N \cdot C_{save}}{K \cdot C_{compute}}} \rceil 
-= \lceil \sqrt{\frac{2 \cdot (1.000.000)\cdot(15.000.000)}{1 \cdot C_{compute}}} \rceil
-= \lceil \sqrt{\frac{3\times 10^{13}}{C_{compute}}} \rceil
+\begin{align*}
+X^*(C_{compute}) &= \lceil \sqrt{\frac{2 N \cdot C_{save}}{K \cdot C_{compute}}} \rceil \\
+&= \lceil \sqrt{\frac{2 \cdot (1.000.000)\cdot(15.000.000)}{1 \cdot C_{compute}}} \rceil\\
+&= \lceil \sqrt{\frac{3\times 10^{13}}{C_{compute}}} \rceil
 \label{eq:optimal_interval_vs_ccompute}
-\end{equation}
+\end{align*}
 Showing that as the computing cost rises, the interval can be smaller in order to for the costs to be break even with the gains.
 Now, we can try to check that for our implementation with $C_{compute} = 200.000$
 
-\begin{align}
-X^* &= \lceil \sqrt{\frac{2 N \cdot C_{save}}{C_{compute} \cdot K}} \rceil\\
-&=  \lceil\sqrt{\frac{2 \cdot (1.000.000) \cdot (15.000.000)}{(200.000)\cdot 1}} \rceil\\
-&= \lceil \sqrt{1.5 \times 10^{8}} \rceil\\
+\begin{align*}
+X^*(C_{compute}) &= \lceil \sqrt{\frac{3\times 10^{13}}{200.000}} \rceil\\
 &\approx \lceil 12.247 \rceil\\
 &= 13
-\end{align}
+\end{align*}
 
 
 \section{Runtime Analysis}
@@ -1978,13 +1958,11 @@ The following subparts are constitued of three graphs, these graphs are all repr
 Our current implementation save and load costs are ranging from $15.000.000$ and $20.000.000$ (\ref{sub:cycle_cost}), this is the value given to the first two of each graphs.
 Third one has a set cost of $50.000.000$ for both.
 The choice has been made to set them to equal values as $C_{load}$ holds less weight for our purpose of long running tasks (\ref{eq:no_save_total_cost}), avoiding unnecessary confusion.
-\\
 
 Moreover, the compute cost measured in our implementation is contained within $[60k-200k]$.
 It is a simple addition, variable switch and an increment and doesn't represent a real life specific application.
 The main application being very theoric, we compare different values in order to avoid making false assumptions of the implementation of a specific task in the enclave.
 We will discuss the relevance of these posssible values of the three different costs in the Section \ref{chap:discussion}.
-
 
 \subsection{Computation threshold}
 \label{sub:threshold}
@@ -2014,6 +1992,11 @@ Finaly, for $K=x$ the threshold is $\frac{R}{x}$.
 This could lead us to think that the usefulness of rewinding is not growing along with the number of faults. 
 This is only if we don't look at the scaling of the functions. 
 Taking the edge cases of the Figure \ref{fig:20m_threshold_all_k}, for $k=1$ vs $K=9$ we can see that when the ratio is only halfway met for the minimal case, it is already close to $3$ for the maximum one.
+
+After that, we measure the impact of reducing the period of saving the checkpoint.
+As shown in the equations, adding some space between checkpoints saves a lot of time, however, making it too big gives negative results as the recovery cost rises along the period.
+An edge case can be useful to represent that, is that the period is the same as the numbers of runs, making the rewind effectively not active.
+This would be equal to a naïve enclave. that performs worse under well chosen parameters (and under a faulty system).
 
 \subsubsection{Fixed K}
 First, we fix $K$ to 1 as if it is below that, the threshold cannot be reached and if higher, the threshold will simply be met sooner.
@@ -2073,6 +2056,17 @@ The the balance between the two effect gives some kind of saturation slop.
     \caption{Threshold ratio for k=$[0-9]$, over a 1.000.000 runs enclave assuming a 50M cost for load and save}
     \label{fig:50m_threshold_all_k}
 \end{figure}
+
+\subsubsection{Checkpoint interval}
+We can see that making a save every $2$ steps already yields much greater results as they cut the cost needed for the threshold by $2$.
+In our implementation, we will see better results until $X\leq 13$, after that, the recovery cost starts balancing out the gains made by avoiding the save computation.
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.8\linewidth]{img/plots/20m_checkpoint_interval_2_run_1000000.png}
+    \caption{Checkpoint interval = $2$ threshold ratio for k=$[0-9]$, over a 1.000.000 runs enclave assuming a 20M cost for load and save}
+    \label{fig:20m_checkpoint_interval}
+\end{figure}
+
 
 \subsection{Cycle cost per operation}
 \label{sub:cycle_cost}
@@ -2195,7 +2189,6 @@ The only outcome of this scenario is to also stop the host and the SM, effective
 The protection of a whole system is not in the scope of this thesis.
 Nevertheless, the state, checkpoint of this state and sealed checkpoint are being kept separated for this purpose. 
 Whenever one changes, it doesn't always affect the others.
-\\
 
 Another idea would be to compromise the PMP hardware itself, this scenario is not in the scope of this thesis as it is assumed to be sound in runtime to malicious programs.
 Even only destroying the entry would result in a call to the SM, and a move of the enclave from this hardware space.
@@ -2213,19 +2206,94 @@ We can thus safely rely on Keystone data sealing to make the sealed checkpoint u
 \label{chap:discussion}
 
 \section{Discussion}
-great, better (less computation) crypto scheme, how many runs, still useful in practice in case of a full stop of several days for examples
-\TODO{time regarding}
-\TODO{threat is contained but host is unreliable}
+The results show that rewind is not a universal replacement for a normal execution path, but it becomes attractive as soon as the enclave performs enough useful work between faults to amortize the cost of saving and restoring state. 
+In practice, the relevant question is not whether checkpointing is expensive in absolute terms, but whether the saved execution time is larger than the overhead introduced by sealing, loading, and recovery. 
+That is why the break-even threshold and the checkpoint interval are the two most important quantities in this thesis.
+Moreover, a fault could cause a long time shutdown in practice for long running jobs.
+Recovering from that, even in a non optimal setup, could be useful in time concerns.
+\\
+
+The threshold analysis confirms that the cost of checkpointing is dominated by the fixed overhead of saving the enclave state.
+When the compute cost is small, the mechanism is difficult to justify because the enclave spends most of its time protecting work rather than doing work.
+As the compute cost increases, the same overhead becomes easier to absorb, and rewind starts to make sense for longer-running or more repetitive tasks.
+This means the mechanism is most useful for workloads that run long enough to tolerate occasional recovery cost, such as batch-style processing, repeated iterations, or tasks that may have to survive a long interruption.
+ \\
+
+The checkpoint interval analysis refines that conclusion.
+Saving too often reduces the amount of work lost after a fault, but it also increases the number of expensive seal operations.
+Saving too rarely lowers checkpoint overhead, but it increases the amount of recomputation after a failure.
+The optimal interval therefore depends on the relative cost of computation, checkpointing, and fault recovery, and on the expected number of faults over the lifetime of the enclave.
+In other words, rewind is only practical if the application can choose an interval that matches its own cost profile rather than relying on a fixed policy for every workload.
+Another point about the the saving ratio is for mixed critical systems. The period could be mapped to a criticality level so that most important task get reloaded quicker while the others could still recover.
+Thus, all benefiting from the gains of rewinding while mitigating its costs.
+\\
+
+From a security point of view, the model is useful because it contains the threat outside the enclave while keeping the recovery state protected. The host remains unreliable, but the checkpointed state can still be restored safely as long as the sealing and integrity assumptions hold.
+This gives a clear separation of responsibilities: the untrusted world can fail, delay, or discard the enclave, but it should not be able to read or modify the protected checkpoint without detection. 
+The mechanism is therefore acceptable as a resilience layer only if the enclave boundary, the sealing key, and the state-restore path remain trustworthy.
+\\
+
+The crypto cost also matters in the discussion. The current sealing approach is correct for the implementation, but it contributes directly to the runtime overhead and therefore to the break-even point. 
+Any lighter checkpoint protection scheme would improve the usefulness of rewind by lowering the fixed cost of each save and making shorter checkpoint intervals more affordable. 
+This is why the cryptographic choice is not just a security detail: it is part of the performance model.
+\\
+
+Overall, the thesis supports a conditional answer. 
+Rewind is useful when the enclave does enough work between faults, when the checkpoint interval is chosen carefully, and when the security boundary can be trusted even though the host cannot. 
+It is less convincing for tiny workloads, for very rare faults, or for applications that cannot afford the extra checkpoint cost. 
+That makes the mechanism promising, but only in the class of long-running protected tasks where recovery cost is smaller than the work it saves.
 
 
 \section{Future Work}
 
+The following directions extend the current rewind design without changing its basic goal.
+They focus on making the checkpoint policy more adaptable, the protection layer lighter, and the recovery path more realistic.
+
 \subsection{Mixed criticality}
+The current implementation treats every enclave run as if it had the same level of urgency and the same recovery policy. 
+A natural follow-up would be to support mixed-criticality workloads, where the enclave can distinguish between essential work that must always be preserved and optional work that can be recomputed or discarded more aggressively.
+
+This would make the checkpoint policy more flexible. A high-criticality task could save state more often and use a stricter recovery path, while a lower-criticality task could accept larger intervals or even cheaper checkpoint protection. 
+In that setting, the checkpoint interval would no longer be a single global parameter, but a policy that depends on the value of the task being protected.
+
+Such a design would also make the discussion on usefulness more realistic. 
+Real applications rarely consist of one homogeneous loop, and a mixed-criticality model would let the rewind mechanism adapt to different phases of the same application instead of forcing one compromise for the whole execution.
+
+Nevertheless, the results on checkpoint intervals could be used to implement a higher level critical model, that operates at the enclave level.
+Making each enclave at a given level and then mapping this to a period, the highest priority getting the lowest period. 
+Note that that would need some fine tuning and system design in order to fit the hardware capabilites and task deadlines.
+
 \subsection{Modern lightweight cryptoscheme}
+The current sealing layer has been chosen because of its supposed soundness (relying on Keystone data sealing), but it is not necessarily the best choice if the goal is to minimize recovery overhead. 
+A useful future direction would be to replace it with a more lightweight cryptographic construction that still provides confidentiality and integrity while reducing the cost of every save and load operation.
+
+This matters because the cryptographic cost appears directly in the checkpointing model. Any reduction in sealing overhead would lower the break-even threshold and make shorter checkpoint intervals less expensive. 
+It would also improve the practicality of rewind for workloads with smaller compute cost, which are currently the least favorable case for the mechanism.
+
+Another possible improvement would be to separate the cryptographic policy from the checkpoint logic more clearly using hardware enforced cryptography for example or built-in more specialised schemes. 
+That would make it easier to compare several schemes under the same benchmark framework and to measure whether the gain is mostly coming from a better algorithm, a smaller state, or a better implementation choice.
+
 \subsection{More complex fault model}
 \label{sub:fault-model}
+The thesis currently assumes a relatively simple fault model, which is enough to show the basic behavior of rewind but not enough to describe every realistic failure pattern. 
+A stronger follow-up would be to study burst faults, correlated faults, and repeated faults on the same execution window, since those cases can change the usefulness of checkpointing quite dramatically.
+
+This would also let the model capture the difference between isolated failures and adversarial or unstable environments. 
+If the faults are no longer independent, then the expected recomputation cost changes, the optimal checkpoint interval changes, and the threshold analysis becomes more difficult but also more representative of real deployments.
+
+From an implementation point of view, a richer fault model would also allow the enclave to react differently depending on the failure history. 
+For example, the system could decide to shorten the checkpoint interval after repeated faults or to switch to a degraded recovery mode when the fault rate becomes too high.
+
 \subsection{Enclave Complexity on backup}
 \label{sub:back-complexity}
+The current backup path is intentionally simple: it restores the enclave state and resumes execution without introducing a richer failure-management policy. 
+A further step would be to study how the complexity of the backup enclave affects both security and performance, especially when the recovery logic itself becomes more stateful.
+
+This is important because the backup path is part of the trusted computing base. 
+The more logic it contains, the more careful one must be about correctness, memory usage, and attack surface. 
+At the same time, a more capable backup could support better policy decisions, richer diagnostics, or more fine-grained restoration rules.
+
+It would also be useful to measure how much extra checkpoint metadata is needed as the backup logic grows. If recovery requires more state, then the cost of saving and validating that state may erase part of the benefit of rewind. Studying that tradeoff would clarify how far the design can scale before the backup mechanism becomes too complex to remain attractive.
 
 
 
