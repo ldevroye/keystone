@@ -1920,7 +1920,7 @@ We will discuss the relevance of these posssible values of the three different c
 These graphs have been made using the \verb|EAPP_BREAK_EVEN_TESTING| macro along with the \verb|EAPP_BREAK_EVEN_CSV_OUTPUT|.
 \\
 
-Firstly, For the fixed $K$ (to $1$).
+First, For the fixed $K=1$.
 The Figure \ref{fig:15m_threshold_k} and  is the \textit{low expectation} runtime, the ratio is met at around $30M$ as shown in the example equation.
 Figure \ref{fig:20m_threshold_k} is the \textit{high expectation} runtime, the ratio is met at around $40M$.
 To be convince of this, just replace the parameters of the equation \ref{eq:threshold_ratio}:
@@ -1936,6 +1936,13 @@ C_{compute} &\geq 100.000.000 + 100
 \\
 
 Secondly for the overview of several possible $K$, 
+The overall curvature of the function has the same, logarithmic shape.
+The root of the ratio ($y=1$) gets shrinked conversely to the number of fault ($K$).
+For $K=0$ the threshold is $\approxeq \infty$, for $K=1$, it is $R$ (computed with the parameters using \ref{eq:threshold_ratio}), $K=2$ is $R/2$,
+Finaly, for $K=x$ the threshold is $\frac{R}{x}$. 
+This could lead us to think that the usefulness of rewinding is not growing along with the number of faults. 
+This is only if we don't look at the scaling of the functions. 
+Taking the edge cases of the Figure \ref{fig:20m_threshold_all_k}, for $k=1$ vs $K=9$ we can see that when the ratio is only halfway met for the minimal case, it is already close to $3$ for the maximum one.
 
 \subsubsection{Fixed K}
 First, we fix $K$ to 1 as if it is below that, the threshold cannot be reached and if higher, the threshold will simply be met sooner.
@@ -1971,7 +1978,7 @@ Next we show the result, without the maximal and minimal bounds for the first $9
 These ones highlight the plateau effect even when working with possibly more faults.
 As we explained above, the plateau appears because as we increase $C_{compute}$ to balance the other ones, the two sides equals out and both $C_{save}$ and $C_{load}$ become insignificant.
 Our intuition can also help us understand that effect as both $C_{checkpoint}$ and $C_{no_checkpoint}$ both use $C_{compute}$
-Nevertheless, as $K$ grows, the first slope gets steeper. 
+Nevertheless, as $K$ grows, the first slope gets steeper, resulting in a \textbf{logarithmic function}. 
 We can explain that with the effective cost of the save being shrinked by more faults, in both intuition and equation \ref{eq:threshold_ratio}.
 The the balance between the two effect gives some kind of saturation slop.
 
@@ -2079,6 +2086,7 @@ Using the plaintext size as denominator gives the per-byte averages:
 
 \subsection*{Time cost}
 As for the \textit{data cost}, the time can be derived from the cycle cost.
+as 
 
 \section{Cyber security}
 Now that the computation and data analysis is done, we will address the cyber security assumptions and requirements.
@@ -2093,7 +2101,7 @@ The claims can be checked using the corresponding macros in (Section \ref{chap:e
 %\item \textbf{Atomicity}: no undefined state from interrupted checkpoint writes
 %\item \textbf{Unclonability}: can't clone device from checkpoint data alone
 \subsubsection{Confidentiality}
-The checkpoint is, at any time, opaque from the host. 
+Confidentiality means that the checkpoint is, at any time, opaque from the host. 
 An attacker can, indeed, not read the saved checkpoint because of the \verb|aes_encrypt_ctr()| function provided by Keystone.   
 In our implementation, the rewind state to save is read from the stack, placed into a plain text checkpoint storage and then sealed using the encryption key derived from Keystone data sealing key (Section \verb|get_sealing_key()| \ref{sec:data-sealing}) and the iv (the checkpoint sequence).
 After that, a tag is done over the ciphertext using the authentification key to block anyone from tampering without notice.
@@ -2101,18 +2109,15 @@ The resulting sealed checkpoint blob is then sent to the host along with the iv 
 
 
 \subsubsection{Integrity}
-Based on the Confidentiality CBC-MAC and CTR scheme, tampering is handled.
-\\
-
-Now we have to consider the possible side-attacks, these are that the attackers tries to tamper with the blob directly, which is not plausible under the scheme \textit{over a fixed length message}. 
-Another attack is to obtain side informations to deduce information. This can be time to compute the tag or reloading the enclave by destroying it at every save edge call.
-The first one is addressed using a simple, home made compare function that always passes over the whole sequence instead of a memcmp() that stops as soon a one byte is wrong.
-using memcmp(), or any non constant time comparison function would lead to a time of authentification leak.
+We now have to consider the possible tampering and side-attacks, the former is that that the attackers tries to mess with the blob bytes directly, which is not plausible under the scheme \textit{over a fixed length message}. 
+Another attack is to obtain side informations to deduce information. This can be time to compute the tag or reloading the enclave by destroying it at every save edge call and XORing the resulting initial ciphertexts.
+The first one is addressed using a simple, constant time comparison function that always passes over the whole sequence instead of a memcmp() that stops as soon a one byte is wrong.
+using memcmp(), or any non constant time comparison function would lead to a time of authentification leak in our scenario.
 The second one is, in our case, directly addressed by the inherent deterministic mechanism of the enclave, the initial state, will always be the same as the one being compiled (whatever a and b are).
 Moreover, the checkpoint sequence also follows this rule. Making a XOR of a possibly same ciphertext with different IVs simply not possible. 
 
 \subsubsection{Atomicity}
-The atomicity states that we cannot have an undefind saved state. Based on the two last objectives, a maliciously modified state is not something to scared of.
+Atomicity states that we cannot have an undefind saved state. Based on the two last objectives, a maliciously modified state is not something to scared of.
 However, could an attacker stops the enclave at the perfect time in order to create a chimera state.
 The answer is no. In fact, the only real abilities, to this regard, of the attacker is to cut the power of the enclave. 
 The only outcome of this scenario is to also stop the host and the SM, effectively stopping the whole system.
