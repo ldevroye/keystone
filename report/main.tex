@@ -177,12 +177,6 @@ Departement of Computer Sciences
 %%%%%%%%%%%%%%%%%%%%%%%% INTRODUCTION %%%%%%%%%%%%%%%%%%%%%%%%
 \chapter{Introduction}
 
-
-%Motivation
-%Thesis question / objective
-%Contributions
-%Document structure
-
 % INTRO
 Microprocessors are getting more efficient each year due to miniaturization of transistors \cite{silicon}. 
 However, this rise in efficiency comes with the pricey cost that are faults. 
@@ -230,8 +224,15 @@ Even measuring the redundancy of a program to be able to scale and compare two d
 The research could even separate the low-level redundancy from a high-level, algorithmic, one.
 \\
 
+The research question of this thesis is whether rewind on RISC-V processors for opaque enclaves in an unsecure world makes sense.
+It is interesting because the baseline answer is yes, but the cost it implies and the security it requires make the answer less obvious.
+This thesis studies rewind and discard, the hardware support around PMP and Keystone, the cycle overhead, and the cybersecurity properties that decide whether the mechanism is acceptable.
+It also looks at the conditions under which rewind remains useful and the conditions under which it becomes too expensive or too fragile.
+The reader should read this thesis to understand the practical limits of rewind, the assumptions it depends on, and the trade-off between recovery and overhead.
+\\
 
-The codebase (implementation of the checkpoint enclave and tests) of this thesis can be found on the \github. 
+
+Furthermore, the codebase (implementation of the checkpoint and rewind enclave, host and tests) of this thesis can be found on the \github. 
 This is a fork of the main Keystone github \keystonegithub. 
 The files can also be found in the Appendix (\ref{chap:appendix}).
 
@@ -241,13 +242,6 @@ The files can also be found in the Appendix (\ref{chap:appendix}).
 %%%%%%%%%%%%%%%%%%%%%%%% SotA %%%%%%%%%%%%%%%%%%%%%%%%
 \chapter{State of the Art}
 \label{chap:SotA}
-
-%Fault tolerance / redundancy overview
-%Checkpointing and rewind
-%TEEs and enclaves
-%Keystone architecture
-%Existing related work close to your implementation
-
 
 % INTEREST
 \section{Engagment in the scientific community}
@@ -362,10 +356,11 @@ Preventing the faults as soon as possible save the whole recovery process and th
 \begin{itemize}
     \item \textbf{Fail-signal processor} is used in multi-processor architectures. 
     A processor complete the task and another one checks for abnormalities (time or result) on the first one.
-    \item \textbf{Error detecting code} (EDC): Detects errors (for example checksum). 
+    \item \textbf{Error detecting code} (EDC) are used to detects errors (for example checksum). 
     It is used in the memory, the bus and on networks.
-    \item \textbf{Watchdogs}: Set a watchdog for the timing constraint.
-    \item \TODO{Error correcting code?}
+    \item \textbf{Error correcting code} (ECC) are used along EDC to try and correct small errors. 
+    They often need a matrix to be able to find the errors confidently. 
+    \item \textbf{Watchdogs}is used for the timing constraint. It ensure that is is respect.
 \end{itemize}
 \subsubsection{Software}
 
@@ -399,7 +394,7 @@ For example, a task that needs to check if the distance with the car in front of
 If the former fails, a crash might happens as if the latter fails, temperature might go up by 0.1°C. 
 The formal way of doing this is to map a number (the priority) to tasks, 0 being the most critical ones and as the number increases, the priority lowers. \\
 
-The most common, to my knowledge, mixed critical model is the \textit{Dual} \cite{scheduling-mixed}. 
+The most common, to our knowledge, mixed critical model is the \textit{Dual} \cite{scheduling-mixed}. 
 It consists of two priority :
 \begin{itemize}
     \item HI-critical
@@ -419,7 +414,18 @@ For example, aviation with \textit{DO-178B} (or C) with the DAL priority that go
 \section{Cybersecurity}
 Cybersecurity is also a main point of attention in this field (as it is a field itself). 
 This is even more valid with the growth of the IoT in general on this past decades and this growth increased with the new arrival of Artificial Intelligence (AI) \cite{iot}.
-\TODO{Threat models \cite{security-privacy}} .
+This section will cover the basics of this project that we will use.
+
+\subsection{Threat Model}
+A threat model is a structured description of what must be protected, who may attack it, and which assumptions are accepted by the system.
+It helps separate the trusted part of the design from the untrusted environment and makes the security claims explicit.
+It is useful because the analysis depends on the untrusted parts, the trusted ones, the storage channel and the recovery path not having the same level of trust.
+It also makes clear which attacks are in scope, which assets must remain confidential or intact, and which limitations are acceptable for the chosen platform.
+\\
+
+In this work, the threat model is especially important because the enclave must recover in an untrusted world while still preserving the checkpoint contents and the control flow of the recovery mechanism.
+This provides the basis for the later discussion of TEEs, enclaves, and the rewind protocol.
+\\
 
 % TEE
 \subsection{Trusted Execution Environments (TEE)}
@@ -468,7 +474,7 @@ These inherent limitations are that no system is full proof.
 
 
 \subsection{Background work}
-\TODO{related work that's already done, that I'm basing myself of.}
+\TODO{related work that's already done, that we're basing ourselves of.}
 % papers
 \cite{sdrad,ARM-TrustZone-CortexM}
 
@@ -485,12 +491,13 @@ Although the whole domain is very interesting and always needs specific studies 
 \\
 
 First cut is the type of \textit{redundancy}. 
-For the purpose of the research, the tests should be done using several, not yet decided, \textit{timed} redundancy methods. 
+For the purpose of the research, the tests will be based on the \textit{timed} redundancy method that is \textit{rewinding} agains't no redundancy. 
 This allows to measure the viability and the relevance of the work done. 
 \\
 
 Second cut is the type of systems that needs to be modeled. 
-My focus will be \textit{mixed critical} system, as they are great at modeling real life prioritization.
+Our focus will be \textit{one level} criticality system, as they are great will reflect an encalve that has one single job.
+There could be extended work on several enclave levels that have a different saving rates. Making it mixed criticals enclaves of a bigger system.
 \\
 
 Third cut is the type of faults. 
@@ -501,28 +508,29 @@ Thus, \textit{all three types} will be looked upon.
 Next cut is the channel that will be use. 
 In other terms, \textit{hardware} and \textit{software}. 
 As they are both important and linked in various ways. 
-The focus will not only, at least initially, be on one of them but rather on \textit{both} and the implication that each have on the other. 
+The focus will not only, at least initially, be on one of them but rather on \textit{both} using \textit{emulation} and the implication that each have on the other. 
 For example, Enclaves that need restricted access and create a waterfall of complexity in the design and implementation has on impact on both hardware and software. 
+To the extent, we will base our work on \textit{Keystone} that provides a platform to emulate a RISC-V processor with enclaves and cryptographic soundness using hardware (PMP) on a TEE. 
+(\cite{keystone-repo, keystone-web, keystone-docs}), This will be detailed in the corresponding Chapter \ref{chap:Keystone}.
 \\
 
-Fourth cut is about the \textit{cybersecurity} perspective. 
+Final cut is about the \textit{cybersecurity} perspective. 
 As the industry around this domain is mostly critical (aviation, automobile, space or even medical), there is a high risk with someone getting access to something they shouldn't have. Considering that, we must ensure that the faults occurring, possibly from a malicious source, does \textit{not break the system nor give informations} about it. 
 Not much from a static analysis (reverse engineer) perspective but rather from a \textit{control flow} one. 
 To make it more precise, on TEEs when a fault occurs, the system can try to change of enclave as if it was a \textit{Domain}. 
 Then the system can be rewinded and set to a safe state while not being unavailable.
 \\
 
-Fifth choice is the platform. 
-There exists a lot of different possibilities when it comes to implementing (and testing) a system. 
-The chosen platform to implement it is Keystone (\cite{keystone-repo, keystone-web, keystone-docs}), it is an open framework used for architecturing TEEs on a RISC-V architecture.
+These specifications can be linked to try an extend the SDRaD \cite{sdrad} work in a TEE, making an equivalence between domains and enclaves. 
+As the enclaves are subregions of a TEE, they are isolated and secure as the definition of a domain using Private Keys for Userspace (PKU) and Memory Protection Keys (MPK) (with register mechanism and much more \cite{sdrad}). \\
+
+Therefore, the research should focus on \textit{Fault recovery by rewinding enclaves in a TEE on a RISC-V architecture using Keystone} and extending existing works.
+The main objective is to determine whether rewind is practical for opaque enclaves on Keystone when the world outside the enclave cannot be trusted.
+The first sub-objective is to measure the cost of checkpointing, loading, and ordinary execution so the break-even point can be identified.
+The second sub-objective is to verify that the recovery path still satisfies confidentiality, integrity and authenticity, atomicity, and unclonability.
+The third sub-objective is to connect these measurements to the system design choices in PMP, enclave isolation, and the sealing protocol.
+Together, these objectives answer whether rewind is useful in practice and what the implementation must assume to make it safe.
 \\
-
-The final choice is to try an implement the whole SDRaD library in a TEE, making an equivalence between domains and enclaves. 
-As the enclaves are subregions of a TEE, they are isolated and secure as the definition of a Domain using Private Keys for Userspace (PKU) and Memory Protection Keys (MPK) (with register mechanism and much more \cite{sdrad}). \\
-
-In conclusion, the research should focus on \textit{Fault recovery by rewinding enclaves in a TEE on a RISC-V architecture (Keystone)} and extending existing works.
-
-\TODO{add goals}
 
 
 
@@ -1770,7 +1778,7 @@ In order to better understand what is going on, it is recommended to enable both
 
 \section{Test definitions}
 This section defines the test metrics that we are lookg for to evaluate the checkpoint and rewind mechanism.
-There are two parts: the \textit{analysis}, where we quantify execution costs and overhead, and the \textit{cyber security}, where we validate the threat model assumptions and security objectives from \ref{sec:threat-model}.
+There are two parts: the \textit{analysis}, where we quantify execution costs and overhead, and the \textit{cybersecurity}, where we validate the threat model assumptions and security objectives from \ref{sec:threat-model}.
 \\
 
 The metric that is in our main interest for the \textit{analysis} is the \textbf{cycle cost} taken for each of the main operation of the enclave.
@@ -1786,7 +1794,7 @@ A naive enclave would only do the \textit{computation} at each step but a Rewind
 We thus need to fix a size for each of them to compare the costs and when they can balance out eachothers. 
 \\
 
-Now, for the \textit{cyber security}, we will assess that the security objects are, along with the requirements, respected and fulfilled.
+Now, for the \textit{cybersecurity}, we will assess that the security objects are, along with the requirements, respected and fulfilled.
 
 
 %%%%%%%%%%%%%%%%%%%%%%%% Results %%%%%%%%%%%%%%%%%%%%%%%%
@@ -2080,8 +2088,8 @@ Using the plaintext size as denominator gives the per-byte averages:
 As for the \textit{data cost}, the time can be derived from the cycle cost.
 as 
 
-\section{Cyber security}
-Now that the computation and data analysis is done, we will address the cyber security assumptions and requirements.
+\section{Cybersecurity}
+Now that the computation and data analysis is done, we will address the cybersecurity assumptions and requirements.
 
 \subsection{Security objectives}
 As stated in \ref{sec:threat-model}, there are four security objectives that will be looked upon.
