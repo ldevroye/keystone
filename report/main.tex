@@ -1041,11 +1041,9 @@ To ensure that the data isn't tampered, there is a layer on top of Keystone's en
 The layer adds a tag and an Initialisation Vector (IV) for the enclave to check if the unsealed data corresponds to the sealed one.
 Only the last checkpoint is saved.
 
-\TODO{cite papers}
-Finaly, some rewind models can have modified (often degraded) version in case of a discard. 
-This is done to prevent attacks using the computation power and overloading a server by making it fail a task idefinitly for example. 
 In this project, there is only one binary source (the compile code) and it doesn't implement any fault assessment, the enclave behaves as if the fault caused a fatal crash and stops immediatly, returning an error.
-However, we address this in the future work section \ref{sub:back-complexity}.
+One possible fallback would be to use a degraded version of the enclave in order to prevent attacks using the computation power and overloading a server by making it fail a task idefinitly for example. 
+We address this in the future work section \ref{sub:back-complexity}.
 
 % Fault model
 % Tests
@@ -2287,14 +2285,15 @@ For example, the system could decide to shorten the checkpoint interval after re
 \subsection{Enclave Complexity on backup}
 \label{sub:back-complexity}
 The current backup path is intentionally simple: it restores the enclave state and resumes execution without introducing a richer failure-management policy. 
-A further step would be to study how the complexity of the backup enclave affects both security and performance, especially when the recovery logic itself becomes more stateful.
+A further step would be to study how the complexity of the backup enclave affects both security and performance.
 
 This is important because the backup path is part of the trusted computing base. 
 The more logic it contains, the more careful one must be about correctness, memory usage, and attack surface. 
 At the same time, a more capable backup could support better policy decisions, richer diagnostics, or more fine-grained restoration rules.
 
-It would also be useful to measure how much extra checkpoint metadata is needed as the backup logic grows. If recovery requires more state, then the cost of saving and validating that state may erase part of the benefit of rewind. Studying that tradeoff would clarify how far the design can scale before the backup mechanism becomes too complex to remain attractive.
-
+It would also be useful to measure how much extra checkpoint metadata is needed as the backup logic grows. 
+If recovery requires more state, then the cost of saving and validating that state may erase part of the benefit of rewind. 
+Studying that tradeoff would clarify how far the design can scale (up or down) before the backup mechanism becomes too complex to remain attractive.
 
 
 
