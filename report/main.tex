@@ -2037,7 +2037,7 @@ Next we show the result, without the maximal and minimal bounds for the first $9
 These ones highlight the plateau effect even when working with possibly more faults.
 As we explained above, the plateau appears because as we increase $C_{compute}$ to balance the other ones, the two sides equals out and both $C_{save}$ and $C_{load}$ become insignificant.
 Our intuition can also help us understand that effect as both $C_{checkpoint}$ and $C_{no_checkpoint}$ both use $C_{compute}$
-Nevertheless, as $K$ grows, the first slope gets steeper, resulting in a \textbf{logarithmic function}. 
+Nevertheless, as $K$ grows, the first slope gets steeper, resulting in a \textbf{logarithmic shaped function}. 
 We can explain that with the effective cost of the save being shrinked by more faults, in both intuition and equation \ref{eq:threshold_ratio}.
 The the balance between the two effect gives some kind of saturation slop.
 
@@ -2064,7 +2064,10 @@ The the balance between the two effect gives some kind of saturation slop.
 
 \subsubsection{Checkpoint interval}
 We can see that making a save every $2$ steps already yields much greater results as they cut the cost needed for the threshold by $2$.
-In our implementation, we will see better results until $X\leq 12 248$, after that, the recovery cost starts balancing out the gains made by avoiding the save computation.
+However, the results rises until $X\leq 12 248$, after that, the recovery cost starts balancing out the gains made by avoiding the save computation.
+
+As predicted, the cost of having a wider interval is growing along with the chances of faults occuring.
+
 \begin{figure}[H]
     \centering
     \includegraphics[width=0.8\linewidth]{img/plots/20m_checkpoint_interval_2_run_1000000.png}
@@ -2074,22 +2077,29 @@ In our implementation, we will see better results until $X\leq 12 248$, after th
 
 \begin{figure}[H]
     \centering
+    \includegraphics[width=0.8\linewidth]{img/plots/100k_1_checkpoint_interval_ratio_plot.png}
+    \caption{Optimal checkpoint interval for $100k$ runs and \textbf{1 error}, k=$1$, $15m$ load/save cost and $200k$ compute cost}
+    \label{fig:100k_1_checkpoint_interval}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
     \includegraphics[width=0.8\linewidth]{img/plots/10k_checkpoint_interval_ratio_plot.png}
-    \caption{Optimal checkpoint interval for $10k$ runs and \textbf{1 error}, over for k=$[0-9]$, $15m$ load/save cost and $200k$ compute cost}
+    \caption{Optimal checkpoint interval for $10k$ runs and \textbf{1 error}, k=$[0-9]$, $15m$ load/save cost and $200k$ compute cost}
     \label{fig:10k_checkpoint_interval}
 \end{figure}
 
 \begin{figure}[H]
     \centering
     \includegraphics[width=0.8\linewidth]{img/plots/100k_checkpoint_interval_ratio_plot.png}
-    \caption{Optimal checkpoint interval for $100k$ runs and \textbf{1 error}, over for k=$[0-9]$, $15m$ load/save cost and $200k$ compute cost}
+    \caption{Optimal checkpoint interval for $100k$ runs and \textbf{1 error}, k=$[0-9]$, $15m$ load/save cost and $200k$ compute cost}
     \label{fig:100k_checkpoint_interval}
 \end{figure}
 
 \begin{figure}[H]
     \centering
     \includegraphics[width=0.8\linewidth]{img/plots/1m_checkpoint_interval_ratio_plot.png}
-    \caption{Optimal checkpoint interval for $1m$ runs and \textbf{1 fault}, over for k=$[0-9]$, $15m$ load/save cost and $200k$ compute cost}
+    \caption{Optimal checkpoint interval for $1m$ runs and \textbf{1 fault}, k=$[0-9]$, $15m$ load/save cost and $200k$ compute cost}
     \label{fig:1m_checkpoint_interval}
 \end{figure}
 
@@ -2322,26 +2332,63 @@ It would also be useful to measure how much extra checkpoint metadata is needed 
 If recovery requires more state, then the cost of saving and validating that state may erase part of the benefit of rewind. 
 Studying that tradeoff would clarify how far the design can scale (up or down) before the backup mechanism becomes too complex to remain attractive.
 
+\subsection{Fault detection and correction}
+For now, the fault detection is solely guided by the fault model. It is purely experimental and no real fault checking is being done.
+A possible direction is to make a real life fault detecting routine. 
+This would add some computations at each step for both the enclaves that use or not the rewind scheme, considering that no one wants an enclave to run while being subject to errors.
+The work could be done over the whole enclave's or just the checkpointed structure using different methods to see and analyze the results. 
 
+After that, instead of completely restarting the enclave, there could be a fall-back mechanism that tries and correct the error.
+This would allow a more consistent execution, in a bitflip for example, but it could also leave the enclave in an uncertain state, thus breaking the atomicity objective.
+A trade-of between optimisation and cybersecurity.
 
 %%%%%%%%%%%%%%%%%%%%%%%% Conclusion %%%%%%%%%%%%%%%%%%%%%%%%
-\chapter{Conclusion}
-This thesis asked whether rewind on RISC-V enclaves in an untrusted environment is practical and can be linked to the base papers \cite{sdrad,ARM-TrustZone-CortexM}.
-The answer is that it can bef  practical, but only under a narrow set of conditions where the checkpoint cost is justified by enough useful execution between faults.
+\section{Conclusion}
+\label{sec:conclusion}
 
-To support that answer, we combined a background study on SDRaD, secure intermittent computing, Keystone, and TrustZone-style checkpointing with an implementation of checkpoint and recovery inside a Keystone-based enclave.
-The resulting design shows that the enclave can preserve state outside the normal execution flow while keeping the recovery mechanism small enough to remain meaningful as a security boundary.
+This thesis investigated how to provide secure checkpointing and rewind for applications running inside Keystone enclaves under intermittent and adversarial conditions.  
+We focused on the question: how can an enclave safely persist and restore its internal state through untrusted storage and power loss, without leaking secrets or accepting corrupted state.  
+This problem is interesting because many trusted execution environments, including Keystone, provide strong isolation during execution but offer little structured support for recovery once execution is disrupted, especially when the only persistent medium is controlled by a potentially malicious host.  
+In intermittent and attack-prone settings, this gap limits the practicality of trusted execution environments for long-running or critical services that must tolerate crashes, power cuts, and host tampering while maintaining security guarantees.  
 
-The experimental analysis then showed that the cost model is dominated by checkpointing overhead and by the tradeoff between saving more often and recomputing more after a fault.
-The break-even threshold and the checkpoint interval therefore matter more than a single fixed execution cost, because they determine whether rewind actually saves work in practice.
-Furthermore, even under sub-optimal settings, rewinding could find some use for the time cost. In a non automated system that needs constant supervision for example.  
+Our approach extends the Keystone enclave runtime with a minimal, enclave-centric mechanism that seals checkpointed state to the enclave using measurement-bound keys, authenticates checkpoints to detect tampering, and enforces an atomic recovery boundary on restart.  
+Within the threat model defined in this work, the host, its storage, and communication channels are considered adversarial, while enclave memory and sealing keys remain trusted.  
+We explicitly accept rollback and cloning attacks as out of scope, and instead target confidentiality, integrity, authenticity, atomicity, and unclonability of checkpointed state.  
+The resulting design ensures that corrupted or forged checkpoints are rejected, that partially written blobs cannot cause undefined enclave states, and that only an enclave with the correct measurement can unwrap its own recovery data.  
 
-In addition, we saw that the security assumptions are not optional details.
-The host may be untrusted, but the sealing key, the enclave boundary, and the restore path must remain trustworthy for the mechanism to remain sound.
-This makes rewind a useful recovery technique for long-running protected workloads, but not a universal solution for every enclave or fault pattern.
+From the implementation and experiments, we learned several key lessons.  
+First, keeping the recovery logic small and explicit inside the enclave runtime is crucial, because even modest complexity in the error and restart paths quickly becomes difficult to reason about, especially under intermittent power and adversarial interference.  
+Second, security and liveness are tightly coupled in this setting, since sealing and authenticating every checkpoint increases computational cost and recovery latency, so any practical design must balance the frequency and granularity of checkpoints against the performance overhead and the risk of losing progress.  
+Third, we observed that host cooperation is not a reliable abstraction for correctness, so the system must treat host-provided checkpoints purely as untrusted blobs and rely exclusively on enclave-side verification before using them.  
+This cybersecurity aspect, along with the computation cost, took a lot of thinking, model design, implementation choices and tests setup in order to have a valid final shape. 
+We were able to learn a lot about the trade-offs, the limitations and the overall designing skills that comes along managing both aspect requires. 
+Finally, the experiments confirmed that it is feasible to integrate secure rewind into Keystone with moderate overhead, provided that applications adopt a disciplined notion of safe points and explicit state capture.  
 
-The main contribution of this work is therefore not that rewind always wins, but that it can be analyzed, implemented, and justified in a concrete Keystone setting.
-That result also points directly to the next steps of the thesis, especially better policies, lighter protection schemes, and richer fault models for analysis.
+As a reader, the main takeaway should be that secure checkpointing and rewind in trusted execution environments is both necessary and subtle.  
+It requires coordinated design of threat models, recovery boundaries, and runtime mechanisms, rather than simply encrypting state and assuming safety.  
+You should learn that enclave-centric sealing and authentication can provide strong protection against host tampering without extending trust to the host, that atomic recovery semantics are essential to avoid inconsistent states after crashes, and that intermittent or adversarial environments force us to think of enclaves not just as isolated compute islands but as systems that must safely span multiple executions through untrusted media.  
+The work also illustrates how even a relatively lightweight change in the enclave runtime can significantly alter the security and reliability properties of Keystone-based applications.  
+
+If starting again, there are several aspects we could have approached differently.  
+We would first invest more effort in a formalisation of the recovery boundary and comprehension of the platform workflow, clearly specifying which parts of enclave state must be captured, which invariants must hold at each checkpoint, and how these invariants are re-established after rewind.  
+This would help guide both implementation and testing, and make it easier to reason about corner cases.  
+Second, we would design and integrate benchmarks and adversarial test harnesses earlier in the process, to evaluate performance and failure behaviour under more realistic workloads and attack scenarios.  
+Third point is to explore a more modular interface between applications and the checkpointing mechanism, so that different applications can select appropriate policies, such as checkpoint frequency and state granularity, while reusing the core secure sealing and recovery primitives.  
+Another one is to start writing down all the implementation details and ideas sooner. This would have certainly helped in having a clearer idea and helped in seeing the possible gaps that needed to be addressed.  
+Finally, we would examine the interaction with other Keystone features and multi-enclave scenarios sooner, to understand how compartmentalisation and cross-enclave dependencies affect recovery.  
+Overall, the implementation part is the first big step that has been done in order to conquer the fear of starting this thesis but as much as it has helped starting, we were too focused on this task for a considerable period of time. 
+Instead, we should have taken a step back sooner to be able to read, write or design the future steps.
+
+The approach developed in this thesis is particularly useful in scenarios where services must maintain long-lived, security-critical state inside enclaves while facing unreliable power or untrusted hosts.  
+Examples include intermittent devices that rely on Keystone for secure computation but frequently lose power, edge services that process sensitive data near users while depending on cloud hosts that cannot be fully trusted, and privacy-preserving analytics systems that run in trusted execution environments but need to survive crashes and restarts without leaking internal state or accepting corrupted histories.  
+We would recommend using our solution for services that have the following characteristics.  
+They store secrets or integrity-critical metadata inside the enclave that must not be exposed or silently corrupted by the host.  
+They can define clear, application-level safe points where state is consistent and can be safely checkpointed.  
+They tolerate the extra overhead of sealing and authentication in exchange for stronger recovery guarantees, using a more costly computation function and-or running for a long time with system that a prone to errors.  
+They operate in environments where power loss, crashes, or deliberate disruption by the host are realistic threats.  
+
+Under these conditions, secure checkpointing and rewind becomes a practical tool for extending Keystone’s isolation guarantees across time, not just across memory.  
+While this work does not address rollback prevention, it demonstrates that carefully designed enclave-centric recovery mechanisms can significantly increase resilience in the face of intermittent execution and adversarial hosts, and it lays a foundation for more advanced recovery and coordination schemes in future work.
 
 
 \printbibliography
