@@ -1904,24 +1904,21 @@ The optimal interval balances these two terms.
 Taking the derivative of $C_{checkpoint}(X)$ with respect to $X$ and setting
 it to zero yields:
 
-\begin{equation}
+\begin{equation*}
 \frac{dC}{dX} = -\frac{N \cdot C_{save}}{X^2} + \frac{C_{compute} \cdot K}{2} = 0
-\label{eq:derivative_zero}
-\end{equation}
+\end{equation*}
 
 Isolating the term in $X^2$ gives:
 
-\begin{equation}
+\begin{equation*}
 \frac{N \cdot C_{save}}{X^2} = \frac{C_{compute} \cdot K}{2}
-\label{eq:derivative_isolated}
-\end{equation}
+\end{equation*}
 
 Cross-multiplying and solving for $X^2$:
 
-\begin{equation}
+\begin{equation*}
 X^2 = \frac{2 N \cdot C_{save}}{C_{compute} \cdot K}
-\label{eq:x_squared}
-\end{equation}
+\end{equation*}
 
 Taking the square root of both sides gives the closed-form optimal
 checkpoint interval:
@@ -1953,10 +1950,10 @@ Now, we can try to check that for our implementation with $C_{compute} = 200.000
 
 \begin{align*}
 X^*(C_{compute}) &= \lceil \sqrt{\frac{3\times 10^{13}}{200.000}} \rceil\\
-&\approx \lceil 12.247 \rceil\\
-&= 13
+&\approx 12.248\\
 \end{align*}
-
+Thus, until the interval gets to 12 thousand, the ratio will improve, this effect is more visible when the computation cost is closer to the save/load cost or when the numbers of runs gets smaller.  
+The figures \ref{fig:10k_checkpoint_interval}, \ref{fig:100k_checkpoint_interval} and \ref{fig:1m_checkpoint_interval} are a runtime representation of this effect.
 
 \section{Runtime Analysis}
 \label{sec:rt_analysis}
@@ -1978,8 +1975,8 @@ These graphs have been made using the \verb|EAPP_BREAK_EVEN_TESTING| macro along
 \\
 
 First, For the fixed $K=1$.
-The Figure \ref{fig:15m_threshold_k} and  is the \textit{low expectation} runtime, the ratio is met at around $30M$ as shown in the example equation.
-Figure \ref{fig:20m_threshold_k} is the \textit{high expectation} runtime, the ratio is met at around $40M$.
+The Figure \ref{fig:15m_threshold_k} and  is the \textit{low expectation} runtime, the ratio is met at around $30m$ as shown in the example equation.
+Figure \ref{fig:20m_threshold_k} is the \textit{high expectation} runtime, the ratio is met at around $40m$.
 To be convince of this, just replace the parameters of the equation \ref{eq:threshold_ratio}:
 \begin{align*}
 C_{compute} &\geq \frac{2 \cdot 20.000.000}{1} + \frac{2\cdot 20.000.000}{1.000.000}\\
@@ -2016,21 +2013,21 @@ On the other hand, we now know that the model behaves as intended and is, most l
 \begin{figure}[H]
     \centering
     \includegraphics[width=0.8\linewidth]{img/plots/15m_break_even_focus_run_1000000_k_1.png}
-    \caption{Threshold for 1 error over a 1.000.000 runs enclave assuming a 15M cost for load and save}
+    \caption{Threshold for 1 error over $1m$ runs assuming a 15M cost for load and save}
     \label{fig:15m_threshold_k}
 \end{figure}
 
 \begin{figure}[H]
     \centering
     \includegraphics[width=0.8\linewidth]{img/plots/20m_break_even_focus_run_1000000_k_1.png}
-    \caption{Threshold for 1 error over a 1.000.000 runs enclave assuming a 20M cost for load and save}
+    \caption{Threshold for $1$ error over $1m$ runs assuming a $20m$ load/save cost}
     \label{fig:20m_threshold_k}
 \end{figure}
 
 \begin{figure}[H]
     \centering
     \includegraphics[width=0.8\linewidth]{img/plots/50m_break_even_focus_run_1000000_k_1.png}
-    \caption{Threshold for 1 error over a 1.000.000 runs enclave assuming a 50M cost for load and save}
+    \caption{Threshold for $1$ error over $1m$ runs assuming a $50m$ load/save cost}
     \label{fig:50m_threshold_k}
 \end{figure}
 
@@ -2047,32 +2044,53 @@ The the balance between the two effect gives some kind of saturation slop.
 \begin{figure}[H]
     \centering
     \includegraphics[width=0.8\linewidth]{img/plots/15m_break_even_thresholds_runs_1000000.png}
-    \caption{Threshold ratio for k=$[0-9]$, over a 1.000.000 runs enclave assuming a 15M cost for load and save}
+    \caption{Threshold ratio for K=$[0-9]$, over a $1m$ runs enclave assuming a $15m$ load/save cost}
     \label{fig:15m_threshold_all_k}
 \end{figure}
 
 \begin{figure}[H]
     \centering
     \includegraphics[width=0.8\linewidth]{img/plots/20m_break_even_thresholds_runs_1000000.png}
-    \caption{Threshold ratio for k=$[0-9]$, over a 1.000.000 runs enclave assuming a 20M cost for load and save}
+    \caption{Threshold ratio for K=$[0-9]$, over a $1m$ runs enclave assuming a $20m$ load/save cost}
     \label{fig:20m_threshold_all_k}
 \end{figure}
 
 \begin{figure}[H]
     \centering
     \includegraphics[width=0.8\linewidth]{img/plots/50m_break_even_thresholds_runs_1000000.png}
-    \caption{Threshold ratio for k=$[0-9]$, over a 1.000.000 runs enclave assuming a 50M cost for load and save}
+    \caption{Threshold ratio for K=$[0-9]$, over a $1m$ runs enclave assuming a $50m$ load/save cost}
     \label{fig:50m_threshold_all_k}
 \end{figure}
 
 \subsubsection{Checkpoint interval}
 We can see that making a save every $2$ steps already yields much greater results as they cut the cost needed for the threshold by $2$.
-In our implementation, we will see better results until $X\leq 13$, after that, the recovery cost starts balancing out the gains made by avoiding the save computation.
+In our implementation, we will see better results until $X\leq 12 248$, after that, the recovery cost starts balancing out the gains made by avoiding the save computation.
 \begin{figure}[H]
     \centering
     \includegraphics[width=0.8\linewidth]{img/plots/20m_checkpoint_interval_2_run_1000000.png}
-    \caption{Checkpoint interval = $2$ threshold ratio for k=$[0-9]$, over a 1.000.000 runs enclave assuming a 20M cost for load and save}
+    \caption{Checkpoint interval = $2$ threshold ratio for k=$[0-9]$, over $1m$ runs assuming a $20m$ load/save cost}
     \label{fig:20m_checkpoint_interval}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.8\linewidth]{img/plots/10k_checkpoint_interval_ratio_plot.png}
+    \caption{Optimal checkpoint interval for $10k$ runs and \textbf{1 error}, over for k=$[0-9]$, $15m$ load/save cost and $200k$ compute cost}
+    \label{fig:10k_checkpoint_interval}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.8\linewidth]{img/plots/100k_checkpoint_interval_ratio_plot.png}
+    \caption{Optimal checkpoint interval for $100k$ runs and \textbf{1 error}, over for k=$[0-9]$, $15m$ load/save cost and $200k$ compute cost}
+    \label{fig:100k_checkpoint_interval}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.8\linewidth]{img/plots/1m_checkpoint_interval_ratio_plot.png}
+    \caption{Optimal checkpoint interval for $1m$ runs and \textbf{1 fault}, over for k=$[0-9]$, $15m$ load/save cost and $200k$ compute cost}
+    \label{fig:1m_checkpoint_interval}
 \end{figure}
 
 
