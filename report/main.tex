@@ -1044,6 +1044,14 @@ Sets the configuration file for the buildroot to use.
 \chapter{System Model and Design}
 This chapter describes the concrete implementation, the choices and the assumptions that have been made.
 
+
+\begin{figure}[H]
+        \centering
+        \includegraphics[width=1\linewidth]{img/enclave_architecture.png}
+        \caption{Rewind enclave overall view}
+        \label{fig:enclave architecture}
+    \end{figure}
+
 \section{Preliminary setup and selection}
 The first step is to have a strong, yet modular, idea of the concept to be implemented.
 The goal is to obtain domains that can be checkpointed and the data that has been sealed needes to be accessible in another one.
