@@ -504,7 +504,7 @@ For the purpose of the research, the tests will be based on the \textit{timed} r
 This allows to measure the viability and the relevance of the work done. 
 
 Second cut is the type of systems that needs to be modeled. 
-Our focus will be \textit{one level} criticality system, as they are great will reflect an encalve that has one single job.
+Our focus will be \textit{one level} criticality system, as they are great will reflect an enclave that has one single job.
 There could be extended work on several enclave levels that have a different saving rates. Making it mixed criticals enclaves of a bigger system.
 
 Third cut is the type of faults. 
@@ -1083,7 +1083,7 @@ Integrity and authenticity require that a tampered blob is detected and rejected
 Atomicity requires that no undefined state can arise from interrupted checkpoint writes. 
 Unclonability requires that the device cannot be cloned from checkpoint data alone.
 
-Finaly, the accepted limitations. 
+Finally, the accepted limitations. 
 These are replaying and rollback are out of scope because the host is the only link to the outside world and cannot be trusted.
 Edge call manipulation, such as enclave stall or destruction, is also out of scope for the same reason.
 
@@ -1993,15 +1993,21 @@ Secondly for the overview of several possible $K$,
 The overall curvature of the function has the same, logarithmic shape.
 The root of the ratio ($y=1$) gets shrinked conversely to the number of fault ($K$).
 For $K=0$ the threshold is $\approxeq \infty$, for $K=1$, it is $R$ (computed with the parameters using \ref{eq:threshold_ratio}), $K=2$ is $R/2$,
-Finaly, for $K=x$ the threshold is $\frac{R}{x}$. 
+\\
+
+Finally, for $K=X$ the threshold is $\frac{R}{x}$. 
 This could lead us to think that the usefulness of rewinding is not growing along with the number of faults. 
 This is only if we don't look at the scaling of the functions. 
 Taking the edge cases of the Figure \ref{fig:20m_threshold_all_k}, for $k=1$ vs $K=9$ we can see that when the ratio is only halfway met for the minimal case, it is already close to $3$ for the maximum one.
 
 After that, we measure the impact of reducing the period of saving the checkpoint.
 As shown in the equations, adding some space between checkpoints saves a lot of time, however, making it too big gives negative results as the recovery cost rises along the period.
-An edge case can be useful to represent that, is that the period is the same as the numbers of runs, making the rewind effectively not active.
-This would be equal to a naïve enclave. that performs worse under well chosen parameters (and under a faulty system).
+An edge case can be useful to represent that. This is, the period is the same as the numbers of runs, making the rewind effectively not active.
+This would be equal to a naïve enclave. 
+\\
+
+Overall, the results confirm that the rewind enclave's performance is a balancing game between the computation costs, the final number iterations needed and the number of expected faults.
+Under well chosen parameters, and assuming at least one fault, the rewind mechanism appears to be relevant. 
 
 \subsubsection{Fixed K}
 First, we fix $K$ to 1 as if it is below that, the threshold cannot be reached and if higher, the threshold will simply be met sooner.
@@ -2208,7 +2214,7 @@ The resulting sealed checkpoint blob is then sent to the host along with the iv 
 
 \subsubsection{Integrity}
 We now have to consider the possible tampering and side-attacks, the former is that that the attackers tries to mess with the blob bytes directly, which is not plausible under the scheme \textit{over a fixed length message}. 
-Another attack is to obtain side informations to deduce information. This can be time to compute the tag or reloading the enclave by destroying it at every save edge call and XORing the resulting initial ciphertexts.
+Another attack is to obtain side informations to deduce information. This can be time to compute the tag or reloading the enclave by destroying it at every save edge call and XOR-ing the resulting initial ciphertexts.
 The first one is addressed using a simple, constant time comparison function that always passes over the whole sequence instead of a memcmp() that stops as soon a one byte is wrong.
 using memcmp(), or any non constant time comparison function would lead to a time of authentification leak in our scenario.
 The second one is, in our case, directly addressed by the inherent deterministic mechanism of the enclave, the initial state, will always be the same as the one being compiled (whatever a and b are).
@@ -2306,7 +2312,7 @@ It would also improve the practicality of rewind for workloads with smaller comp
 Another possible improvement would be to separate the cryptographic policy from the checkpoint logic more clearly using hardware enforced cryptography for example or built-in more specialised schemes. 
 That could make it easier to compare several schemes under the same benchmark framework and to measure whether the gain is mostly coming from a better algorithm, a smaller state, or a better implementation choice.
 
-\subsection{More complex fault model}
+\subsection{Fault model complexity}
 \label{sub:fault-model}
 The thesis currently assumes a relatively simple fault model, which is enough to show the basic behavior of rewind but not enough to describe every realistic failure pattern. 
 A stronger follow-up would be to study burst faults, correlated faults, and repeated faults on the same execution window, since those cases can change the usefulness of checkpointing quite dramatically. 
@@ -2319,7 +2325,7 @@ For example, the system could decide to shorten the checkpoint interval after re
 
 A strong fault model could enable to produce deeper researches and more relevant results to analyze. 
 
-\subsection{Enclave Complexity on backup}
+\subsection{Enclave complexity on backup}
 \label{sub:back-complexity}
 The current backup path is intentionally simple: it restores the enclave state and resumes execution without introducing a richer failure-management policy. 
 A further step could be to study how the complexity of the backup enclave affects both security and performance.
@@ -2340,7 +2346,16 @@ The work could be done over the whole enclave's or just the checkpointed structu
 
 After that, instead of completely restarting the enclave, there could be a fall-back mechanism that tries and correct the error.
 This would allow a more consistent execution, in a bitflip for example, but it could also leave the enclave in an uncertain state, thus breaking the atomicity objective.
-A trade-of between optimisation and cybersecurity.
+A trade-of between optimisation and cybersecurity. 
+Making both of these could also help in differentiating a fault from an error and the possible recoverablity of the enclave.
+
+\subsection{Continuous and asynchronous systems}
+The last direction that we will discuss is to extend the enclave's work to continous systems. 
+Such a system could have sensors that give information at not synchronized times, making the enclave work less naïve than iterating over a work to be done.
+There could be an undefined number of steps to be done, making the analysis results different.
+This would also address the possible entries of the enclave instead of using an unreliable host.
+For example, specific safe hardware addresses could be given but this could outsource the leak and informations.
+This could also possibly enable leaving the enclave in a non coherent state or even help to ease side-channel attacks causing crashes or malformed data input.
 
 %%%%%%%%%%%%%%%%%%%%%%%% Conclusion %%%%%%%%%%%%%%%%%%%%%%%%
 \section{Conclusion}
