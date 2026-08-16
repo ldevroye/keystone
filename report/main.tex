@@ -1046,11 +1046,21 @@ This chapter describes the concrete implementation, the choices and the assumpti
 
 
 \begin{figure}[H]
-        \centering
-        \includegraphics[width=1\linewidth]{img/enclave_architecture.png}
-        \caption{Rewind enclave overall view}
-        \label{fig:enclave architecture}
-    \end{figure}
+    \centering
+    \includegraphics[width=1\linewidth]{img/enclave_architecture.png}
+    \caption{Rewind enclave architecture view}
+    \label{fig:enclave_architecture}
+\end{figure}
+Our implementation is based, on the Keystone basis.
+This means that all of the enclave side (blue), is considered safe and all the outerworld (red) unsafe.
+The enclave's never communicates with the host directly, the only shared space they have is the shared memory. 
+This space is solely used to save and load the sealed checkpoint blob. 
+The enclave then saves it, after the unsealing protocole, in its safe memory.
+The host supposedly does the same thing with its, unsafe, memory.
+The communication of the enclave is only based on the edge calls provided by Keystone. 
+The host can also emit ones such as create, destroy, stop, resume. 
+This indirect control of the host over the enclave is the reason that we cannot provide a roll-back and stall proof mechanism.  
+More detailed explanations of each new part will be discussed in this section.  
 
 \section{Preliminary setup and selection}
 The first step is to have a strong, yet modular, idea of the concept to be implemented.
@@ -1257,7 +1267,25 @@ This is bounded by Keystone structure and is, as noted in the threat model \ref{
 One could implement a direct call from the enclave to the SM to external safe memory with, for example, table pages protected by outside PMP entry or another "data enclave" that has a direct communication channel with the "runtime" one.
 The problem in our scenario is that the host is the only link to the outside world and is, by definition, also not to be trusted.
 This limitation being addressed, the saved checkpoint must be sealed and must be checked in order to not introduce unsafe data into the enclave's memory.
+\\\\
+Moreover, below are two UML diagrams to visualize the lifecycle of the edge calls (OCALLs). 
+An important point to notice is that the load lifecycle save lifecycle doesn't involve the enclave to read shared memory. 
+The host cannot try to tamper it at this stage, but that is if we do not account the possible arbitrary \verb|destroy()| call that the host could request to the SM.
+This would work as the SM sets the enclave's mode to \verb|stop|, in this mode the enclave can be fully destroyed.
+This problem however, is not in the scope of this thesis as it would need a total change in the Keystone design.
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.8\linewidth]{img/ocall_load.png}
+    \caption{Overall view of an edge call life cycle to load the blob}
+    \label{fig:ocall_load}
+\end{figure}
 
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.8\linewidth]{img/ocall_save.png}
+    \caption{Overall view of an edge call life cycle to save the blob}
+    \label{fig:ocall_save}
+\end{figure}
 
 \subsubsection{Host-side}
 \label{subsub:checkpoint-host}
