@@ -37,7 +37,7 @@
 
 \usepackage[backend=biber,style=numeric,sorting=none]{biblatex}
 \addbibresource{ref.bib}
-\ExecuteBibliographyOptions{doi=true,url=true,eprint=true}
+\ExecuteBibliographyOptions{doi=true,url=true,eprint=true}  
 \AtBeginBibliography{%
     \sloppy
     \setlength{\emergencystretch}{3em}
@@ -49,7 +49,7 @@
 \hypersetup{
     pdftitle={Master thesis - Louis Devroye - 2025-26},
     pdfauthor={Louis Devroye (Louis.Devroye@ulb.be)},
-    pdfsubject={Fault-Tolerant Microarchitectures: Fault recovery by rewinding enclaves in a Trusted Execution Environment on a RISC-V architecture (Keystone)},
+    pdfsubject={Fault-Tolerant Microarchitectures: Fault recovery by rewinding enclaves in a Trusted Execution Environment on the RISC-V architecture (Keystone)},
     pdfkeywords={Microprocessor, Fault-Tolerant, Fault, Redundancy, Cybersecurity, Microarchitectures, Keystone, Checkpointing, Rewind, Enclaves, TEE, RISC-V, open-source},
 }
 
@@ -131,7 +131,7 @@
 \begin{Large}
 Faculty of Sciences
 \hfill
-Departement of Computer Sciences
+Department of Computer Sciences
 \end{Large}
 \end{minipage}
 \\[1cm]
@@ -245,7 +245,7 @@ The files can also be found in the Appendix (\ref{chap:appendix}).
 
 % INTEREST
 \section{Engagment in the scientific community}
-For as long as computers (some could even say tools in general) have existed, so have defaults, errors and bugs \cite{vonneumann56}. 
+For as long as computers (some could even say tools in general) have existed, so have defects, errors and bugs \cite{vonneumann56}. 
 However, the need for a solid structure and concretes answers increased as Moore's law kept going on \cite{moore-law}. 
 This topic is drawing more attention as the years go by.
 
@@ -272,10 +272,10 @@ Now, we need to categorize faults \cite{future-research, other-goal}
         \item electromagnetic interference
     \end{itemize}
     \item \textbf{Intermittent}: Livespan similar to \textit{Transient} but it occurs in \textit{burst}. 
-    It is mainly caused by eternal conditions : temperature, voltage, hardware wear out and High Intensity Radiated-Field (HIRF)   
+    It is mainly caused by eternal conditions: temperature, voltage, hardware wear out and High Intensity Radiated-Field (HIRF)   
     \item \textbf{Permanent}: Results from hardware wear out or manufacturing defects. 
     The only fix for this type is to repair or change the hardware. 
-    Component wear out is well known in the current literature, the \textit{Bathtub curve} \cite{bathtub} describe the three main phases of a component's life : 
+    Component wear out is well known in the current literature, the \textit{Bathtub curve} \cite{bathtub} describe the three main phases of a component's life: 
     \begin{itemize}
         \item The \textit{infant} stage is when the hardware is fairly new (not in term of design). 
         Thus, it might be defective while still passing the basic tests required for using it. 
@@ -351,7 +351,7 @@ Now, we need to categorize faults \cite{future-research, other-goal}
 \subsection{Fault Detection}
 Even though it is not the main topic, neglecting fault detection would be just as bad as neglecting any part of the domain. 
 To highlight this, we can note that \textit{NMR} does recover from an error occurring but it can \textit{not} detect the underlying fault. 
-Preventing the faults as soon as possible save the whole recovery process and thus saving the additional computational power, possibly missed deadlines (in mixed critical systems for example) or even heat-induced wear out. 
+Preventing the faults as soon as possible save the whole recovery process and thus saving the additional computational power, possibly missed deadlines (in mixed-criticality systems for example) or even heat-induced wear out. 
 \subsubsection{Hardware}
 \begin{itemize}
     \item \textbf{Fail-signal processor} is used in multi-processor architectures. 
@@ -394,18 +394,19 @@ For example, a task that needs to check if the distance with the car in front of
 If the former fails, a crash might happens as if the latter fails, temperature might go up by 0.1°C. 
 The formal way of doing this is to map a number (the priority) to tasks, 0 being the most critical ones and as the number increases, the priority lowers. \\
 
-The most common, to our knowledge, mixed critical model is the \textit{Dual} \cite{scheduling-mixed}. 
-It consists of two priority :
+The most common, to our knowledge, mixed-criticality model is the \textit{Dual} \cite{scheduling-mixed}. 
+It consists of two priorities:
 \begin{itemize}
     \item HI-critical
     \item LO-critical
 \end{itemize} 
 As the names suggest, the HI-criticality stands for tasks that need to be finished in time (with a high priority) and LO-critical is used to describe tasks that can be dropped or can miss a deadline (low priority).
-The software failure model of a task is usually considered in two senses: \begin{itemize}
+The software failure model of a task is usually considered in two senses: 
+\begin{itemize}
     \item the logical sense: the task produces an incorrect output
     \item in the timing sense: the task does not produce a correct output by the end of its deadline
 \end{itemize}
-However, all the industries (aviation, automobile, medicals, railway, spaces, industrials, etc.) have their own priority scale. All of them are, to some extent, a specification of a simple Mixed critical system with task priorities. 
+However, all the industries (aviation, automobile, medicals, railway, spaces, industrials, etc.) have their own priority scale. All of them are, to some extent, a specification of a simple mixed-criticality system with task priorities. 
 For example, aviation with \textit{DO-178B} (or C) with the DAL priority that goes from A to E, A being the most critical and E being the least. 
 
 
@@ -425,7 +426,6 @@ It also makes clear which attacks are in scope, which assets must remain confide
 
 In this work, the threat model is especially important because the enclave must recover in an untrusted world while still preserving the checkpoint contents and the control flow of the recovery mechanism.
 This provides the basis for the later discussion of TEEs, enclaves, and the rewind protocol.
-\\
 
 % TEE
 \subsection{Trusted Execution Environments (TEE)}
@@ -445,7 +445,7 @@ These techniques slow down attacks and can stop malware that depends on known pa
 
 %REWINDING \& DOMAINS
 \subsection{Rewinding \& Domains}
-A current approach to address attacks is to first detect the attack and then roll-back the system to a previous (supposedly) safe state by replications or checkpointing. As much as this mechanism works to ensure reliability of the system, the \textit{resilience} and \textit{availability} when it is under an attack is not the focus. This last point enables an attacker to use the delay of roll-backing the system as an attack vector. To solve this, a software library has been created for 64-bits x86 processors : \textit{Secure Domain Rewind and Discard (SDRaD)} \cite{sdrad}. The underlying logic consists of using \textit{Domains}, compartmentalized and secured spaces and using a domain for each critical task. Thus, when an error occurs, the corrupted domain can be \textit{discarded} (terminated) and the error can be handled. In this scenario, the targets services are Commercials Off-The-Shelf (COTS) processors \cite{sdrad, fault-detection-survey, future-research} (ie. processors that don't need hardware specifications or specific changes in order to work) for web services with multiple clients. The plurality of the clients is where the danger lies as if one client is malicious, it can affect the others. 
+A current approach to address attacks is to first detect the attack and then roll-back the system to a previous (supposedly) safe state by replications or checkpointing. As much as this mechanism works to ensure reliability of the system, the \textit{resilience} and \textit{availability} when it is under an attack is not the focus. This last point enables an attacker to use the delay of roll-backing the system as an attack vector. To solve this, a software library has been created for 64-bits x86 processors: \textit{Secure Domain Rewind and Discard (SDRaD)} \cite{sdrad}. The underlying logic consists of using \textit{Domains}, compartmentalized and secured spaces and using a domain for each critical task. Thus, when an error occurs, the corrupted domain can be \textit{discarded} (terminated) and the error can be handled. In this scenario, the targets services are Commercials Off-The-Shelf (COTS) processors \cite{sdrad, fault-detection-survey, future-research} (ie. processors that don't need hardware specifications or specific changes in order to work) for web services with multiple clients. The plurality of the clients is where the danger lies as if one client is malicious, it can affect the others. 
 That is where the SDRaD mechanism comes in place, each client or subroutines of the clients could be stored in different domains making a great isolation in-between clients. 
 The program using the library can rewind the states of the domains discarded to avoid propagation and this makes the possible Denial of Service (DoS) attack outdated as the states are saved frequently and the whole system does not need to restart from scratch (using caches services for example). 
 
@@ -505,19 +505,20 @@ This allows to measure the viability and the relevance of the work done.
 
 Second cut is the type of systems that needs to be modeled. 
 Our focus will be \textit{one level} criticality system, as they are great will reflect an enclave that has one single job.
-There could be extended work on several enclave levels that have a different saving rates. Making it mixed criticals enclaves of a bigger system.
+There could be extended work on several enclave levels that have a different saving rates. 
+Making it mixed-criticalities enclaves of a bigger system.
 
 Third cut is the type of faults. 
 As diving in any type of fault could be a thesis in itself, the faults will be reviewed only for what they are and not necessarily for their cause. 
 Thus, \textit{all three types} will be looked upon.
 
-Next cut is the channel that will be use. 
+Next cut is the channel that will be used. 
 In other terms, \textit{hardware} and \textit{software}. 
 As they are both important and linked in various ways. 
 The focus will not only, at least initially, be on one of them but rather on \textit{both} using \textit{emulation} and the implication that each have on the other. 
-For example, Enclaves that need restricted access and create a waterfall of complexity in the design and implementation has on impact on both hardware and software. 
-To the extent, we will base our work on \textit{Keystone} that provides a platform to emulate a RISC-V processor with enclaves and cryptographic soundness using hardware (PMP) on a TEE. 
-(\cite{keystone-repo, keystone-web, keystone-docs}), This will be detailed in the corresponding Chapter \ref{chap:Keystone}.
+For example, Enclaves that need restricted access and create a waterfall of complexity in the design and implementation has an impact on both hardware and software. 
+To this extent, we will base our work on \textit{Keystone} that provides a platform to emulate a RISC-V processor with enclaves and cryptographic soundness using hardware (PMP) on a TEE. 
+(\cite{keystone-repo, keystone-web, keystone-docs}) This will be detailed in the corresponding Chapter \ref{chap:Keystone}.
 
 Final cut is about the \textit{cybersecurity} perspective. 
 As the industry around this domain is mostly critical (aviation, automobile, space or even medical), there is a high risk with someone getting access to something they shouldn't have. Considering that, we must ensure that the faults occurring, possibly from a malicious source, does \textit{not break the system nor give informations} about it. 
@@ -529,7 +530,7 @@ Then the system can be rewinded and set to a safe state while not being unavaila
 These specifications can be linked to try an extend the SDRaD \cite{sdrad} work in a TEE, making an equivalence between domains and enclaves. 
 As the enclaves are subregions of a TEE, they are isolated and secure as the definition of a domain using Private Keys for Userspace (PKU) and Memory Protection Keys (MPK) (with register mechanism and much more \cite{sdrad}). \\
 
-Therefore, the research should focus on \textit{Fault recovery by rewinding enclaves in a TEE on a RISC-V architecture using Keystone} and extending existing works.
+Therefore, the research should focus on \textit{Fault recovery by rewinding enclaves in a TEE on the RISC-V architecture using Keystone} and extending existing works.
 The main objective is to determine whether rewind is practical for opaque enclaves on Keystone when the world outside the enclave cannot be trusted.
 The first sub-objective is to measure the cost of checkpointing, loading, and ordinary execution so the break-even point can be identified.
 The second sub-objective is to verify that the recovery path still satisfies confidentiality, integrity and authenticity, atomicity, and unclonability.
@@ -551,7 +552,7 @@ Together, these objectives answer whether rewind is useful in practice and what 
 This allows the TEE to be highly optimized for better performance, smaller trusted computing base (TCB), and programmability with a given workload and a threat model." 
 - 2.2. Keystone Basics \cite{keystone-docs}
 \\\\
-Its implementation can be found on the corresponding github reposity: \keystonegithub.
+Its implementation can be found on the corresponding github repository: \keystonegithub.
 \\
 The corresponding documentation can be found at :
 \href{https://docs.keystone-enclave.org/en/latest/index.html}{https://docs.keystone-enclave.org/} 
@@ -559,11 +560,11 @@ The corresponding documentation can be found at :
 
 
 \section{RISC-V}
-RISC-V is a free and open-source (in contrast to x86 and ARM) Instruction Set Artchitecture (ISA).
+RISC-V is a free and open-source (in contrast to x86 and ARM) Instruction Set Architecture (ISA).
 Due to its reduced instruction set, it has become a popular architecture for embedded systems and microcontrollers as it allows to reduce power consumption, code size, and memory use. \cite{riscv-manual}
 \\
 
-RISC-V has three priviliege levels (2.1.2. RISC-V background \cite{keystone-docs, review-keystone}):
+RISC-V has three privilege levels (2.1.2. RISC-V background \cite{keystone-docs, review-keystone}):
 \begin{itemize}
     \item U-mode: User processes
     \item S-mode: Kernel
@@ -592,7 +593,7 @@ It alows the M-Mode to control physical memory access.
 PMP is ruled by a set of Control Status Registers (CSR) to restrict physical memory access for U and S mode and is configured by the M-mode.
 \\
 
-PMP as a variable number of entries depending on the the platform it is on. 
+PMP as a variable number of entries depending on the platform it is on. 
 The one in our interest is QEMU, its virtual machine have 16 entries, each entry is defined by one or more CSRs.
 It works on physical addresses, the configuration of the subsequents virtual adresses can be let to the S-mode without compromising security.
 Even with different hardware implementation, the standard garantees basic functionality. 
@@ -667,10 +668,10 @@ Keystone is a two-way framework.
 It is customizable by both the developers (of the enclaves) and by the platform producers. 
 This means that building on it works in two different ways.
 The former is the one that is in our interest. 
-Even more, the need to develop a host "supervisor" of the enclave and interface to keep track inbetween runs will add a step.
+Even more, the need to develop a host "supervisor" of the enclave and interface to keep track in between runs will add a step.
 \\
 
-The basic workflow os to build de the eapps, the host and then \textit{possibly modified} runtime binaries.
+The basic workflow os to build the eapps, the host and then the \textit{possibly modified} runtime binaries.
 Then, they can (but don't have to), be packaged together into a file (4,5).
 The files are then deployed (6,7) into the remote system.
 \\
@@ -748,7 +749,7 @@ More precisely using Outbound CALLs (\texttt{OCALL}). However, this is done by u
 
 \subsection{OCALL lifecycle}
 To make things clear, we'll use an example of usage. 
-If we want to print something from inside the enclave, we need to : 
+If we want to print something from inside the enclave, we need to: 
 
 \begin{itemize}
     \item First, decide, with the host (at implemtation time), for the edge call corresponding to print: \texttt{OCALL\_PRINT\_VALUE}. 
@@ -870,7 +871,7 @@ auto edge_call_wrapper(int argc, char** argv)
     }
 
     //5. Exit
-    return (output ? retvall : some_value);
+    return (output ? retvall: some_value);
     
 }
 \end{verbatim}
@@ -881,8 +882,8 @@ Considering this, small functions to format numbers into strings (char*) have be
 \section{Data sealing}
 \label{sec:data-sealing}
 Keystone has a sealing protocol. 
-Using this, an enclave can save data in an untrusted, non-volatile, memory outside of its memory range.
-It works by enabling the SM to to compute a \texttt{deterministic key} from the RoT for the enclave to use.
+Using this, an enclave can save data in an untrusted, non-volatile memory outside of its memory range.
+It works by enabling the SM to compute a \texttt{deterministic key} from the RoT for the enclave to use.
 The key works both for sealing and unsealing data.
 The deterministic operation is based on the device, a given enclave and a given SM running on a given processor will always yield the same key. 
 Therefore, a combination including any differing component will give a different key \cite{keystone-docs, review-keystone}.
@@ -1052,15 +1053,15 @@ The layer adds a tag and an Initialisation Vector (IV) for the enclave to check 
 Only the last checkpoint is saved.
 
 In this project, there is only one binary source (the compile code) and it doesn't implement any fault assessment, the enclave behaves as if the fault caused a fatal crash and stops immediatly, returning an error.
-One possible fallback would be to use a degraded version of the enclave in order to prevent attacks using the computation power and overloading a server by making it fail a task idefinitly for example. 
+One possible fallback would be to use a degraded version of the enclave in order to prevent attacks using the computation power and overloading a server by making it fail a task indefinitely for example. 
 We address this in the future work section \ref{sub:back-complexity}.
 
 % Fault model
 % Tests
 \section{Threat Model}
 \label{sec:threat-model}
-A threat model helps to clarify the hypothesis, the goals and the limitiations compared to the real, unsafe, world. 
-To this extent, we will ground the thesis over a specififed one.
+A threat model helps to clarify the hypothesis, the goals and the limitations compared to the real, unsafe, world. 
+To this extent, we will ground the thesis over a specified one.
 \\  
 
 First, the trusted domain. 
@@ -1108,7 +1109,7 @@ An enclave state must remain protected across enclave transitions, that recovery
 
 
 \section{Implementation}
-So far, this thesis has mainly covered concepts \ref{chap:SotA}, ground work \cite{ARM-TrustZone-CortexM, sdrad, keystone-repo} and limitiations.
+So far, this thesis has mainly covered concepts \ref{chap:SotA}, ground work \cite{ARM-TrustZone-CortexM, sdrad, keystone-repo} and limitations.
 All of these are used to produce the implementation of the rewind enclave mechanism.
 \\
 
@@ -1118,7 +1119,7 @@ All of these files are also available in the Appendix \ref{chap:appendix}.
 \\
 
 Implementing the rewind example is done in two different places, the \verb|eapp/| and \verb|host| subfolders.
-The eapp is, as shown is the Keystone Basics \ref{sub:basics}, the trusted part and would be considered a \textit{transient domain} \cite{sdrad}.
+The eapp is, as shown in the Keystone Basics \ref{sub:basics}, the trusted part and would be considered a \textit{transient domain} \cite{sdrad}.
 A transient domain can exit (abnormally or not), it doesn't retain data upon exiting and is closed from the outer world (in both writing and reading).
 In comparison, the host would be considered a \textit{persistent domain} as it keeps the enclave data (the sealed checkpoint), it cannot look into an enclave's memory region (except for the shared one given by the SM).
 However, the host is \textbf{not} trusted in itself.
@@ -1128,7 +1129,7 @@ This ensure that the host can neither read it or tamper with it.
 Upon unsealing a the checkpoint, the enclave checks its tag so see if it fits the data. 
 If not, the  data is discarded and the enclave restarts the computation from the beginning.
 
-The discard and rewind is done by asking the SM to destroy the enclave, free the PMP entry and then allocate a new entry on the the same binary to create the rewinded version of the enclave.
+The discard and rewind is done by asking the SM to destroy the enclave, free the PMP entry and then allocate a new entry on the same binary to create the rewinded version of the enclave.
 This new enclave's instance will ask the host (using and edge call) for any saved, sealed, checkpoint. 
 If the host has one it will copy the blob in the shared memory region and the enclave will consume it to try and restore the last checkpoint.
 If not, the enclave will start from scratch.
@@ -1336,8 +1337,8 @@ int load_checkpoint()
 
     // 1c. increment sequence and exit
     /* 
-    the sequence is incremented to mimic what would happend
-    if the the enclave was at this iteration and just saved
+    the sequence is incremented to mimic what would happened
+    if the enclave was at this iteration and just saved
     (the increment is done after the save).
     */ 
     checkpoint_storage.checkpoint_seq++; 
@@ -1625,7 +1626,7 @@ The implementation size of the resulting blob can be seen by setting the macro (
 
 \subsection{Fault Modeling}
 Advanced fault detection and correction is not in the scope of this thesis.
-Thus, a simple fault model is implemented : Appendix \ref{file:fault}. it is based of of the the SplitMix \cite{splitmix,splitmix1} algorithm. 
+Thus, a simple fault model is implemented: Appendix \ref{file:fault}. It is based on the SplitMix \cite{splitmix,splitmix1} algorithm. 
 It is a small, object-oriented, non-cryptographic, Pseudo-Random Number Generator (PRNG) and is based on Linear Congruential Generators (LCG) followed by bit-mixing (XOR-shifts) operations. 
 It produces good enough results while being lightweight. 
 \\\\
@@ -1635,18 +1636,18 @@ We maintain a 64-bit (SplitMix64) \verb|fault_model| structure with three fields
     \item \textbf{step}: current iteration count
     \item \textbf{period}: inverse of fault probability
 \end{itemize}
-The seed and the period can be chosen by modifying the according macros in the \verb|CMakeList| \ref{file:CMake}.
+The seed and the period can be chosen by modifying the corresponding macros in the \verb|CMakeLists.txt| \ref{file:CMake}.
 Furthermore, the seed can be either random (based on the runtime cycle counter) or fixed.
 \begin{itemize}
     \item \verb|SEED|: The seed to be picked, useful for testing.
     \item \verb|FAULT_RANDOMIZE_SEED|: If set to true (by default) then the seed is "randomly" picked, otherwise it is set to \verb|SEED|.
     \item \verb|PERIOD|: The number of call to the function, on average, before it should return true.
 \end{itemize}
-The normal usage is : 
+The normal usage is: 
 \begin{verbatim}
 // 1. setup the macros in the CMakeList
 
-// 2. initialize the faut_model
+// 2. initialize the fault_model
 struct fault_model f_m = get_default_model();
 
 // 3. at each step, trigger a possible fault
@@ -1735,7 +1736,7 @@ One could run the tests of the side with the logging of the enclave or all the t
     \item \verb|EAPP_RUNS|: sets the number of iteration the enclave does
     \item \verb|HOST_MAX_RUNS|: sets the maximum number of try before stopping
     \item \verb|FAULT_PERIOD|: sets the inverse of the chances to trigger a fault per call
-    \item \verb|CHECKPOINT_INTERVAL|: sets the period the checkpointing, ie. the number of steps to do inbetween saves
+    \item \verb|CHECKPOINT_INTERVAL|: sets the period the checkpointing, ie. the number of steps to do in between saves
     
 \end{itemize}
 \subsection{Testing}
@@ -1959,14 +1960,14 @@ The figures \ref{fig:10k_checkpoint_interval}, \ref{fig:100k_checkpoint_interval
 \label{sec:rt_analysis}
 Now that the theory is established, we will focus on the runtime benchmarks and their resulting graphs.
 in order to avoid outliers and CPU inconsistency, all the tests have been made a $1000$ times, their results have been divided by the same amount.
-The following subparts are constitued of three graphs, these graphs are all representing the same output data but the cost of the the save and load ($C_{save}$, $C_{load}$).
+The following subparts are constitued of three graphs, these graphs are all representing the same output data but the cost of the save and load ($C_{save}$, $C_{load}$).
 Our current implementation save and load costs are ranging from $15.000.000$ and $20.000.000$ (\ref{sub:cycle_cost}), this is the value given to the first two of each graphs.
 Third one has a set cost of $50.000.000$ for both.
 The choice has been made to set them to equal values as $C_{load}$ holds less weight for our purpose of long running tasks (\ref{eq:no_save_total_cost}), avoiding unnecessary confusion.
 
 Moreover, the compute cost measured in our implementation is contained within $[60k-200k]$.
 It is a simple addition, variable switch and an increment and doesn't represent a real life specific application.
-The main application being very theoric, we compare different values in order to avoid making false assumptions of the implementation of a specific task in the enclave.
+The main application being very theoretical, we compare different values in order to avoid making false assumptions of the implementation of a specific task in the enclave.
 We will discuss the relevance of these posssible values of the three different costs in the Section \ref{chap:discussion}.
 
 \subsection{Computation threshold}
@@ -2013,7 +2014,7 @@ Under well chosen parameters, and assuming at least one fault, the rewind mechan
 First, we fix $K$ to 1 as if it is below that, the threshold cannot be reached and if higher, the threshold will simply be met sooner.
 Making this value the most interesting one to analyze.
 These k-fixed graphs also highlight the possible gap between the average, the maximum and the minimum recorded over the $1000$ test runs.  
-This contrast to the theoric bound by showing that even if the average is indeed meeting the threshold, an actual run might not be worth the excess computation.
+This contrasts to the theoretical bound by showing that even if the average is indeed meeting the threshold, an actual run might not be worth the excess computation.
 On the other hand, we now know that the model behaves as intended and is, most likely, reliable when conditions are met. 
 
 \begin{figure}[H]
@@ -2045,7 +2046,7 @@ As we explained above, the plateau appears because as we increase $C_{compute}$ 
 Our intuition can also help us understand that effect as both $C_{checkpoint}$ and $C_{no_checkpoint}$ both use $C_{compute}$
 Nevertheless, as $K$ grows, the first slope gets steeper, resulting in a \textbf{logarithmic shaped function}. 
 We can explain that with the effective cost of the save being shrinked by more faults, in both intuition and equation \ref{eq:threshold_ratio}.
-The the balance between the two effect gives some kind of saturation slop.
+The balance between the two effect gives some kind of saturation slop.
 
 \begin{figure}[H]
     \centering
@@ -2119,7 +2120,7 @@ We used the \verb|EAPP_CYCLE_BREAKDOWN_TESTING| macro to render these tables.
 
 However, even using a smoothing method to avoid outliers, QEMU is not as reliable as FireSim \cite{keystone-web} in terms of cycle usage.
 Having this in mind, we could not run FireSim because of the long setup it needs.
-In fact, it has a whole documentation over at : \href{https://chipyard.readthedocs.io/en/latest/simulation/fpga-accelerated-simulation/#firesim-sim-intro}{Chipyart documentation}.
+In fact, it has a whole documentation over at: \href{https://chipyard.readthedocs.io/en/latest/simulation/fpga-accelerated-simulation/#firesim-sim-intro}{Chipyart documentation}.
 In order to use it, we would need to :
 \begin{itemize}
     \item setup a FireSim Manager instance on Amazon EC2
@@ -2208,17 +2209,17 @@ The claims can be checked using the corresponding macros in (Section \ref{chap:e
 Confidentiality means that the checkpoint is, at any time, opaque from the host. 
 An attacker can, indeed, not read the saved blob because of the \verb|aes_encrypt_ctr()| function provided by Keystone.   
 In our implementation, the rewind state to save is read from the stack, placed into a plain text checkpoint storage and then sealed using the encryption key derived from Keystone data sealing key (Section \verb|get_sealing_key()| \ref{sec:data-sealing}) and the iv (the checkpoint sequence).
-After that, a tag is done over the ciphertext using the authentification key to block anyone from tampering without notice.
+After that, a tag is done over the ciphertext using the authentication key to block anyone from tampering without notice.
 The resulting sealed checkpoint blob is then sent to the host along with the iv and the tag.
 
 
 \subsubsection{Integrity}
-We now have to consider the possible tampering and side-attacks, the former is that that the attackers tries to mess with the blob bytes directly, which is not plausible under the scheme \textit{over a fixed length message}. 
-Another attack is to obtain side informations to deduce information. This can be time to compute the tag or reloading the enclave by destroying it at every save edge call and XOR-ing the resulting initial ciphertexts.
+We now have to consider the possible tampering and side-attacks, the former is that the attackers tries to mess with the blob bytes directly, which is not plausible under the scheme \textit{over a fixed-length message}. 
+Another attack is to obtain information using side-channels information. This can be time to compute the tag or reloading the enclave by destroying it at every save edge call and XOR-ing the resulting initial ciphertexts.
 The first one is addressed using a simple, constant time comparison function that always passes over the whole sequence instead of a memcmp() that stops as soon a one byte is wrong.
-using memcmp(), or any non constant time comparison function would lead to a time of authentification leak in our scenario.
+using memcmp(), or any non-constant time comparison function would lead to a time of authentication leak in our scenario.
 The second one is, in our case, directly addressed by the inherent deterministic mechanism of the enclave, the initial state, will always be the same as the one being compiled (whatever a and b are).
-Moreover, the checkpoint sequence also follows this rule. Making a XOR of a possibly same ciphertext with different IVs simply not possible. 
+Moreover, the checkpoint sequence also follows this rule, XOR-ing of a same ciphertext with different IVs is then simply not possible. 
 
 \subsubsection{Atomicity}
 Atomicity states that we cannot have an undefind saved state. Based on the two last objectives, a maliciously modified state is not something to scared of.
@@ -2263,7 +2264,7 @@ Saving too often reduces the amount of work lost after a fault, but it also incr
 Saving too rarely lowers checkpoint overhead, but it increases the amount of recomputation after a failure.
 The optimal interval therefore depends on the relative cost of computation, checkpointing, and fault recovery, and on the expected number of faults over the lifetime of the enclave.
 In other words, rewind is only practical if the application can choose an interval that matches its own cost profile rather than relying on a fixed policy for every workload.
-Another point about the the saving ratio is for mixed critical systems. The period could be mapped to a criticality level so that most important task get reloaded quicker while the others could still recover.
+Another point about the saving ratio is for mixed-criticality systems. The period could be mapped to a criticality level so that most important task get reloaded quicker while the others could still recover.
 Thus, all benefiting from the gains of rewinding while mitigating its costs.
 \\
 
@@ -2288,7 +2289,7 @@ That makes the mechanism promising, but only in the class of long-running protec
 The following directions extend the current rewind design without changing its basic goal.
 They focus on making the checkpoint policy more adaptable, the protection layer lighter, and the recovery path more realistic.
 
-\subsection{Mixed criticality}
+\subsection{Mixed-criticality}
 The current implementation treats every enclave run as if it had the same level of urgency and the same recovery policy. 
 A natural follow-up would be to support mixed-criticality workloads, where the enclave can distinguish between essential work that must always be preserved and optional work that can be recomputed or discarded more aggressively.
 
@@ -2300,7 +2301,7 @@ Real applications rarely consist of one homogeneous loop, and a mixed-criticalit
 
 Nevertheless, the results on checkpoint intervals could be used to implement a higher level critical model, that operates at the enclave level.
 Making each enclave at a given level and then mapping this to a period, the highest priority getting the lowest period. 
-Note that that would need some fine tuning and system design in order to fit the hardware capabilites and task deadlines.
+Note that this would need some fine tuning and system design in order to fit the hardware capabilites and task deadlines.
 
 \subsection{Modern lightweight cryptoscheme}
 The current sealing layer has been chosen because of its supposed soundness (relying on Keystone data sealing), but it is not necessarily the best choice if the goal is to minimize recovery overhead. 
