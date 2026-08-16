@@ -16,12 +16,12 @@ set(eyrie_plugins "io_syscall linux_syscall env_setup")
 
 
 ###################### macros definitions (can be left empty) ######################
-set(FAULT_PERIOD "30" CACHE STRING "optional override for PERIOD macro (example: 30ULL)")
+set(FAULT_PERIOD "20" CACHE STRING "optional override for PERIOD macro (example: 30ULL)")
 set(FAULT_RANDOMIZE_SEED "1" CACHE STRING "optional override for FAULT_RANDOMIZE_SEED macro (0 or 1)")
 set(FAULT_SEED "" CACHE STRING "optional override for SEED macro (example: 0x6b656973746f6e68ULL)")
 set(EAPP_RUNS "50" CACHE STRING "optional override for the eapp main loop bound (example: 50)")
 set(HOST_MAX_RUN "10" CACHE STRING "optional override for host main loop bound before stopping execution (example: 10)")
-set(CHECKPOINT_INTERVAL "1" CACHE STRING "optional override for the checkpoint save interval (example: 1)")
+set(CHECKPOINT_INTERVAL "5" CACHE STRING "optional override for the checkpoint save interval (example: 1)")
 
 
 ##### logging #####

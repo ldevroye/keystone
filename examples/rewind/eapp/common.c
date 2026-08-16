@@ -222,8 +222,8 @@ int test_run_enclave(unsigned long runs, struct fault_model* fault_model, int re
 
 #if !EAPP_BREAK_EVEN_TESTING || (!EAPP_TESTING && EAPP_BREAK_EVEN_TESTING)
         char formated_counter[32], formated_fib[32];
-        format_value(formated_counter, state.counter, "counter");
-        format_unsigned_value(formated_fib, state.b, "output");
+        format_value(formated_counter, state.counter, "counter: ");
+        format_unsigned_value(formated_fib, state.b, "output: ");
 
         eapp_print(formated_counter);
         eapp_print(formated_fib);
