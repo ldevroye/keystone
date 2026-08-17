@@ -1929,7 +1929,7 @@ N \cdot C_{save} + C_{load}\cdot K
 
 This confirms that what is seen in the graphs of Section \ref{sec:rt_analysis}:
 \begin{itemize}
-    \item For $k=0$, the model can only approach, from below, the threshold ratio.
+    \item For $K{=}0$, the model can only approach, from below, the threshold ratio.
     \item As the $C_{save}$ and $C_{load}$ are rising, the $C_{compute}$ must also go up, this translates to a plateau after the first threshold overpass.
     \item The number of fault $K$, that is supposedly much smaller than the number of runs $N$, which is great ($\ge 10.000$) as per the goal of long-running tasks, makes the $C_{load}$ weight little compared to $C_{save}$
 \end{itemize}
@@ -1938,10 +1938,10 @@ We can isolate the computation needed in order to reach the threshold value.
 \\
 Assuming that we use:
 \begin{itemize}
-    \item $N = 1.000.000$
-    \item $K = 1$ the minimal number to be able to reach a threshold
-    \item $C_{save} = 15.000.000$ as the runtime test is $[15M-20M]$
-    \item $C_{load} = 15.000.000$ to better isolate the compute cost, we assume that load and save are symmetric
+    \item $N{=}1.000.000$
+    \item $K{=}1$ the minimal number to be able to reach a threshold
+    \item $C_{save}{=}15.000.000$ as the runtime test is $[15m-20m]$
+    \item $C_{load}{=}15.000.000$ to better isolate the compute cost, we assume that load and save are symmetric
 \end{itemize} 
 \begin{align}
 C_{compute}
@@ -1987,7 +1987,7 @@ Taking the square root of both sides gives the closed-form optimal
 checkpoint interval:
 
 \begin{equation}
-X^* = \lceil \sqrt{\frac{2 N \cdot C_{save}}{C_{compute} \cdot K}} \rceil
+X^* = \lfloor \sqrt{\frac{2 N \cdot C_{save}}{C_{compute} \cdot K}} \rfloor
 \label{eq:optimal_interval}
 \end{equation}
 This result is structurally equivalent to the classical Young/Daly optimal
@@ -1999,24 +1999,47 @@ the total workload $N$, while it shrinks as the fault count $K$ or the
 compute cost $C_{compute}$ increases, reflecting the intuition that more
 frequent or more costly faults justify more frequent checkpointing.
 We can also note that, compared to the other equations, the number of runs done has a great impact on the resulting optimum.
-
-
+\\
 The resulting value for our implementation is:
 \begin{align*}
-X^*(C_{compute}) &= \lceil \sqrt{\frac{2 N \cdot C_{save}}{K \cdot C_{compute}}} \rceil \\
-&= \lceil \sqrt{\frac{2 \cdot (1.000.000)\cdot(15.000.000)}{1 \cdot C_{compute}}} \rceil\\
-&= \lceil \sqrt{\frac{3\times 10^{13}}{C_{compute}}} \rceil
+X^*(C_{compute}) &= \lfloor \sqrt{\frac{2 N \cdot C_{save}}{K \cdot C_{compute}}} \rfloor \\
+&= \lfloor \sqrt{\frac{2 \cdot (1.000.000)\cdot(15.000.000)}{1 \cdot C_{compute}}} \rfloor\\
+&= \lfloor \sqrt{\frac{3\times 10^{13}}{C_{compute}}} \rfloor
 \label{eq:optimal_interval_vs_ccompute}
 \end{align*}
 Showing that as the computing cost rises, the interval can be smaller in order to for the costs to be break even with the gains.
-Now, we can try to check that for our implementation with $C_{compute} = 200.000$
+Now, we can try to check that for our implementation with $C_{compute}{=}200.000$
 
 \begin{align*}
-X^*(C_{compute}) &= \lceil \sqrt{\frac{3\times 10^{13}}{200.000}} \rceil\\
-&\approx 12.248\\
+X^*(C_{compute}) &= \lfloor \sqrt{\frac{3\times 10^{13}}{200.000}} \rfloor\\
+&= 12.247\\
 \end{align*}
 Thus, until the interval gets to 12 thousand, the ratio will improve, this effect is more visible when the computation cost is closer to the save/load cost or when the numbers of runs get smaller.  
 The figures \ref{fig:10k_checkpoint_interval}, \ref{fig:100k_checkpoint_interval} and \ref{fig:1m_checkpoint_interval} are a runtime representation of this effect.
+In the end, the final threshold we can get over $1m$ runs, $15m$ load and save cost, $200k$ compute cost, $1$ error and, the optimal saving interval $12247$ is:
+\begin{equation*}
+C_{checkpoint}(X) = \frac{N}{X} \cdot C_{save} + C_{compute} \cdot N + C_{load} \cdot K + C_{compute} \cdot K \cdot \left\lceil \frac{X}{2} \right\rceil
+\end{equation*}
+
+\begin{align*}
+C_{checkpoint} &\approx 1.224.708.582 + 200.000.000.000 + 15.000.000 + 1.224.800.000 \\
+&\approx 202.465.508.582
+\end{align*}
+
+\begin{align*}
+C_{no\_checkpoint} &= C_{compute}\left(N + \frac{K\cdot N}{2}\right) \\
+&= 200.000 \times 1.500.000 \\
+&= 300.000.000.000
+\end{align*}
+
+\begin{align*}
+\frac{C_{no\_checkpoint}}{C_{checkpoint}} &= \frac{300.000.000.000}{202.465.508.582} \\
+\end{align*} 
+
+\begin{equation}
+\boxed{ratio \approx 1.482}
+\end{equation}
+
 
 \section{Runtime Analysis}
 \label{sec:rt_analysis}
@@ -2056,14 +2079,14 @@ C_{compute} &\ge \frac{(1.000.000)(50.000.000) + 50.000.000}{499.999} \\
 \\
 
 Secondly for the overview of several possible $K$, the overall curvature of the function has the same, logarithmic shape.
-The root of the ratio ($y=1$) gets shrinked conversely to the number of faults ($K$).
-For $K=0$ the threshold is $\approxeq \infty$, for $K=1$, it is $R$ (computed with the parameters using \ref{eq:compute_threshold_X1}), $K=2$ is $R/2$,
+The root of the ratio ($y{=}1$) gets shrinked conversely to the number of faults ($K$).
+For $K{=}0$ the threshold is $\approxeq \infty$, for $K{=}1$, it is $R$ (computed with the parameters using \ref{eq:compute_threshold_X1}), $K{=}2$ is $R/2$,
 \\
 
-Finally, for $K=X$ the threshold is $\frac{R}{x}$. 
+Finally, for $K{=}X$ the threshold is $\frac{R}{x}$. 
 This could lead us to think that the usefulness of rewinding is not growing along with the number of faults. 
 This is only if we don't look at the scaling of the functions. 
-Taking the edge cases of the Figure \ref{fig:20m_threshold_all_k}, for $k=1$ vs $K=9$ we can see that when the ratio is only halfway met for the minimal case, it is already close to $3$ for the maximum one.
+Taking the edge cases of the Figure \ref{fig:20m_threshold_all_k}, for $k{=}1$ vs $K{=}9$ we can see that when the ratio is only halfway met for the minimal case, it is already close to $3$ for the maximum one.
 
 After that, we measure the impact of reducing the period of saving the checkpoint.
 As shown in the equations, adding some space between checkpoints saves a lot of time, however, making it too big gives negative results as the recovery cost rises along the period.
