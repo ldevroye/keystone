@@ -144,7 +144,7 @@ Department of Computer Sciences
 % Title
 \rule{\textwidth}{1mm}
 \centering
-\textbf{\huge Fault-Tolerant Microarchitectures: Enhancing Reliability through Redundant Execution\\[0.2cm] }
+\textbf{\huge Fault-Tolerant Microarchitectures: Enhancing Reliability Through Redundant Execution\\[0.2cm] }
 \rule{\textwidth}{1mm} 
 \vspace*{1mm}
 
@@ -167,18 +167,18 @@ Department of Computer Sciences
 \begin{abstract}
 Trusted execution environments promise isolation but say little about what happens after a crash.
 This thesis asks whether an enclave can rewind itself to safety without ever trusting the machine around, all of that while being cost-effective.
-The RISC-V architecture, trough Keystone, becomes the testing ground, its physical memory protection and security monitor treated as the only fixed point in a hostile world.
+The RISC-V architecture, through Keystone, becomes the testing ground, its physical memory protection and security monitor treated as the only fixed point in a hostile world.
 The host keeps the checkpoint, yet he never learns what it contains.
 Sealing keys bound to enclave measurement turn a blind, opaque blob into something the enclave alone can read and trust again.
 Confidentiality comes from AES counter mode, authenticity from a separate MAC key, and both survive a channel assumed to be actively adversarial.
 Rewind here means destroying a faulted enclave outright and rebuilding it fresh from the same binary, not nudging a wounded process back to life.
 Every save, every load, every unseal costs cycles, those cycles are measured in order to find the point where rewinding becomes efficient.
 Break-even thresholds emerge from this cost, shifting with fault frequency and checkpoint interval in ways that resist a single universal answer.
-Corrupted blobs, truncated writes, and single flipped bits are tested against the sealed with the goal to make sure that the assumptions made are fulfilled with our implementation.
+Corrupted blobs, truncated writes, and single flipped bits are tested against the sealed checkpoint with the goal to make sure that the assumptions made are fulfilled with our implementation.
 Rollback prevention is explicitly left outside this boundary, a limitation on the host's untrustworthiness directly from the Keystone design.
 The results show that rewind is not to be considered an obvious choice, instead, the outcomes reveal a map of when it does become relevant.
 Long, repetitive, interruption-prone workloads justify the overhead whereas short or rare-fault workloads do not.
-The trade-off clear: liveness bought at the price of sealing, unsealing, and a Security Monitor willing to rebuild trust from nothing.
+The trade-off is clear: liveness is bought at the price of sealing, unsealing, and a Security Monitor willing to rebuild trust from nothing.
 \end{abstract}
 
 
@@ -255,12 +255,9 @@ The files can also be found in the Appendix (\ref{chap:appendix}).
 %%%%%%%%%%%%%%%%%%%%%%%% SotA %%%%%%%%%%%%%%%%%%%%%%%%
 \chapter{State of the Art}
 \label{chap:SotA}
-
-% INTEREST
-\section{Engagment in the scientific community}
 For as long as computers (some could even say tools in general) have existed, so have defects, errors and bugs \cite{vonneumann56}. 
 However, the need for a solid structure and concretes answers increased as Moore's law kept going on \cite{moore-law}. 
-This topic is drawing more attention as the years go by.
+Luckily enough, this topic is drawing attention and a lot of ground work and precise basis have been established over the time.
 
 % FAULTS
 \section{Faults}
@@ -513,7 +510,7 @@ Now that everything is, roughly speaking, well defined.
 Although the whole domain is very interesting and always needs specific studies on various topics, it needs to be narrowed down in order to suit a Master thesis.
 
 First cut is the type of \textit{redundancy}. 
-For the purpose of the research, the tests will be based on the \textit{timed} redundancy method that is \textit{rewinding} agains't no redundancy. 
+For the purpose of the research, the tests will be based on the \textit{timed} redundancy method that is \textit{rewinding} against no redundancy. 
 This allows to measure the viability and the relevance of the work done. 
 
 Second cut is the type of systems that needs to be modeled. 
@@ -543,11 +540,10 @@ Then the system can be rewinded and set to a safe state while not being unavaila
 These specifications can be linked to try an extend the SDRaD \cite{sdrad} work in a TEE, making an equivalence between domains and enclaves. 
 As the enclaves are subregions of a TEE, they are isolated and secure as the definition of a domain using Private Keys for Userspace (PKU) and Memory Protection Keys (MPK) (with register mechanism and much more \cite{sdrad}). \\
 
-Therefore, the research should focus on \textit{Fault recovery by rewinding enclaves in a TEE on the RISC-V architecture using Keystone} and extending existing works.
+Therefore, the research will focus on \textit{Fault recovery by rewinding enclaves in a TEE on the RISC-V architecture using Keystone} and extending existing works.
 The main objective is to determine whether rewind is practical for opaque enclaves on Keystone when the world outside the enclave cannot be trusted.
 The first sub-objective is to measure the cost of checkpointing, loading, and ordinary execution so the break-even point can be identified.
 The second sub-objective is to verify that the recovery path still satisfies confidentiality, integrity and authenticity, atomicity, and unclonability.
-The third sub-objective is to connect these measurements to the system design choices in PMP, enclave isolation, and the sealing protocol.
 Together, these objectives answer whether rewind is useful in practice and what the implementation must assume to make it safe.
 \\
 
@@ -604,13 +600,11 @@ As all of these are software implementation. It is much easier to implement, deb
 - \cite{SiFive}
 It alows the M-Mode to control physical memory access.
 PMP is ruled by a set of Control Status Registers (CSR) to restrict physical memory access for U and S mode and is configured by the M-mode.
-\\
 
-PMP as a variable number of entries depending on the platform it is on. 
+It also has a variable number of entries depending on the platform it is on. 
 The one in our interest is QEMU, its virtual machine have 16 entries, each entry is defined by one or more CSRs.
 It works on physical addresses, the configuration of the subsequents virtual adresses can be let to the S-mode without compromising security.
 Even with different hardware implementation, the standard garantees basic functionality. 
-\\
 
 More importantly, PMP is used by the SM to create memory isolation and can be dynamically configured by the M-mode (using CSRs).
 
@@ -629,11 +623,9 @@ Being a software program, it must be verified first by hardware.
 This is done by the \textit{Root of Trust} (RoT). 
 At boot time, it first measure the SM, generates a keypair for remote attestation and then signs the public keep.
 After that, the boots is resumed.
-\\
 
 The OS and the enclaves can call SM functions using the Supervisor Binary Interface (SBI).
 Each enclave use a region (section) of memory, each of these regions are defined by PMP entries.
-\\
 
 The SM uses by itself, two PMP entries (SM space, untrusted memory) each of the active enclaves consum one entry.
 
@@ -642,7 +634,6 @@ Any interruption or exception is received by the M-mode (by default).
 It thus have the full authority over th CPU scheduler. Some of its control can be delegated to S-mode.
 Using a lower level to catch exception such as page fault allows them to be handled quicker as the M-mode has a lot of workload.
 S-mode is great to handle page faults and system calls because they are frequent.   
-\\
 
 U and S modes access memory via virtual addresses while M-mode operates exclusively on physical addresses.
 In fact, the OS cannot tamper with the page table of the enclaves, this is because of PMP restrictions on the OS.  
@@ -682,12 +673,10 @@ It is customizable by both the developers (of the enclaves) and by the platform 
 This means that building on it works in two different ways.
 The former is the one that is in our interest. 
 Even more, the need to develop a host "supervisor" of the enclave and interface to keep track in between runs will add a step.
-\\
 
 The basic workflow os to build the eapps, the host and then the \textit{possibly modified} runtime binaries.
 Then, they can (but don't have to), be packaged together into a file (4,5).
 The files are then deployed (6,7) into the remote system.
-\\
 
 Keystone also allows the enclaves to do a remote attestation (2.2.2.3. \cite{keystone-docs}).
 
@@ -735,7 +724,7 @@ It has three different operating modes:
     \item The user emulation that runs a single program.
     \item The system emulation which emulates a (and possibly several) full system, including preipherals and different architectures like RISC-V. 
     This is the mode used for Keystone. 
-    \item The hypervisor support to act as a virtual-machine manager (VMM) or a backend emulation-device for virtual machines.
+    \item The hypervisor support to act as a Virtual-Machine Manager (VMM) or a backend emulation-device for virtual machines.
 \end{itemize} 
 
 \subsection{Eyrie runtime}
@@ -757,7 +746,8 @@ A visual representation is that it is at the \textit{edge} of it, meaning that t
 
 In Keystone, it is used to communicate between the host (unsafe) and the enclave (safe). 
 This is accomplished using shared memory between the two. 
-More precisely using Outbound CALLs (\texttt{OCALL}). However, this is done by using offsets in memory region, using solely offsets (neglecting virtual address pointers)
+More precisely using Outbound CALLs (\texttt{OCALL}). 
+However, this is done by using simple offsets in memory region, neglecting virtual address pointers
 \cite{keystone-docs, review-keystone}.
 
 \subsection{OCALL lifecycle}
@@ -766,7 +756,7 @@ If we want to print something from inside the enclave, we need to:
 
 \begin{itemize}
     \item First, decide, with the host (at implemtation time), for the edge call corresponding to print: \texttt{OCALL\_PRINT\_VALUE}. 
-    \item Next, stock the value input \texttt{val} ($enclave\rightarrow host$) we want to print.
+    \item Next, save the value input \texttt{val} ($enclave\rightarrow host$) we want to print.
     \item Optional, we decide of a return buffer value \texttt{ret} ($host \rightarrow enclave$).
     \item Now make the \texttt{OCALL}: \\
     \texttt{ocall(OCALL\_PRINT\_VALUE, \&val, sizeof(val), }\\
@@ -777,25 +767,23 @@ Now the runtime part allocates an \texttt{edge\_call\_t} structure in shared mem
 Then fills the call type and copies the value in the another part of the shared memory using an offset.
 The last part for the enclave now is for the runtime to exit the enclave without destroying it. 
 This is done with an \texttt{SBI\_CALL} expressing an ocall.
-\\
-Now the kernel resumes, checks for the enclave and sees a pending ocall. 
+
+After that, the kernel resumes and checks for the enclave and sees a pending ocall. 
 The execution is thus passed to the host.
 The host read the \texttt{edge\_call\_t} (destroying it at the same time) and notice that it is \texttt{OCALL\_PRINT\_VALUE}.
 The host then uses the same offset to read the buffered value and calls \texttt{\_print\_value} with the previously read value as an argument.
 After that, as for the enclave call, the \texttt{ret} buffer can be filled (if it was not 0 in the original ocall) with with data in the shared memory.
 The \texttt{edge\_call\_t} status is set to \texttt{SUCCESS} and the edge call is done for the host.
-\\
 
 An \texttt{SBI\_CALL} is emitted and the runtime re-enters the enclave. 
 The runtime checks for a returned value (if the return buffer wa not 0 at the start). 
 If so, it then uses the offset to put the data in \texttt{ret} and then resumes the wrapper code and passes any return value to the first ocall function.
-\\
 
 Note that this can also be used to provide networking operations \cite{review-keystone}.
 \\
 
 Since the implementation is assymetric, the host will have to map the edge calls that it could receive to wrapper functions and be able to handle them while running the main loop.
-The enclave with just send the \verb|OCALLs| and wait for a possible response from the host.
+The enclave will send the \verb|OCALLs| and wait for a possible response from the host.
 
 \subsubsection{Host-side}
 \label{subsub:edge-call-host}
@@ -936,7 +924,7 @@ The base of this hierarchy is at the left-most. This is the asymetric key pair (
 Computing the private key with the SM hash (\texttt{H\_SM}) which is derived from the RoT in SHA3. 
 Thus, as long as the RoT is safe, so is the SM's measurments.
 The result of the computation is used as a scalar for the Elliptic-Curve Cryptography (ECC) Key Generator.
-The final reslt is another key pair. This is the SM key pair (\texttt{PK\_SM, SK\_SM}).
+The final reslut is another key pair, the SM key pair (\texttt{PK\_SM, SK\_SM}).
 
 \subsection{Key Derivation}
 \begin{figure}[H]
@@ -945,9 +933,8 @@ The final reslt is another key pair. This is the SM key pair (\texttt{PK\_SM, SK
     \caption{Key Derivation Diagram (6.2 Sealing-Key Derivation \cite{keystone-docs})}
     \label{fig:sealing-key}
 \end{figure}
-The red blocks are what we already computed in the Key Hierarchy \ref{sub:key-hierarchy} subsection.
+The red blocks are what we already computed in the, right above, Key Hierarchy \ref{sub:key-hierarchy} subsection.
 \\
-
 Now that the SM has a key pair, it can derive keys for the enclaves.
 This is done using three components:
 \begin{itemize}
@@ -982,9 +969,7 @@ This is divided in 3 different parts:
 \end{itemize}
 All together, the Makefile is executed using all the available processing units.
 This will build all the components and generate a bootable image, the output build in \verb|build-$PLATFORM$BITS|.
-\\
-
-Also, there are possible options for it, these options are given below (presented with the default parameter) and can be given in the terminal using: 
+One can build it using the available options for it, these options are given below (presented with the default parameter) and can be given in the terminal using: 
 \begin{center}
 \verb|OPTION1=VALUE1 OPTION2=VALUE2 (...) make -j$(nproc)|
 \end{center}
@@ -1078,7 +1063,7 @@ This is true if we consider the identifier to be the same for both, as it is imp
 
 % data sealing & edge calls
 For the checkpointing scheme, the enclave use the edge calls (\ref{sub:edge-calls}) already implemented in keystone. 
-The checkpointed data is sent and retrieved (to and from the host's memory space) using the enclave's key trough two custom edge calls. 
+The checkpointed data is sent and retrieved (to and from the host's memory space) using the enclave's key through two custom edge calls. 
 To ensure that the data isn't tampered, there is a layer on top of Keystone's encryption scheme.
 The layer adds a tag and an Initialisation Vector (IV) for the enclave to check if the unsealed data corresponds to the sealed one.
 Only the last checkpoint is saved.
@@ -2242,11 +2227,14 @@ Using the plaintext size as denominator gives the per-byte averages:
 \end{align}
 
 \subsection*{Time cost}
-As for the \textit{data cost}, the time can be derived from the cycle cost.
-as 
+We chose not to analyze the time metrics of the results. 
+Emulating the processor through QEMU is, as stated before, not the most reliable technique.
+In addition to this weakness, the time can be derived directly from the cycle cost using the frequency of the processor used. 
+In this case, on the RISC-V architecture.
+This does not add, according to us, any valuable results but rather, change the unit of measurment by doing a simple calculation.
 
 \section{Cybersecurity}
-Now that the computation and data analysis is done, we will address the cybersecurity assumptions and requirements.
+Now that the computation and data analysis is done, we will address the cybersecurity assumptions, requirements and objectives.
 
 \subsection{Security objectives}
 As stated in \ref{sec:threat-model}, there are four security objectives that will be looked upon.
