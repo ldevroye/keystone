@@ -2455,11 +2455,13 @@ This thesis investigated how to provide secure checkpointing and rewind for appl
 We focused on the question: how can an enclave safely persist and restore its internal state through untrusted storage and power loss, without leaking secrets or accepting corrupted state.  
 This problem is interesting because many trusted execution environments, including Keystone, provide strong isolation during execution but offer little structured support for recovery once execution is disrupted, especially when the only persistent medium is controlled by a potentially malicious host.  
 In intermittent and attack-prone settings, this gap limits the practicality of trusted execution environments for long-running or critical services that must tolerate crashes, power cuts, and host tampering while maintaining security guarantees.  
+\\
 
 Our approach extends the Keystone enclave runtime with a minimal, enclave-centric mechanism that seals checkpointed state to the enclave using measurement-bound keys, authenticates checkpoints to detect tampering, and enforces an atomic recovery boundary on restart.  
 Within the threat model defined in this work, the host, its storage, and communication channels are considered adversarial, while enclave memory and sealing keys remain trusted.  
 We explicitly accept rollback and cloning attacks as out of scope, and instead target confidentiality, integrity, authenticity, atomicity, and unclonability of checkpointed state.  
 The resulting design ensures that corrupted or forged checkpoints are rejected, that partially written blobs cannot cause undefined enclave states, and that only an enclave with the correct measurement can unwrap its own recovery data.  
+\\
 
 From the implementation and experiments, we learned several key lessons.  
 First, keeping the recovery logic small and explicit inside the enclave runtime is crucial, because even modest complexity in the error and restart paths quickly becomes difficult to reason about, especially under intermittent power and adversarial interference.  
@@ -2468,11 +2470,13 @@ Third, we observed that host cooperation is not a reliable abstraction for corre
 This cybersecurity aspect, along with the computation cost, took a lot of thinking, model design, implementation choices and tests setup in order to have a valid final shape. 
 We were able to learn a lot about the trade-offs, the limitations and the overall designing skills that come along managing both aspects requires. 
 Finally, the experiments confirmed that it is feasible to integrate secure rewind into Keystone with moderate overhead, provided that applications adopt a disciplined notion of safe points and explicit state capture.  
+\\
 
 As a reader, the main takeaway should be that secure checkpointing and rewind in trusted execution environments is both necessary and subtle.  
 It requires coordinated design of threat models, recovery boundaries, and runtime mechanisms, rather than simply encrypting state and assuming safety.  
 You should learn that enclave-centric sealing and authentication can provide strong protection against host tampering without extending trust to the host, that atomic recovery semantics are essential to avoid inconsistent states after crashes, and that intermittent or adversarial environments force us to think of enclaves not just as isolated compute islands but as systems that must safely span multiple executions through untrusted media.  
 The work also illustrates how even a relatively lightweight change in the enclave runtime can significantly alter the security and reliability properties of Keystone-based applications.  
+\\
 
 If starting again, there are several aspects we could have approached differently.  
 We would first invest more effort in a formalization of the recovery boundary and comprehension of the platform workflow, clearly specifying which parts of enclave state must be captured, which invariants must hold at each checkpoint, and how these invariants are re-established after rewind.  
@@ -2483,6 +2487,7 @@ Another one is to start writing down all the implementation details and ideas so
 Finally, we would examine the interaction with other Keystone features and multi-enclave scenarios sooner, to understand how compartmentalization and cross-enclave dependencies affect recovery.  
 Overall, the implementation part is the first big step that has been done in order to conquer the fear of starting this thesis but as much as it has helped starting, we were too focused on this task for a considerable period of time. 
 Instead, we should have taken a step back sooner to be able to read, write or design the future steps.
+\\
 
 The approach developed in this thesis is particularly useful in scenarios where services must maintain long-lived, security-critical state inside enclaves while facing unreliable power or untrusted hosts.  
 Examples include intermittent devices that rely on Keystone for secure computation but frequently lose power, edge services that process sensitive data near users while depending on cloud hosts that cannot be fully trusted, and privacy-preserving analytics systems that run in trusted execution environments but need to survive crashes and restarts without leaking internal state or accepting corrupted histories.  
@@ -2491,6 +2496,7 @@ They store secrets or integrity-critical metadata inside the enclave that must n
 They can define clear, application-level safe points where state is consistent and can be safely checkpointed.  
 They tolerate the extra overhead of sealing and authentication in exchange for stronger recovery guarantees, using a more costly computation function and-or running for a long time with system that a prone to errors.  
 They operate in environments where power loss, crashes, or deliberate disruption by the host are realistic threats.  
+\\
 
 Under these conditions, secure checkpointing and rewind becomes a practical tool for extending Keystone’s isolation guarantees across time, not just across memory.  
 While this work does not address rollback prevention, it demonstrates that carefully designed enclave-centric recovery mechanisms can significantly increase resilience in the face of intermittent execution and adversarial hosts, and it lays a foundation for more advanced recovery and coordination schemes in future work.
