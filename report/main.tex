@@ -1860,8 +1860,13 @@ Having these variables states we can compute the theoretical cost of checkpointi
 A small nuance is that the $C_{save}$ and $C_{load}$ do not include the corresponding edge calls because of their asymmetry.
 
 \begin{equation}
-C_{checkpoint} = N\cdot (C_{save} + C_{compute}) + K\cdot C_{load}
-\label{eq:save_total_cost}
+C_{checkpoint}(X) = \frac{N}{X} \cdot C_{save} + C_{compute} \cdot N + C_{load} \cdot K + C_{compute} \cdot K \cdot \lceil \frac{X}{2} \rceil
+\label{eq:save_total_cost_x}
+\end{equation}
+To ease the understandabilty, we will assume $X=1$ for now, i.e. we save at each step.
+\begin{equation}
+C_{checkpoint}(X{=}1) = N \cdot C_{save} + C_{compute} \cdot N + K \cdot (C_{load} + C_{compute})
+\label{eq:save_total_cost_1}
 \end{equation}
 
 \begin{align*}
@@ -1890,7 +1895,7 @@ C_{no\_checkpoint} = C_{compute} \cdot \left(N + \frac{K \cdot N}{2}\right)
 \end{equation}
 
 \subsection{Computation threshold}
-Having the equations \ref{eq:save_total_cost} and \ref{eq:no_save_total_cost}, we can compute the threshold.
+Having the equations \ref{eq:save_total_cost_1} and \ref{eq:no_save_total_cost}, we can compute the threshold for $1$ save per step.
 This threshold is obtained when the ratio shown below is \textbf{greater or equal} to \textbf{one}.
 \\
 
@@ -1902,25 +1907,26 @@ The expected behavior for a given $K$ is discussed in Section \ref{fig:15m_thres
 \begin{equation}
 ratio = \frac{C_{no\_checkpoint}}{C_{checkpoint}}
 \end{equation}
+We can now compute the threshold for a given X, We will try with 
 \begin{equation}
-ratio = \frac
-{C_{compute} \cdot \left(N + \frac{K \cdot N}{2}\right)}
-{N\cdot (C_{save} + C_{compute}) + K\cdot C_{load}}
+C_{checkpoint}(X{=}1) = N \cdot C_{save} + C_{load}\cdot K + C_{compute}\cdot (N + K)
+\label{eq:checkpoint_cost_X1}
 \end{equation}
 
-\begin{align*}
-\frac{C_{compute} \cdot \left(N + \dfrac{K \cdot N}{2}\right)}
-{N\cdot (C_{save} + C_{compute}) + K\cdot C_{load}} &\geq 1 \\[2mm]
-C_{compute} \cdot \left(N + \frac{K \cdot N}{2}\right) &\geq N\cdot C_{save} + N\cdot C_{compute} + K\cdot C_{load} \\[2mm]
-C_{compute} \cdot \left(N + \frac{K \cdot N}{2} - N\right) &\geq N\cdot C_{save} + K\cdot C_{load} \\[2mm]
-C_{compute} \cdot \frac{K \cdot N}{2} &\geq N\cdot C_{save} + K\cdot C_{load} \\[2mm]
-C_{compute} &\geq \frac{N\cdot C_{save} + K\cdot C_{load}}{\dfrac{K \cdot N}{2}} \\[2mm]
-\end{align*}
-The final equation is thus:
+\noindent Setting $C_{checkpoint}(X{=}1) \le C_{no\_checkpoint}$ and solving for $C_{compute}$:
+
+\begin{align}
+N \cdot C_{save} + C_{load}\cdot K + C_{compute}\cdot (N + K)
+&\le C_{compute}\cdot\left(N + \frac{K \cdot N}{2}\right) \\
+N \cdot C_{save} + C_{load}\cdot K
+&\le C_{compute}\cdot K \cdot\left(\frac{N}{2} - 1\right)
+\end{align}
+
 \begin{equation}
-\label{eq:threshold_ratio}
-C_{compute} \geq \frac{2\,C_{save}}{K} + \frac{2\,C_{load}}{N}
+\boxed{C_{compute} \;\ge\; \dfrac{N \cdot C_{save} + C_{load}\cdot K}{K\left(\dfrac{N}{2} - 1\right)}}
+\label{eq:compute_threshold_X1}
 \end{equation}
+
 This confirms that what is seen in the graphs of Section \ref{sec:rt_analysis}:
 \begin{itemize}
     \item For $k=0$, the model can only approach, from below, the threshold ratio.
@@ -1937,10 +1943,13 @@ Assuming that we use:
     \item $C_{save} = 15.000.000$ as the runtime test is $[15M-20M]$
     \item $C_{load} = 15.000.000$ to better isolate the compute cost, we assume that load and save are symmetric
 \end{itemize} 
-\begin{align*}
-C_{compute} &\geq \frac{2 \cdot 15.000.000}{1} + \frac{2\cdot 15.000.000}{1.000.000}\\
-C_{compute} &\geq 30.000.000 + 30
-\end{align*}
+\begin{align}
+C_{compute}
+&\ge \frac{N\cdot C_{save} + K\cdot C_{load}}{K\left(\dfrac{N}{2}-1\right)} \\[6pt]
+&= \frac{(1.000.000)(15.000.000) + (1)(15.000.000)}{1\cdot\left(\dfrac{1.000.000}{2}-1\right)} \\[6pt]
+&= \frac{15.000.000.000.000 + 15.000.000}{499.999} \\[6pt]
+&\approx 3.0 \times 10^{7}
+\end{align}
 This result is confirmed by the runtime analysis graphs (and underlying benchmarks) in Section \ref{sub:threshold}.
 
 \subsection{Checkpoint interval}
@@ -1948,7 +1957,7 @@ Another parameter that we can set is the \textit{checkpoint interval (X)} . This
 The previous equations don't account for it and it is assumed to be $1$, i.e. each step saves the whole payload. 
 Now taking this in the $C_{checkpoint}$ becomes:
 \begin{equation}
-C_{checkpoint}(X) = \frac{N}{X} \cdot C_{save} \;+\; C_{compute} \cdot N \;+\; C_{load} \cdot K \;+\; C_{compute} \cdot K \cdot \lceil \frac{X}{2} \rceil
+C_{checkpoint}(X) = \frac{N}{X} \cdot C_{save} + C_{compute} \cdot N + C_{load} \cdot K + C_{compute} \cdot K \cdot \lceil \frac{X}{2} \rceil
 \label{eq:checkpoint_interval_cost}
 \end{equation}
 What changed is that the $X$ factor is below the first term, cutting the threshold drastically and a new term appeard, it is the estimated cost or reloading.
@@ -2031,21 +2040,24 @@ These graphs have been made using the \verb|EAPP_BREAK_EVEN_TESTING| macro along
 First, for the fixed $K=1$.
 The Figure \ref{fig:15m_threshold_k} and  is the \textit{low expectation} runtime, the ratio is met at around $30m$ as shown in the example equation.
 Figure \ref{fig:20m_threshold_k} is the \textit{high expectation} runtime, the ratio is met at around $40m$.
-To be convinced of this, just replace the parameters of the equation \ref{eq:threshold_ratio}:
+To be convinced of this, just replace the parameters of the equation \ref{eq:compute_threshold_X1}:
 \begin{align*}
-C_{compute} &\geq \frac{2 \cdot 20.000.000}{1} + \frac{2\cdot 20.000.000}{1.000.000}\\
-C_{compute} &\geq 40.000.000 + 40
+C_{save}=C_{load}&=20.000.000:\quad\\
+C_{compute} &\ge \frac{(1.000.000)(20.000.000) + 20.000.000}{499.999} \\
+&\approx 4.0\times 10^{7}
 \end{align*}
+\\
 As for the last one, the Figure \ref{fig:50m_threshold_k} can be verified if we just replace the parameters:
 \begin{align*}
-C_{compute} &\geq \frac{2 \cdot 50.000.000}{1} + \frac{2\cdot 50.000.000}{1.000.000}\\
-C_{compute} &\geq 100.000.000 + 100
+C_{save}=C_{load}&=50.000.000:\quad\\
+C_{compute} &\ge \frac{(1.000.000)(50.000.000) + 50.000.000}{499.999} \\
+&\approx 1.0\times 10^{8}
 \end{align*}
 \\
 
 Secondly for the overview of several possible $K$, the overall curvature of the function has the same, logarithmic shape.
 The root of the ratio ($y=1$) gets shrinked conversely to the number of faults ($K$).
-For $K=0$ the threshold is $\approxeq \infty$, for $K=1$, it is $R$ (computed with the parameters using \ref{eq:threshold_ratio}), $K=2$ is $R/2$,
+For $K=0$ the threshold is $\approxeq \infty$, for $K=1$, it is $R$ (computed with the parameters using \ref{eq:compute_threshold_X1}), $K=2$ is $R/2$,
 \\
 
 Finally, for $K=X$ the threshold is $\frac{R}{x}$. 
@@ -2097,7 +2109,7 @@ These ones highlight the plateau effect even when working with possibly more fau
 As we explained above, the plateau appears because as we increase $C_{compute}$ to balance the other ones, the two sides equal out and both $C_{save}$ and $C_{load}$ become insignificant.
 Our intuition can also help us understand that effect as both $C_{checkpoint}$ and $C_{no_checkpoint}$ both use $C_{compute}$
 Nevertheless, as $K$ grows, the first slope gets steeper, resulting in a \textbf{logarithmic shaped function}. 
-We can explain that with the effective cost of the save being shrinked by more faults, in both intuition and equation \ref{eq:threshold_ratio}.
+We can explain that with the effective cost of the save being shrinked by more faults, in both intuition and equation \ref{eq:compute_threshold_X1}.
 The balance between the two effects gives some kind of saturation slopes.
 
 \begin{figure}[H]
