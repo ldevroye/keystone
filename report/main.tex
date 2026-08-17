@@ -173,7 +173,7 @@ Sealing keys bound to enclave measurement turn a blind, opaque blob into somethi
 Confidentiality comes from AES counter mode, authenticity from a separate MAC key, and both survive a channel assumed to be actively adversarial.
 Rewind here means destroying a faulted enclave outright and rebuilding it fresh from the same binary, not nudging a wounded process back to life.
 Every save, every load, every unseal costs cycles, those cycles are measured in order to find the point where rewinding becomes efficient.
-Break-even thresholds emerge from this cost, shifting with fault frequency and checkpoint interval in ways that resist a single universal answer.
+Break-even thresholds emerge from this cost, shifting with fault frequency and checkpoint intervals in ways that resist a single universal answer.
 Corrupted blobs, truncated writes, and single flipped bits are tested against the sealed checkpoint with the goal to make sure that the assumptions made are fulfilled with our implementation.
 Rollback prevention is explicitly left outside this boundary, a limitation on the host's untrustworthiness directly from the Keystone design.
 The results show that rewind is not to be considered an obvious choice, instead, the outcomes reveal a map of when it does become relevant.
